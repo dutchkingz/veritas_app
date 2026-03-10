@@ -1,0 +1,2 @@
+class PerspectiveFilter < ApplicationRecord
+end
