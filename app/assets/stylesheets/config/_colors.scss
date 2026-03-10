@@ -1,10 +1,30 @@
-// Define variables for your color scheme
+// -------------------------------------------------------
+// VERITAS — Palantir Color Palette
+// -------------------------------------------------------
+$veritas-bg:        #09090f;       // Near-black main background
+$veritas-surface:   #0d1117;       // Card/sidebar surface
+$veritas-border:    #1c2433;       // Subtle borders
+$veritas-cyan:      #00d4ff;       // Primary neon accent
+$veritas-cyan-dim:  #0e4a5e;       // Dimmed cyan for borders/hover bg
+$veritas-green:     #00ff87;       // Hope / positive sentiment
+$veritas-red:       #ff3a5e;       // Threat / aggressive sentiment
+$veritas-yellow:    #ffc107;       // Elevated / warning
+$veritas-text:      #b0bec5;       // Body text
+$veritas-text-dim:  #4a5568;       // Metadata / secondary text
+$veritas-white:     #e8edf2;       // Headlines
 
-// For example:
-$red: #FD1015;
-$blue: #0D6EFD;
-$yellow: #FFC65A;
-$orange: #E67E22;
-$green: #1EDD88;
-$gray: #0E0000;
-$light-gray: #F4F4F4;
+// Bootstrap overrides — done BEFORE @import "bootstrap"
+$primary:           $veritas-cyan;
+$success:           $veritas-green;
+$danger:            $veritas-red;
+$warning:           $veritas-yellow;
+$body-bg:           $veritas-bg;
+$body-color:        $veritas-text;
+$gray:              $veritas-bg;
+$light-gray:        $veritas-surface;
+$blue:              $veritas-cyan;
+$red:               $veritas-red;
+$green:             $veritas-green;
+$yellow:            $veritas-yellow;
+$orange:            #fd7e14;
+

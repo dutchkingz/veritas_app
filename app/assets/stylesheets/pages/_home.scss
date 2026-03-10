@@ -1,1 +1,504 @@
-// Specific CSS for your home-page
+// -------------------------------------------------------
+// VERITAS — War Room Core Styles
+// Uses Bootstrap 5 as foundation, heavily customized
+// -------------------------------------------------------
+
+// --- Layout ---
+.veritas-body {
+    background-color: $veritas-bg;
+    color: $veritas-text;
+    font-family: 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+.veritas-dashboard {
+    display: grid;
+    grid-template-columns: 340px 1fr 280px;
+    grid-template-rows: 1fr;
+    height: calc(100vh - 56px);
+    overflow: hidden;
+}
+
+// --- Navbar ---
+.veritas-navbar {
+    height: 56px;
+    background-color: rgba($veritas-surface, 0.95);
+    border-bottom: 1px solid $veritas-border;
+    backdrop-filter: blur(12px);
+}
+
+.veritas-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: $veritas-white !important;
+}
+
+.brand-pulse {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: $veritas-cyan;
+    box-shadow: 0 0 10px $veritas-cyan, 0 0 20px rgba($veritas-cyan, 0.4);
+    animation: pulse 2s infinite;
+}
+
+.brand-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: 0.2em;
+    color: $veritas-white;
+}
+
+.brand-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: $veritas-cyan;
+    letter-spacing: 0.1em;
+}
+
+.veritas-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+
+    &.live {
+        background: $veritas-green;
+        box-shadow: 0 0 8px $veritas-green;
+        animation: pulse 2s infinite;
+    }
+}
+
+.status-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    color: $veritas-green;
+}
+
+.veritas-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: $veritas-text-dim;
+}
+
+.veritas-btn-outline {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    border-radius: 2px;
+}
+
+// --- Flash messages ---
+.veritas-flash {
+    padding: 8px 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    text-align: center;
+
+    &-success {
+        background: rgba($veritas-green, 0.15);
+        color: $veritas-green;
+        border-bottom: 1px solid rgba($veritas-green, 0.3);
+    }
+
+    &-danger {
+        background: rgba($veritas-red, 0.15);
+        color: $veritas-red;
+        border-bottom: 1px solid rgba($veritas-red, 0.3);
+    }
+}
+
+// --- Panel Headers ---
+.veritas-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba($veritas-border, 0.5);
+    border-bottom: 1px solid $veritas-border;
+
+    .panel-icon {
+        font-size: 0.5rem;
+        color: $veritas-cyan;
+    }
+
+    .panel-title {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.15em;
+        color: $veritas-cyan;
+    }
+
+    .panel-badge {
+        margin-left: auto;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.6rem;
+        padding: 2px 6px;
+        background: rgba($veritas-cyan, 0.1);
+        border: 1px solid rgba($veritas-cyan, 0.3);
+        border-radius: 2px;
+        color: $veritas-cyan;
+    }
+}
+
+// --- LEFT SIDEBAR: Feed ---
+.veritas-feed-sidebar {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid $veritas-border;
+    background: rgba($veritas-surface, 0.7);
+    overflow: hidden;
+}
+
+.veritas-feed-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+
+    // Custom scrollbar
+    &::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: $veritas-bg;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: $veritas-border;
+        border-radius: 2px;
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+        background: $veritas-cyan-dim;
+    }
+}
+
+.veritas-feed-card {
+    display: block;
+    padding: 12px;
+    margin-bottom: 6px;
+    background: rgba($veritas-bg, 0.7);
+    border: 1px solid $veritas-border;
+    border-radius: 3px;
+    text-decoration: none;
+    color: $veritas-text;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+
+    &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 2px;
+        background: linear-gradient($veritas-cyan, transparent);
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    &:hover {
+        color: $veritas-white;
+        border-color: rgba($veritas-cyan, 0.4);
+        background: rgba($veritas-cyan, 0.05);
+        box-shadow: 0 0 15px rgba($veritas-cyan, 0.08);
+        transform: translateX(2px);
+
+        &::before {
+            opacity: 1;
+        }
+    }
+
+    .feed-source {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.6rem;
+        letter-spacing: 0.1em;
+        color: $veritas-cyan;
+        background: rgba($veritas-cyan, 0.08);
+        border: 1px solid rgba($veritas-cyan, 0.2);
+        padding: 1px 5px;
+        border-radius: 2px;
+    }
+
+    .feed-time {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.6rem;
+        color: $veritas-text-dim;
+    }
+
+    .feed-headline {
+        font-size: 0.8rem;
+        font-weight: 600;
+        line-height: 1.4;
+        color: $veritas-text;
+        margin: 6px 0;
+    }
+
+    .feed-location {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.6rem;
+        color: $veritas-text-dim;
+    }
+
+    .feed-coords {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.6rem;
+        color: rgba($veritas-cyan, 0.4);
+    }
+}
+
+// --- CENTER: Globe ---
+.veritas-globe-section {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at center, rgba($veritas-cyan, 0.06) 0%, $veritas-bg 65%);
+    overflow: hidden;
+}
+
+.veritas-crosshair {
+    position: absolute;
+    background: rgba($veritas-cyan, 0.15);
+
+    &.top {
+        top: 0;
+        left: 50%;
+        width: 1px;
+        height: 24px;
+    }
+
+    &.bottom {
+        bottom: 0;
+        left: 50%;
+        width: 1px;
+        height: 24px;
+    }
+
+    &.left {
+        left: 0;
+        top: 50%;
+        width: 24px;
+        height: 1px;
+    }
+
+    &.right {
+        right: 0;
+        top: 50%;
+        width: 24px;
+        height: 1px;
+    }
+}
+
+.globe-offline-icon {
+    i {
+        color: $veritas-cyan !important;
+        opacity: 0.6;
+    }
+}
+
+.globe-offline-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    color: $veritas-cyan;
+    text-shadow: 0 0 20px rgba($veritas-cyan, 0.5);
+}
+
+.globe-offline-subtitle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    color: $veritas-text-dim;
+    text-transform: uppercase;
+    animation: blink 2s step-end infinite;
+}
+
+.globe-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    .stat-value {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 1.4rem;
+        font-weight: 700;
+    }
+
+    .stat-label {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.55rem;
+        letter-spacing: 0.15em;
+        color: $veritas-text-dim;
+        margin-top: 2px;
+    }
+}
+
+// --- RIGHT SIDEBAR: Threat Matrix ---
+.veritas-status-sidebar {
+    border-left: 1px solid $veritas-border;
+    background: rgba($veritas-surface, 0.7);
+    overflow-y: auto;
+
+    &::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: $veritas-bg;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: $veritas-border;
+    }
+}
+
+.veritas-threat-row {
+    .threat-region {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.7rem;
+        letter-spacing: 0.1em;
+        color: $veritas-text;
+    }
+
+    .threat-badge {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.55rem;
+        letter-spacing: 0.1em;
+        padding: 2px 6px;
+        border-radius: 2px;
+
+        &.badge-severe {
+            background: rgba($veritas-red, 0.15);
+            color: $veritas-red;
+            border: 1px solid rgba($veritas-red, 0.3);
+        }
+
+        &.badge-elevated {
+            background: rgba($veritas-yellow, 0.15);
+            color: $veritas-yellow;
+            border: 1px solid rgba($veritas-yellow, 0.3);
+        }
+
+        &.badge-normal {
+            background: rgba($veritas-green, 0.15);
+            color: $veritas-green;
+            border: 1px solid rgba($veritas-green, 0.3);
+        }
+    }
+
+    .veritas-threat-bar {
+        height: 3px;
+        background: $veritas-border;
+        border-radius: 2px;
+        margin-bottom: 3px;
+
+        .threat-bar-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.6s ease;
+
+            &.threat-severe {
+                background: $veritas-red;
+                box-shadow: 0 0 6px rgba($veritas-red, 0.5);
+            }
+
+            &.threat-elevated {
+                background: $veritas-yellow;
+                box-shadow: 0 0 6px rgba($veritas-yellow, 0.5);
+            }
+
+            &.threat-normal {
+                background: $veritas-green;
+                box-shadow: 0 0 6px rgba($veritas-green, 0.5);
+            }
+        }
+    }
+
+    .threat-count {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.6rem;
+        color: $veritas-text-dim;
+    }
+}
+
+.veritas-divider {
+    border-color: $veritas-border;
+    opacity: 1;
+}
+
+.veritas-sys-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba($veritas-border, 0.5);
+
+    .sys-label {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.65rem;
+        letter-spacing: 0.1em;
+        color: $veritas-text-dim;
+    }
+
+    .sys-value {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.65rem;
+        letter-spacing: 0.1em;
+        font-weight: 700;
+    }
+}
+
+// --- Animations ---
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+}
+
+@keyframes blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
+}
+
+.veritas-spin-slow {
+    animation: spin-slow 12s linear infinite;
+}
+
+@keyframes spin-slow {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}

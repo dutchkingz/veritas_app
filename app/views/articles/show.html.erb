@@ -1,0 +1,105 @@
+<div class="veritas-dashboard p-4">
+  <div class="container mx-auto" style="max-width: 900px;">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h1 class="veritas-brand mb-1">INTELLIGENCE_BRIEF</h1>
+        <div class="veritas-meta">ID: <%= @article.id %> // <%= @article.fetched_at.strftime("%Y-%m-%d %H:%M:%S") %></div>
+      </div>
+      <%= link_to root_path, class: "btn btn-outline-primary btn-sm veritas-btn-outline" do %>
+        <i class="fa fa-arrow-left"></i> BACK TO WAR ROOM
+      <% end %>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="row g-4">
+      <!-- Left Column: Source & Details -->
+      <div class="col-md-8">
+        <div class="veritas-feed-card h-100" style="background: rgba(13, 17, 23, 0.9);">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="feed-source px-2 py-1 fs-6"><%= @article.source_name %></span>
+            <span class="feed-time fs-6"><i class="fa fa-clock me-1"></i><%= @article.published_at.strftime("%b %d, %Y - %H:%M UTC") %></span>
+          </div>
+          
+          <h2 class="text-white mb-4" style="font-weight: 600; line-height: 1.4;"><%= @article.headline %></h2>
+          
+          <div class="veritas-panel-header mb-3 bg-transparent px-0">
+            <span class="panel-icon">&#9632;</span>
+            <span class="panel-title">GEOLOCATION DATA</span>
+          </div>
+          
+          <div class="row mb-4 px-2">
+            <div class="col-6">
+              <div class="veritas-sys-row border-0 py-1">
+                <span class="sys-label">REGION:</span>
+                <span class="sys-value text-white"><%= @article.region.name %></span>
+              </div>
+              <div class="veritas-sys-row border-0 py-1">
+                <span class="sys-label">COUNTRY:</span>
+                <span class="sys-value text-white"><%= @article.country.name %> [<%= @article.country.iso_code %>]</span>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="veritas-sys-row border-0 py-1">
+                <span class="sys-label">LATITUDE:</span>
+                <span class="sys-value text-info"><%= @article.latitude.round(4) %>°</span>
+              </div>
+              <div class="veritas-sys-row border-0 py-1">
+                <span class="sys-label">LONGITUDE:</span>
+                <span class="sys-value text-info"><%= @article.longitude.round(4) %>°</span>
+              </div>
+            </div>
+          </div>
+
+          
+          <hr class="veritas-divider">
+          
+          <div class="mt-4">
+            <a href="<%= @article.source_url %>" target="_blank" class="btn btn-outline-info veritas-btn-outline w-100">
+              <i class="fa fa-external-link-alt me-2"></i> ACCESS ORIGINAL SOURCE
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: AI Analysis Status -->
+      <div class="col-md-4">
+        <div class="veritas-feed-card h-100" style="background: rgba(13, 17, 23, 0.9);">
+          <div class="veritas-panel-header mb-4">
+            <span class="panel-icon">&#9654;</span>
+            <span class="panel-title">AI_ANALYSIS</span>
+            <span class="panel-badge <%= @article.ai_analysis.present? ? '' : 'text-warning border-warning' %>">
+              <%= @article.ai_analysis.present? ? 'COMPLETE' : 'PENDING' %>
+            </span>
+          </div>
+
+          <% if @article.ai_analysis.present? %>
+            <!-- AI Analysis Content goes here when we build Phase 2 -->
+            <div class="text-center text-success veritas-meta mb-4">
+              <i class="fa fa-check-circle fa-2x mb-2"></i>
+              <div>ANALYSIS COMPLETE</div>
+            </div>
+          <% else %>
+            <div class="text-center text-warning veritas-meta mb-4 mt-5">
+              <i class="fa fa-cog fa-spin fa-2x mb-3"></i>
+              <div>AWAITING PHASE 2<br>LLM PROCESSING</div>
+            </div>
+            
+            <div class="veritas-sys-row mt-4">
+              <span class="sys-label">TRUST SCORE</span>
+              <span class="sys-value text-muted">--/100</span>
+            </div>
+            <div class="veritas-sys-row">
+              <span class="sys-label">SENTIMENT</span>
+              <span class="sys-value text-muted">UNKNOWN</span>
+            </div>
+            <div class="veritas-sys-row">
+              <span class="sys-label">THREAT LEVEL</span>
+              <span class="sys-value text-muted">CALCULATING</span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
