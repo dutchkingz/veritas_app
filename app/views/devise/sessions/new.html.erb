@@ -1,20 +1,50 @@
-<h2>Log in</h2>
+<div class="veritas-auth-wrapper">
+  <!-- Animated Background Elements -->
+  <div class="grid-bg"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  <div class="scanline"></div>
 
-<%= simple_form_for(resource, as: resource_name, url: session_path(resource_name)) do |f| %>
-  <div class="form-inputs">
-    <%= f.input :email,
-                required: false,
-                autofocus: true,
-                input_html: { autocomplete: "email" } %>
-    <%= f.input :password,
-                required: false,
-                input_html: { autocomplete: "current-password" } %>
-    <%= f.input :remember_me, as: :boolean if devise_mapping.rememberable? %>
+  <div class="auth-card">
+    <div class="logo">
+      <div class="logo-text">VERITAS</div>
+      <div class="logo-sub">Global Intelligence Platform</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="status-bar">
+      <div class="status-dot"></div>
+      <div class="status-text">SECURE CHANNEL ESTABLISHED</div>
+    </div>
+
+    <%= form_for(resource, as: resource_name, url: session_path(resource_name)) do |f| %>
+      <div class="form-group">
+        <label>Email Address</label>
+        <%= f.email_field :email, autofocus: true, autocomplete: "email", class: "auth-input", placeholder: "operative@veritas.io", required: true %>
+      </div>
+
+      <div class="form-group">
+        <label>Password</label>
+        <%= f.password_field :password, autocomplete: "current-password", class: "auth-input", placeholder: "••••••••••••", required: true %>
+      </div>
+
+      <% if devise_mapping.rememberable? %>
+        <div class="form-group d-flex align-items-center gap-2 mb-4">
+          <%= f.check_box :remember_me, class: "auth-checkbox" %>
+          <%= f.label :remember_me, "Remember clearance", class: "auth-checkbox-label mb-0" %>
+        </div>
+      <% end %>
+
+      <button type="submit" class="auth-btn">Authenticate</button>
+    <% end %>
+
+    <div class="footer-link">
+      Need clearance? <%= link_to "Request Access", new_registration_path(resource_name) %>
+    </div>
+    <div class="footer-link mt-2">
+      <%= link_to "Forgot your passphrase?", new_password_path(resource_name) %>
+    </div>
   </div>
-
-  <div class="form-actions">
-    <%= f.button :submit, "Log in" %>
-  </div>
-<% end %>
-
-<%= render "devise/shared/links" %>
+</div>

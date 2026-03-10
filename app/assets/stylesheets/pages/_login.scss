@@ -1,0 +1,315 @@
+// VERITAS Auth Styles (Animated Orbs & Grid)
+
+.veritas-auth-wrapper {
+    // Import fonts specifically for auth
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap');
+
+    min-height: 100vh;
+    background: #020817;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Rajdhani', sans-serif;
+    overflow: hidden;
+    position: relative; // crucial for fixed elements inside
+
+    // Animated grid background
+    .grid-bg {
+        position: absolute;
+        inset: 0;
+        background-image:
+            linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
+        background-size: 40px 40px;
+        animation: gridMove 20s linear infinite;
+        z-index: 1;
+    }
+
+    // Glowing orbs
+    .orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(80px);
+        opacity: 0.15;
+        animation: authPulse 6s ease-in-out infinite;
+        z-index: 2;
+    }
+
+    .orb-1 {
+        width: 400px;
+        height: 400px;
+        background: #00FFFF;
+        top: -100px;
+        left: -100px;
+        animation-delay: 0s;
+    }
+
+    .orb-2 {
+        width: 300px;
+        height: 300px;
+        background: #0066FF;
+        bottom: -80px;
+        right: -80px;
+        animation-delay: 2s;
+    }
+
+    .orb-3 {
+        width: 200px;
+        height: 200px;
+        background: #FF0066;
+        top: 50%;
+        right: 20%;
+        animation-delay: 4s;
+    }
+
+    // Scan line effect
+    .scanline {
+        position: absolute;
+        inset: 0;
+        background: repeating-linear-gradient(0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 0, 0, 0.05) 2px,
+                rgba(0, 0, 0, 0.05) 4px);
+        pointer-events: none;
+        z-index: 100; // Above card
+    }
+
+    // Card
+    .auth-card {
+        position: relative;
+        z-index: 10;
+        width: 100%;
+        max-width: 440px;
+        background: rgba(2, 12, 30, 0.85);
+        border: 1px solid rgba(0, 255, 255, 0.2);
+        border-radius: 4px;
+        padding: 48px 40px;
+        backdrop-filter: blur(20px);
+        box-shadow:
+            0 0 0 1px rgba(0, 255, 255, 0.05),
+            0 0 40px rgba(0, 255, 255, 0.08),
+            0 40px 80px rgba(0, 0, 0, 0.6);
+
+        // Corner accents
+        &::before,
+        &::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-color: #00FFFF;
+            border-style: solid;
+        }
+
+        &::before {
+            top: -1px;
+            left: -1px;
+            border-width: 2px 0 0 2px;
+        }
+
+        &::after {
+            bottom: -1px;
+            right: -1px;
+            border-width: 0 2px 2px 0;
+        }
+    }
+
+    // Logo
+    .logo {
+        text-align: center;
+        margin-bottom: 32px;
+    }
+
+    .logo-text {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: 12px;
+        color: #00FFFF;
+        text-shadow: 0 0 20px rgba(0, 255, 255, 0.6), 0 0 40px rgba(0, 255, 255, 0.3);
+    }
+
+    .logo-sub {
+        font-size: 11px;
+        letter-spacing: 4px;
+        color: rgba(0, 255, 255, 0.4);
+        text-transform: uppercase;
+        margin-top: 6px;
+    }
+
+    .divider {
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.3), transparent);
+        margin: 0 0 28px;
+    }
+
+    // Status bar
+    .status-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 24px;
+    }
+
+    .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #00FFFF;
+        box-shadow: 0 0 8px #00FFFF;
+        animation: authBlink 1.5s ease-in-out infinite;
+    }
+
+    .status-text {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 11px;
+        color: rgba(0, 255, 255, 0.5);
+        letter-spacing: 2px;
+    }
+
+    // Form elements
+    .form-group {
+        margin-bottom: 18px;
+
+        label {
+            display: block;
+            font-size: 11px;
+            letter-spacing: 3px;
+            color: rgba(0, 255, 255, 0.5);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+    }
+
+    .auth-input {
+        width: 100%;
+        background: rgba(0, 255, 255, 0.03);
+        border: 1px solid rgba(0, 255, 255, 0.15);
+        border-radius: 2px;
+        padding: 12px 16px;
+        color: #E0F7FF;
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 14px;
+        outline: none;
+        transition: all 0.3s;
+
+        &::placeholder {
+            color: rgba(255, 255, 255, 0.15);
+        }
+
+        &:focus {
+            border-color: rgba(0, 255, 255, 0.5);
+            background: rgba(0, 255, 255, 0.06);
+            box-shadow: 0 0 16px rgba(0, 255, 255, 0.1), inset 0 0 16px rgba(0, 255, 255, 0.03);
+        }
+    }
+
+    .auth-checkbox {
+        accent-color: #00FFFF;
+        position: relative;
+        top: -3px;
+    }
+
+    .auth-checkbox-label {
+        letter-spacing: 2px;
+        font-size: 10px;
+        margin-bottom: 0 !important;
+    }
+
+    // Submit button
+    .auth-btn {
+        width: 100%;
+        margin-top: 8px;
+        padding: 14px;
+        background: transparent;
+        border: 1px solid #00FFFF;
+        border-radius: 2px;
+        color: #00FFFF;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s;
+
+        &::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 255, 255, 0.08);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
+        }
+
+        &:hover::before {
+            transform: scaleX(1);
+        }
+
+        &:hover {
+            box-shadow: 0 0 24px rgba(0, 255, 255, 0.3), inset 0 0 24px rgba(0, 255, 255, 0.05);
+            text-shadow: 0 0 12px rgba(0, 255, 255, 0.8);
+        }
+    }
+
+    // Footer link
+    .footer-link {
+        text-align: center;
+        margin-top: 24px;
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.3);
+        letter-spacing: 1px;
+
+        a {
+            color: rgba(0, 255, 255, 0.6);
+            text-decoration: none;
+            transition: color 0.2s;
+
+            &:hover {
+                color: #00FFFF;
+                text-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
+            }
+        }
+    }
+}
+
+// Animations specific to auth wrapper to avoid conflicts
+@keyframes gridMove {
+    0% {
+        transform: translateY(0);
+    }
+
+    100% {
+        transform: translateY(40px);
+    }
+}
+
+@keyframes authPulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.15;
+    }
+
+    50% {
+        transform: scale(1.1);
+        opacity: 0.25;
+    }
+}
+
+@keyframes authBlink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.2;
+    }
+}

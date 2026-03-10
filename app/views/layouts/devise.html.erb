@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html data-bs-theme="dark">
+  <head>
+    <title>VERITAS // TERMINAL</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Importing Inter and Merriweather to match the old project exactly -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@700&display=swap" rel="stylesheet">
+    
+    <%= stylesheet_link_tag :application, "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body style="background-color: #070F1C; margin: 0; padding: 0;">
+    <!-- Flash Messages (Styled for login) -->
+    <% if notice %>
+      <div class="position-absolute top-0 start-50 translate-middle-x mt-3 p-3 rounded" style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); color: #38BDF8; z-index: 100;">
+        <%= notice %>
+      </div>
+    <% end %>
+    <% if alert %>
+      <div class="position-absolute top-0 start-50 translate-middle-x mt-3 p-3 rounded" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; z-index: 100;">
+        <i class="fa fa-lock me-2"></i> SECURITY BREACH DETECTED: <%= alert %>
+      </div>
+    <% end %>
+
+    <%= yield %>
+  </body>
+</html>
