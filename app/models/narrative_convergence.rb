@@ -1,0 +1,2 @@
+class NarrativeConvergence < ApplicationRecord
+end
