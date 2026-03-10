@@ -1,25 +1,47 @@
-<h2>Sign up</h2>
+<div class="veritas-auth-wrapper">
+  <!-- Animated Background Elements -->
+  <div class="grid-bg"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  <div class="scanline"></div>
 
-<%= simple_form_for(resource, as: resource_name, url: registration_path(resource_name)) do |f| %>
-  <%= f.error_notification %>
+  <div class="auth-card">
+    <div class="logo">
+      <div class="logo-text">VERITAS</div>
+      <div class="logo-sub">Global Intelligence Platform</div>
+    </div>
 
-  <div class="form-inputs">
-    <%= f.input :email,
-                required: true,
-                autofocus: true,
-                input_html: { autocomplete: "email" }%>
-    <%= f.input :password,
-                required: true,
-                hint: ("#{@minimum_password_length} characters minimum" if @minimum_password_length),
-                input_html: { autocomplete: "new-password" } %>
-    <%= f.input :password_confirmation,
-                required: true,
-                input_html: { autocomplete: "new-password" } %>
+    <div class="divider"></div>
+
+    <div class="status-bar">
+      <div class="status-dot" style="background: #FF0066; box-shadow: 0 0 8px #FF0066;"></div>
+      <div class="status-text" style="color: rgba(255,0,102,0.5);">CLEARANCE REQUEST INITIATED</div>
+    </div>
+
+    <%= form_for(resource, as: resource_name, url: registration_path(resource_name)) do |f| %>
+      <%= render "devise/shared/error_messages", resource: resource %>
+
+      <div class="form-group">
+        <label>Email Address</label>
+        <%= f.email_field :email, autofocus: true, autocomplete: "email", class: "auth-input", placeholder: "operative@veritas.io", required: true %>
+      </div>
+
+      <div class="form-group">
+        <label>Password <% if @minimum_password_length %>(min <%= @minimum_password_length %> chars)<% end %></label>
+        <%= f.password_field :password, autocomplete: "new-password", class: "auth-input", placeholder: "••••••••••••", required: true %>
+      </div>
+
+      <div class="form-group">
+        <label>Confirm Password</label>
+        <%= f.password_field :password_confirmation, autocomplete: "new-password", class: "auth-input", placeholder: "••••••••••••", required: true %>
+      </div>
+
+      <button type="submit" class="auth-btn">Request Access</button>
+    <% end %>
+
+    <div class="footer-link">
+      Already have clearance? <%= link_to "Sign In", new_session_path(resource_name) %>
+    </div>
   </div>
-
-  <div class="form-actions">
-    <%= f.button :submit, "Sign up" %>
-  </div>
-<% end %>
-
-<%= render "devise/shared/links" %>
+</div>
