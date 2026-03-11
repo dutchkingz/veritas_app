@@ -20,29 +20,7 @@
 
   <body class="veritas-body">
     <!-- Top Navigation Bar -->
-    <nav class="navbar veritas-navbar px-3 py-0">
-      <a class="navbar-brand veritas-brand" href="<%= root_path %>">
-        <span class="brand-pulse"></span>
-        <span class="brand-text">VERITAS</span>
-        <span class="brand-sub">// WAR ROOM</span>
-      </a>
-
-      <div class="navbar-center d-none d-md-flex align-items-center gap-4">
-        <div class="veritas-status">
-          <span class="status-dot live"></span>
-          <span class="status-label">SYSTEM ONLINE</span>
-        </div>
-      </div>
-
-      <div class="d-flex align-items-center gap-3">
-        <% if user_signed_in? %>
-          <span class="veritas-meta d-none d-md-inline"><%= current_user.email %></span>
-          <%= link_to "SIGN OUT", destroy_user_session_path, data: { turbo_method: :delete }, class: "btn btn-outline-danger btn-sm veritas-btn-outline" %>
-        <% else %>
-          <%= link_to "SIGN IN", new_user_session_path, class: "btn btn-outline-primary btn-sm veritas-btn-outline" %>
-        <% end %>
-      </div>
-    </nav>
+    <%= render "shared/banner" %>
 
     <!-- Flash Messages -->
     <% if notice %>

@@ -1,0 +1,39 @@
+<nav class="navbar veritas-navbar px-3 py-3 d-flex justify-content-between align-items-center border-bottom border-secondary mb-4">
+  <a class="navbar-brand veritas-brand m-0" href="<%= root_path %>">
+    <span class="brand-pulse"></span>
+    <span class="brand-text">VERITAS</span>
+    <span class="brand-sub">// WAR ROOM</span>
+  </a>
+
+  <div class="navbar-center d-none d-md-flex align-items-center gap-4">
+    <div class="veritas-status">
+      <span class="status-dot live"></span>
+      <span class="status-label">SYSTEM ONLINE</span>
+    </div>
+  </div>
+
+  <div class="d-flex align-items-center gap-4">
+    <!-- Time & Weather Widget -->
+    <div class="d-flex align-items-center gap-3 veritas-meta">
+      <div data-controller="time" class="d-flex align-items-center text-monospace">
+        <span data-time-target="output">00:00:00</span>
+      </div>
+      <div data-controller="weather" class="d-flex align-items-center text-monospace text-muted">
+        <span data-weather-target="output">Wait...</span>
+      </div>
+    </div>
+
+    <!-- User Section -->
+    <div class="d-flex align-items-center gap-3">
+      <% if user_signed_in? %>
+        <div class="d-flex align-items-center gap-2">
+          <%= image_tag "https://api.dicebear.com/7.x/bottts/svg?seed=#{current_user.email}", class: "rounded-circle bg-dark border border-secondary", style: "width: 32px; height: 32px;", alt: "Avatar" %>
+          <span class="veritas-meta d-none d-md-inline ms-1"><%= current_user.email %></span>
+        </div>
+        <%= link_to "SIGN OUT", destroy_user_session_path, data: { turbo_method: :delete }, class: "btn btn-outline-danger btn-sm veritas-btn-outline ms-2" %>
+      <% else %>
+        <%= link_to "SIGN IN", new_user_session_path, class: "btn btn-outline-primary btn-sm veritas-btn-outline" %>
+      <% end %>
+    </div>
+  </div>
+</nav>
