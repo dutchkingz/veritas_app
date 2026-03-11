@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<sql>
+
+<!-- USERS -->
+<table x="100" y="100" name="users">
+  <row name="id" null="0" autoincrement="1">
+    <datatype>INTEGER</datatype>
+  </row>
+  <row name="email" null="0" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="encrypted_password" null="0" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="role" null="0" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+    <default>'user'</default>
+  </row>
+  <row name="admin" null="1" autoincrement="0">
+    <datatype>BOOLEAN</datatype>
+  </row>
+  <row name="created_at" null="0" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <row name="updated_at" null="0" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <key type="PRIMARY" name="">
+    <part>id</part>
+  </key>
+</table>
+
+<!-- BRIEFINGS -->
+<table x="350" y="100" name="briefings">
+  <row name="id" null="0" autoincrement="1">
+    <datatype>INTEGER</datatype>
+  </row>
+  <row name="user_id" null="0" autoincrement="0">
+    <datatype>INTEGER</datatype>
+    <relation table="users" row="id" />
+  </row>
+  <row name="threat_summary" null="1" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="top_narratives" null="1" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="pdf_url" null="1" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="generated_at" null="1" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <row name="created_at" null="0" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <row name="updated_at" null="0" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <key type="PRIMARY" name="">
+    <part>id</part>
+  </key>
+</table>
+
+<!-- REGIONS -->
+<table x="100" y="350" name="regions">
+  <row name="id" null="0" autoincrement="1">
+    <datatype>INTEGER</datatype>
+  </row>
+  <row name="name" null="1" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="latitude" null="1" autoincrement="0">
+    <datatype>FLOAT</datatype>
+  </row>
+  <row name="longitude" null="1" autoincrement="0">
+    <datatype>FLOAT</datatype>
+  </row>
+  <row name="threat_level" null="1" autoincrement="0">
+    <datatype>INTEGER</datatype>
+  </row>
+  <row name="article_volume" null="1" autoincrement="0">
+    <datatype>INTEGER</datatype>
+  </row>
+  <row name="last_calculated_at" null="1" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <row name="created_at" null="0" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <row name="updated_at" null="0" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <key type="PRIMARY" name="">
+    <part>id</part>
+  </key>
+</table>
+
+<!-- COUNTRIES -->
+<table x="350" y="350" name="countries">
+  <row name="id" null="0" autoincrement="1">
+    <datatype>INTEGER</datatype>
+  </row>
+  <row name="region_id" null="0" autoincrement="0">
+    <datatype>INTEGER</datatype>
+    <relation table="regions" row="id" />
+  </row>
+  <row name="name" null="1" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="iso_code" null="1" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="created_at" null="0" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <row name="updated_at" null="0" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <key type="PRIMARY" name="">
+    <part>id</part>
+  </key>
+</table>
+
+<!-- ARTICLES -->
+<table x="100" y="600" name="articles">
+  <row name="id" null="0" autoincrement="1">
+    <datatype>INTEGER</datatype>
+  </row>
+  <row name="country_id" null="0" autoincrement="0">
+    <datatype>INTEGER</datatype>
+    <relation table="countries" row="id" />
+  </row>
+  <row name="region_id" null="0" autoincrement="0">
+    <datatype>INTEGER</datatype>
+    <relation table="regions" row="id" />
+  </row>
+  <row name="headline" null="1" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="content" null="1" autoincrement="0">
+    <datatype>TEXT</datatype>
+  </row>
+  <row name="source_name" null="1" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="source_url" null="1" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="latitude" null="1" autoincrement="0">
+    <datatype>FLOAT</datatype>
+  </row>
+  <row name="longitude" null="1" autoincrement="0">
+    <datatype>FLOAT</datatype>
+  </row>
+  <row name="target_country" null="1" autoincrement="0">
+    <datatype>INTEGER</datatype>
+  </row>
+  <row name="published_at" null="1" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <row name="fetched_at" null="1" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <row name="raw_data" null="1" autoincrement="0">
+    <datatype>JSON</datatype>
+  </row>
+  <row name="created_at" null="0" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <row name="updated_at" null="0" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <key type="PRIMARY" name="">
+    <part>id</part>
+  </key>
+</table>
+
+<!-- AI_ANALYSES -->
+<table x="400" y="600" name="ai_analyses">
+  <row name="id" null="0" autoincrement="1">
+    <datatype>INTEGER</datatype>
+  </row>
+  <row name="article_id" null="0" autoincrement="0">
+    <datatype>INTEGER</datatype>
+    <relation table="articles" row="id" />
+  </row>
+  <row name="analysis_status" null="1" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+    <default>'pending'</default>
+  </row>
+  <row name="geopolitical_topic" null="1" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="threat_level" null="1" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="trust_score" null="1" autoincrement="0">
+    <datatype>FLOAT</datatype>
+  </row>
+  <row name="sentiment_label" null="1" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="sentiment_color" null="1" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="linguistic_anomaly_flag" null="1" autoincrement="0">
+    <datatype>BOOLEAN</datatype>
+  </row>
+  <row name="anomaly_notes" null="1" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="summary" null="1" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="sentinel_response" null="1" autoincrement="0">
+    <datatype>JSON</datatype>
+    <comment>NEW</comment>
+  </row>
+  <row name="analyst_response" null="1" autoincrement="0">
+    <datatype>JSON</datatype>
+    <comment>NEW</comment>
+  </row>
+  <row name="arbiter_response" null="1" autoincrement="0">
+    <datatype>JSON</datatype>
+    <comment>NEW</comment>
+  </row>
+  <row name="created_at" null="0" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <row name="updated_at" null="0" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <key type="PRIMARY" name="">
+    <part>id</part>
+  </key>
+</table>
+
+<!-- NARRATIVE_ARCS -->
+<table x="700" y="600" name="narrative_arcs">
+  <row name="id" null="0" autoincrement="1">
+    <datatype>INTEGER</datatype>
+  </row>
+  <row name="article_id" null="0" autoincrement="0">
+    <datatype>INTEGER</datatype>
+    <relation table="articles" row="id" />
+  </row>
+  <row name="origin_country" null="1" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="origin_lat" null="1" autoincrement="0">
+    <datatype>FLOAT</datatype>
+  </row>
+  <row name="origin_lng" null="1" autoincrement="0">
+    <datatype>FLOAT</datatype>
+  </row>
+  <row name="target_country" null="1" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="target_lat" null="1" autoincrement="0">
+    <datatype>FLOAT</datatype>
+  </row>
+  <row name="target_lng" null="1" autoincrement="0">
+    <datatype>FLOAT</datatype>
+  </row>
+  <row name="arc_color" null="1" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="created_at" null="0" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <row name="updated_at" null="0" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <key type="PRIMARY" name="">
+    <part>id</part>
+  </key>
+</table>
+
+<!-- NARRATIVE_CONVERGENCES -->
+<table x="700" y="350" name="narrative_convergences">
+  <row name="id" null="0" autoincrement="1">
+    <datatype>INTEGER</datatype>
+  </row>
+  <row name="topic_keyword" null="1" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="convergence_percentage" null="1" autoincrement="0">
+    <datatype>FLOAT</datatype>
+  </row>
+  <row name="article_count" null="1" autoincrement="0">
+    <datatype>INTEGER</datatype>
+  </row>
+  <row name="calculated_at" null="1" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <row name="created_at" null="0" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <row name="updated_at" null="0" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <key type="PRIMARY" name="">
+    <part>id</part>
+  </key>
+</table>
+
+<!-- PERSPECTIVE_FILTERS -->
+<table x="700" y="100" name="perspective_filters">
+  <row name="id" null="0" autoincrement="1">
+    <datatype>INTEGER</datatype>
+  </row>
+  <row name="name" null="1" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="filter_type" null="1" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="keywords" null="1" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="created_at" null="0" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <row name="updated_at" null="0" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <key type="PRIMARY" name="">
+    <part>id</part>
+  </key>
+</table>
+
+<!-- PAGES -->
+<table x="1000" y="100" name="pages">
+  <row name="id" null="0" autoincrement="1">
+    <datatype>INTEGER</datatype>
+  </row>
+  <row name="title" null="1" autoincrement="0">
+    <datatype>VARCHAR</datatype>
+  </row>
+  <row name="content" null="1" autoincrement="0">
+    <datatype>TEXT</datatype>
+  </row>
+  <row name="created_at" null="0" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <row name="updated_at" null="0" autoincrement="0">
+    <datatype>TIMESTAMP</datatype>
+  </row>
+  <key type="PRIMARY" name="">
+    <part>id</part>
+  </key>
+</table>
+
+</sql>
