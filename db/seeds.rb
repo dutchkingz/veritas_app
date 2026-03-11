@@ -20,6 +20,17 @@ User.create!(
   role: 'admin'
 )
 
+puts "Creating Developer Users..."
+%w[vince@vince.com oli@oli.com selim@selim.com].each do |email|
+  User.create!(
+    email: email,
+    password: email,
+    password_confirmation: email,
+    role: 'user' # or whatever their role should be
+  )
+end
+puts "Developers vince, oli, and selim have been successfully created!"
+
 puts "Creating Dummy Regions and Countries..."
 regions = [
   { name: 'North America', country: 'United States', lat: 37.0902, lng: -95.7129, threat: 1 },
