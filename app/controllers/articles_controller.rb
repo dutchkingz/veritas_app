@@ -1,13 +1,17 @@
 class ArticlesController < ApplicationController
+  require 'open-uri'
+  require 'readability'
+  require 'nokogiri'
+
   def show
     @article = Article.includes(:country, :region, :ai_analysis, :narrative_arcs).find(params[:id])
 
     return unless @article.content.blank? && @article.source_url.present?
 
-    begin
-      require 'open-uri'
-      require 'readability'
+    base_uri = URI.parse(@article.source_url)
+    base = "#{base_uri.scheme}://#{base_uri.host}"
 
+    begin
       # We spoof comprehensive browser headers to bypass simple bot protections
       html = URI.open(@article.source_url,
                       "User-Agent" => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -15,12 +19,40 @@ class ArticlesController < ApplicationController
                       "Accept-Language" => "en-US,en;q=0.5",
                       "Referer" => "https://www.google.com/").read
 
+      # PRE-PROCESS: Resolve lazy-loaded images BEFORE Readability processes the HTML.
+      # Modern news sites don't put the real URL in `src` — they hide it in `data-src`,
+      # `data-lazy-src`, `data-original`, etc. We need to move those into `src` first.
+      pre_doc = Nokogiri::HTML(html)
+      pre_doc.css('img').each do |img|
+        lazy_src = img['data-src'] || img['data-lazy-src'] || img['data-original'] || img['data-srcset']&.split(',')&.first&.strip&.split(' ')&.first
+        if lazy_src.present? && (img['src'].blank? || img['src'].include?('data:image') || img['src'].include?('placeholder') || img['src'].include?('1x1'))
+          img['src'] = lazy_src
+        end
+      end
+      html = pre_doc.to_html
+
       doc = Readability::Document.new(html,
-                                      tags: %w[div p h1 h2 h3 h4 h5 h6 ul ol li b i strong em blockquote],
-                                      attributes: %w[href],
+                                      tags: %w[div p h1 h2 h3 h4 h5 h6 ul ol li b i strong em blockquote img figure
+                                               figcaption picture source span],
+                                      attributes: %w[href src srcset alt title class],
                                       remove_empty_nodes: true)
 
-      @article.update!(content: doc.content)
+      # POST-PROCESS: Fix relative image URLs → absolute so browsers can load them
+      parsed = Nokogiri::HTML(doc.content)
+      parsed.css('img').each do |img|
+        next if img['src'].blank?
+
+        # Convert relative URLs to absolute
+        unless img['src'].start_with?('http')
+          img['src'] = img['src'].start_with?('/') ? "#{base}#{img['src']}" : "#{base}/#{img['src']}"
+        end
+        # Remove srcset to avoid confusion
+        img.remove_attribute('srcset')
+        # Remove tiny tracking pixels (1x1, 2x2 etc.)
+        img.remove if img['src'].include?('1x1') || img['src'].include?('pixel') || img['src'].include?('tracking')
+      end
+
+      @article.update!(content: parsed.at('body')&.inner_html || doc.content)
     rescue OpenURI::HTTPError => e
       if e.message.include?('403') || e.message.include?('503') || e.message.include?('429')
         fallback_text = @article.raw_data['description'] || @article.raw_data['content'] || 'Content protected.'
