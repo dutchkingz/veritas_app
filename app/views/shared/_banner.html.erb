@@ -26,6 +26,15 @@
   </div>
 
   <div class="d-flex align-items-center gap-4">
+    <!-- Briefings Link -->
+    <%= link_to briefings_path,
+          class: "d-none d-lg-flex align-items-center gap-2",
+          style: "text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #94a3b8; letter-spacing: 1px; transition: color 0.2s;",
+          data: { turbo: false } do %>
+      <i class="fa fa-file-shield"></i>
+      BRIEFINGS
+    <% end %>
+
     <!-- Convergence Alerts Link -->
     <% convergence_count = NarrativeConvergence.active.count rescue 0 %>
     <%= link_to narrative_convergences_path,
@@ -56,6 +65,17 @@
           <%= link_to "ADMIN PANEL", admin_users_path, class: "btn btn-outline-warning btn-sm veritas-btn-outline me-2" %>
         <% end %>
         <%= link_to "SAVED ARTICLES", saved_articles_path, class: "btn btn-outline-info btn-sm veritas-btn-outline me-2", style: "font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;" %>
+        <% wl_count = current_user.saved_articles.count rescue 0 %>
+        <%= link_to watchlist_saved_articles_path,
+              class: "btn btn-sm veritas-btn-outline me-2",
+              style: "font-family:'JetBrains Mono',monospace;font-size:0.7rem;
+                      border-color:#{wl_count > 0 ? '#ef4444' : '#475569'};
+                      color:#{wl_count > 0 ? '#ef4444' : '#475569'};" do %>
+          <i class="fa fa-satellite-dish me-1"></i>WATCHLIST
+          <% if wl_count > 0 %>
+            <span style="background:#ef4444;color:white;font-size:0.55rem;padding:1px 5px;border-radius:3px;margin-left:3px;"><%= wl_count %></span>
+          <% end %>
+        <% end %>
         <div class="d-flex align-items-center gap-2">
           <%= image_tag "https://api.dicebear.com/7.x/bottts/svg?seed=#{current_user.email}", class: "rounded-circle bg-dark border border-secondary", style: "width: 32px; height: 32px;", alt: "Avatar" %>
           <span class="veritas-meta d-none d-md-inline ms-1"><%= current_user.email %></span>

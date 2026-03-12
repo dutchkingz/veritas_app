@@ -248,4 +248,61 @@
     </div>
   <% end %>
 
+  <!-- UNIQUE SIGNALS Section -->
+  <% if @outliers&.any? %>
+    <div style="padding: 0 24px 40px;">
+      <div style="border-top: 1px solid rgba(56,189,248,0.15); padding-top: 32px; margin-bottom: 20px;
+                  display: flex; align-items: center; gap: 12px;">
+        <i class="fa fa-satellite-dish" style="color: #38bdf8; font-size: 0.9rem;"></i>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #38bdf8; letter-spacing: 3px; font-weight: 700;">
+          UNIQUE SIGNALS
+        </span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: #475569; letter-spacing: 1px;">
+          ISOLATED HIGH-THREAT — NOT PART OF ANY CONVERGENCE CLUSTER
+        </span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <% @outliers.each_with_index do |article, i| %>
+          <% threat_color = { 'CRITICAL' => '#ef4444', 'HIGH' => '#f97316' }.fetch(article.ai_analysis.threat_level, '#eab308') %>
+          <%= link_to article_path(article), style: "text-decoration: none;", data: { turbo: false } do %>
+            <div style="border: 1px solid rgba(71,85,105,0.3); border-left: 3px solid <%= threat_color %>;
+                        border-radius: 4px; padding: 14px 18px; background: rgba(15,23,42,0.6);
+                        transition: border-color 0.2s, background 0.2s;"
+                 onmouseover="this.style.background='rgba(56,189,248,0.04)'; this.style.borderColor='rgba(56,189,248,0.3)';"
+                 onmouseout="this.style.background='rgba(15,23,42,0.6)'; this.style.borderColor='rgba(71,85,105,0.3)';">
+              <div class="d-flex align-items-start justify-content-between gap-3">
+                <div class="d-flex align-items-start gap-3">
+                  <span style="font-family:'JetBrains Mono',monospace; font-size:0.6rem; color:<%= threat_color %>;
+                               background: <%= threat_color %>15; border: 1px solid <%= threat_color %>30;
+                               padding: 2px 6px; border-radius: 3px; white-space: nowrap; margin-top: 2px;">
+                    [U<%= i + 1 %>] <%= article.ai_analysis.threat_level %>
+                  </span>
+                  <div>
+                    <div style="font-family:'JetBrains Mono',monospace; font-size:0.78rem; color:#e2e8f0;
+                                line-height:1.4; margin-bottom:4px;">
+                      <%= article.headline %>
+                    </div>
+                    <div style="font-family:'JetBrains Mono',monospace; font-size:0.6rem; color:#64748b;">
+                      <%= article.source_name %>
+                      <% if article.country %>
+                        &nbsp;·&nbsp;<%= article.country.iso_code %>
+                      <% end %>
+                      &nbsp;·&nbsp;<%= article.published_at&.strftime("%b %d, %Y") %>
+                    </div>
+                  </div>
+                </div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:0.65rem; color:#475569;
+                            white-space:nowrap; text-align:right;">
+                  TRUST <%= article.ai_analysis.trust_score.to_i %>/100
+                  <i class="fa fa-chevron-right ms-2" style="color:#334155;"></i>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
 </div>

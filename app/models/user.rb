@@ -5,6 +5,7 @@ class User < ApplicationRecord
          :recoverable, :rememberable, :validatable
 
   has_many :saved_articles, dependent: :destroy
+  has_many :briefings, dependent: :destroy
 
   ROLES = %w[visitor user admin].freeze
 

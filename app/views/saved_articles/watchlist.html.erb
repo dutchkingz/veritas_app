@@ -1,0 +1,243 @@
+<% content_for :head do %>
+<style>
+  .watchlist-layout {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px 60px;
+  }
+
+  .wl-header {
+    padding: 24px 24px 0;
+    max-width: 1100px;
+    margin: 0 auto;
+    border-bottom: 1px solid rgba(56,189,248,0.12);
+    margin-bottom: 28px;
+  }
+
+  .wl-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #ef4444;
+    letter-spacing: 2px;
+    margin: 0 0 4px;
+  }
+
+  .wl-subtitle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem;
+    color: #475569;
+    letter-spacing: 1px;
+    padding-bottom: 18px;
+  }
+
+  .wl-hit {
+    background: rgba(13, 17, 23, 0.95);
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    border-left: 3px solid;
+    border-radius: 6px;
+    padding: 16px 18px;
+    margin-bottom: 12px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.2s;
+  }
+
+  .wl-hit:hover {
+    border-color: rgba(239, 68, 68, 0.4);
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .wl-headline {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    margin-bottom: 8px;
+    line-height: 1.4;
+  }
+
+  .wl-meta {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .wl-signature-box {
+    background: rgba(239, 68, 68, 0.05);
+    border: 1px solid rgba(239, 68, 68, 0.15);
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-top: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem;
+    color: #94a3b8;
+  }
+
+  .similarity-ring {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 64px;
+    gap: 3px;
+  }
+
+  .similarity-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .similarity-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.5rem;
+    color: #64748b;
+    letter-spacing: 1px;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 80px 24px;
+  }
+</style>
+<% end %>
+
+<div style="min-height:100vh;background:rgba(7,10,15,0.8);">
+
+  <div class="wl-header">
+    <div class="d-flex justify-content-between align-items-end pb-4">
+      <div>
+        <h1 class="wl-title">
+          <i class="fa fa-satellite-dish me-2"></i>THREAT WATCHLIST
+        </h1>
+        <p class="wl-subtitle">
+          SIGNATURES: <%= current_user.saved_articles.count %> SAVED ARTICLES &nbsp;|&nbsp;
+          HITS: <%= @watchlist_hits.size %> &nbsp;|&nbsp;
+          WINDOW: LAST 7 DAYS &nbsp;|&nbsp;
+          THRESHOLD: 75% SIMILARITY
+        </p>
+      </div>
+      <div class="d-flex gap-2">
+        <%= link_to saved_articles_path,
+              class: "btn btn-sm btn-outline-secondary veritas-btn-outline",
+              style: "font-family:'JetBrains Mono',monospace;font-size:0.7rem;" do %>
+          <i class="fa fa-bookmark me-1"></i> MY SIGNATURES
+        <% end %>
+        <%= link_to root_path,
+              class: "btn btn-sm btn-outline-secondary veritas-btn-outline",
+              style: "font-family:'JetBrains Mono',monospace;font-size:0.7rem;" do %>
+          <i class="fa fa-arrow-left me-1"></i> WAR ROOM
+        <% end %>
+      </div>
+    </div>
+
+    <!-- How it works banner -->
+    <div style="background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.15);
+                border-radius:6px;padding:10px 16px;margin-bottom:20px;
+                font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:#94a3b8;
+                line-height:1.6;">
+      <span style="color:#ef4444;font-weight:700;">HOW IT WORKS:</span>
+      Each article you save becomes a <span style="color:#e2e8f0;">semantic signature</span>.
+      VERITAS continuously scans new articles and alerts you when their narrative vector
+      falls within <span style="color:#ef4444;">75% similarity</span> of any signature —
+      catching coordinated messaging, narrative recycling, and topic resurgence.
+    </div>
+  </div>
+
+  <div class="watchlist-layout">
+    <% if @watchlist_hits.any? %>
+
+      <% @watchlist_hits.each do |hit| %>
+        <% article   = hit[:article] %>
+        <% sig       = hit[:signature] %>
+        <% sim       = hit[:similarity] %>
+        <% analysis  = article.ai_analysis %>
+        <% sim_color = sim >= 90 ? '#ef4444' : sim >= 80 ? '#f97316' : '#eab308' %>
+
+        <%= link_to article_path(article), class: "wl-hit",
+              style: "border-left-color: #{sim_color};",
+              data: { turbo: false } do %>
+
+          <div>
+            <p class="wl-headline"><%= article.headline %></p>
+
+            <div class="wl-meta">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:#38bdf8;">
+                <%= article.source_name %>
+              </span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:#64748b;">
+                <i class="fa fa-map-marker-alt me-1"></i><%= article.country&.name || 'Unknown' %>
+              </span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:#475569;">
+                <%= article.published_at&.strftime("%b %d, %H:%M") %>
+              </span>
+              <% if analysis %>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;
+                             color:<%= NarrativeConvergence::THREAT_COLORS[analysis.threat_level] || '#64748b' %>;
+                             background:<%= NarrativeConvergence::THREAT_COLORS[analysis.threat_level] || '#64748b' %>18;
+                             padding:2px 6px;border-radius:2px;">
+                  <%= analysis.threat_level %>
+                </span>
+              <% end %>
+            </div>
+
+            <!-- Which signature triggered this -->
+            <div class="wl-signature-box">
+              <span style="color:#ef4444;margin-right:6px;">▶ SIGNATURE MATCH:</span>
+              <%= truncate(sig.headline, length: 100) %>
+            </div>
+          </div>
+
+          <!-- Similarity score -->
+          <div class="similarity-ring">
+            <span class="similarity-value" style="color:<%= sim_color %>;"><%= sim %>%</span>
+            <span class="similarity-label">MATCH</span>
+            <!-- Mini bar -->
+            <div style="width:48px;height:3px;background:rgba(255,255,255,0.05);border-radius:3px;margin-top:4px;">
+              <div style="width:<%= sim %>%;height:100%;background:<%= sim_color %>;border-radius:3px;"></div>
+            </div>
+          </div>
+
+        <% end %>
+      <% end %>
+
+    <% elsif current_user.saved_articles.none? %>
+      <div class="empty-state">
+        <i class="fa fa-bookmark fa-3x mb-4" style="color:#334155;opacity:0.5;"></i>
+        <p style="font-family:'JetBrains Mono',monospace;font-size:0.85rem;color:#64748b;margin-bottom:8px;">
+          NO SIGNATURES LOADED
+        </p>
+        <p style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:#334155;">
+          Save articles from the intelligence feed to create threat signatures.<br>
+          VERITAS will alert you when similar narratives resurface.
+        </p>
+        <%= link_to root_path,
+              class: "btn btn-outline-danger veritas-btn-outline mt-4",
+              style: "font-family:'JetBrains Mono',monospace;font-size:0.75rem;letter-spacing:1px;" do %>
+          <i class="fa fa-globe me-2"></i> BROWSE INTELLIGENCE FEED
+        <% end %>
+      </div>
+
+    <% else %>
+      <div class="empty-state">
+        <i class="fa fa-check-circle fa-3x mb-4" style="color:#22c55e;opacity:0.6;"></i>
+        <p style="font-family:'JetBrains Mono',monospace;font-size:0.85rem;color:#64748b;margin-bottom:8px;">
+          NO THREATS DETECTED
+        </p>
+        <p style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:#334155;">
+          No new articles in the last 7 days matched your <%= current_user.saved_articles.count %> saved signatures.<br>
+          VERITAS is watching.
+        </p>
+      </div>
+    <% end %>
+  </div>
+
+</div>

@@ -10,7 +10,7 @@ class ChatsController < ApplicationController
     history = session[:rag_history] || []
 
     begin
-      result = RagAgent.new.ask(@query, history: history)
+      result = RagAgent.new.ask(@query, history: history, perspective_id: params[:perspective_id])
 
       history << { role: "user",      content: @query.truncate(500) }
       history << { role: "assistant", content: result[:response].truncate(500) }

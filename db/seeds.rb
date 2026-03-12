@@ -4,6 +4,23 @@ require 'json'
 puts "Cleaning up database..."
 Briefing.destroy_all
 PerspectiveFilter.destroy_all
+
+puts "Seeding Perspective Filters..."
+[
+  { name: 'US Liberal Media',       filter_type: 'source',
+    keywords: 'CNN,MSNBC,NPR,New York Times,Washington Post,The Guardian,Vox,HuffPost,The Atlantic,Politico,The New Yorker' },
+  { name: 'US Conservative Media',  filter_type: 'source',
+    keywords: 'Fox News,Breitbart,The Daily Wire,New York Post,Washington Times,Newsmax,The Federalist,Daily Caller,Epoch Times' },
+  { name: 'China State Media',       filter_type: 'source',
+    keywords: 'Xinhua,Global Times,CCTV,China Daily,People\'s Daily,South China Morning Post,China News Service,CGTN' },
+  { name: 'Russia State Media',      filter_type: 'source',
+    keywords: 'RT,TASS,Sputnik,RIA Novosti,Pravda,Rossiyskaya Gazeta,ITAR-TASS,Russia Today,Izvestia' },
+  { name: 'Western Mainstream',      filter_type: 'source',
+    keywords: 'Reuters,Associated Press,BBC,AFP,AP News,Financial Times,The Economist,Bloomberg,Der Spiegel,Le Monde' },
+  { name: 'Global South',            filter_type: 'source',
+    keywords: 'Al Jazeera,Dawn,The Hindu,Folha de S.Paulo,Nation Africa,Daily Nation,Mail & Guardian,Arab News,Middle East Eye,Telesur' }
+].each { |attrs| PerspectiveFilter.create!(attrs) }
+puts "Created #{PerspectiveFilter.count} perspective filters."
 NarrativeConvergence.destroy_all
 NarrativeArc.destroy_all
 AiAnalysis.destroy_all

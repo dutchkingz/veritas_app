@@ -1,0 +1,116 @@
+<% content_for :title, "Intelligence Briefings" %>
+
+<div class="container-fluid px-4 py-4" style="font-family: 'JetBrains Mono', monospace;">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <div class="d-flex align-items-center gap-3 mb-1">
+        <span style="color: #ef4444; font-size: 0.65rem; letter-spacing: 3px;">VERITAS // DAILY DOSSIER</span>
+        <span style="width: 40px; height: 1px; background: #ef4444; display: inline-block;"></span>
+      </div>
+      <h1 style="color: #f8fafc; font-size: 1.4rem; font-weight: 700; letter-spacing: 2px; margin: 0;">
+        INTELLIGENCE BRIEFINGS
+      </h1>
+    </div>
+    <%= button_to briefings_path,
+          method: :post,
+          class: "btn btn-sm",
+          style: "background: rgba(239,68,68,0.1); border: 1px solid #ef4444; color: #ef4444;
+                  font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; letter-spacing: 2px;
+                  padding: 8px 20px;" do %>
+      <i class="fa fa-bolt me-2"></i>GENERATE NOW
+    <% end %>
+  </div>
+
+  <% if notice.present? %>
+    <div style="background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.3);
+                border-radius: 4px; padding: 10px 16px; margin-bottom: 20px;
+                color: #22c55e; font-size: 0.75rem; letter-spacing: 1px;">
+      <i class="fa fa-check-circle me-2"></i><%= notice %>
+    </div>
+  <% end %>
+
+  <% if @briefings.empty? %>
+    <!-- Empty state -->
+    <div style="border: 1px dashed rgba(239,68,68,0.3); border-radius: 6px; padding: 60px 40px;
+                text-align: center; background: rgba(15,23,42,0.5);">
+      <i class="fa fa-file-shield" style="font-size: 3rem; color: rgba(239,68,68,0.3); margin-bottom: 20px; display: block;"></i>
+      <div style="color: #94a3b8; font-size: 0.8rem; letter-spacing: 2px; margin-bottom: 8px;">NO BRIEFINGS GENERATED</div>
+      <div style="color: #475569; font-size: 0.7rem; margin-bottom: 24px;">
+        Generate your first intelligence dossier to get a structured daily threat assessment.
+      </div>
+      <%= button_to briefings_path,
+            method: :post,
+            class: "btn btn-sm",
+            style: "background: rgba(239,68,68,0.15); border: 1px solid #ef4444; color: #ef4444;
+                    font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; letter-spacing: 2px;" do %>
+        <i class="fa fa-bolt me-2"></i>GENERATE FIRST BRIEFING
+      <% end %>
+    </div>
+
+  <% else %>
+
+    <!-- Latest briefing preview -->
+    <% if @latest %>
+      <div style="border: 1px solid rgba(239,68,68,0.4); border-radius: 6px; padding: 24px;
+                  background: rgba(239,68,68,0.04); margin-bottom: 32px;">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div style="color: #ef4444; font-size: 0.65rem; letter-spacing: 3px;">
+            <i class="fa fa-circle-dot me-2" style="animation: pulse 1.5s infinite;"></i>LATEST BRIEFING
+          </div>
+          <span style="color: #64748b; font-size: 0.65rem;"><%= @latest.age_label %></span>
+        </div>
+        <div style="color: #f8fafc; font-size: 0.85rem; line-height: 1.7; margin-bottom: 16px;">
+          <%= @latest.sections["EXECUTIVE SUMMARY"]&.truncate(300) || @latest.threat_summary&.truncate(300) %>
+        </div>
+        <%= link_to briefing_path(@latest),
+              style: "color: #38bdf8; font-size: 0.7rem; letter-spacing: 1px; text-decoration: none;" do %>
+          VIEW FULL DOSSIER <i class="fa fa-arrow-right ms-1"></i>
+        <% end %>
+      </div>
+    <% end %>
+
+    <!-- Briefing history list -->
+    <div style="color: #64748b; font-size: 0.65rem; letter-spacing: 3px; margin-bottom: 16px;">
+      BRIEFING ARCHIVE (<%= @briefings.size %> DOSSIERS)
+    </div>
+
+    <div class="d-flex flex-column gap-2">
+      <% @briefings.each_with_index do |b, i| %>
+        <%= link_to briefing_path(b), style: "text-decoration: none;" do %>
+          <div style="border: 1px solid rgba(71,85,105,0.4); border-radius: 4px; padding: 14px 18px;
+                      background: rgba(15,23,42,0.5); transition: border-color 0.2s, background 0.2s;
+                      <%= i == 0 ? 'border-color: rgba(239,68,68,0.3);' : '' %>"
+               onmouseover="this.style.borderColor='rgba(56,189,248,0.4)'; this.style.background='rgba(56,189,248,0.04)';"
+               onmouseout="this.style.borderColor='<%= i == 0 ? 'rgba(239,68,68,0.3)' : 'rgba(71,85,105,0.4)' %>'; this.style.background='rgba(15,23,42,0.5)';">
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <span style="color: #94a3b8; font-size: 0.7rem; letter-spacing: 1px;">
+                  DOSSIER-<%= b.id.to_s.rjust(4, '0') %>
+                  <% if i == 0 %>
+                    <span style="background: #ef4444; color: white; font-size: 0.55rem;
+                                 padding: 1px 6px; border-radius: 2px; margin-left: 8px;">LATEST</span>
+                  <% end %>
+                </span>
+              </div>
+              <div class="d-flex align-items-center gap-3">
+                <span style="color: #475569; font-size: 0.65rem;">
+                  <%= b.generated_at&.strftime("%b %d, %Y — %H:%M UTC") %>
+                </span>
+                <% narratives = b.top_narratives_list %>
+                <% if narratives.any? %>
+                  <span style="color: #64748b; font-size: 0.65rem;">
+                    <%= narratives.size %> NARRATIVE<%= narratives.size != 1 ? 'S' : '' %>
+                  </span>
+                <% end %>
+                <i class="fa fa-chevron-right" style="color: #334155; font-size: 0.65rem;"></i>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+
+  <% end %>
+</div>

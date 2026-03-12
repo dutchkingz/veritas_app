@@ -21,12 +21,18 @@ Rails.application.routes.draw do
   end
 
   resources :perspective_filters, only: [:index, :show]
-  resources :saved_articles, only: [:index, :show, :create, :destroy]
+  resources :saved_articles, only: [:index, :show, :create, :destroy] do
+    collection do
+      get :watchlist
+    end
+  end
   resources :narrative_convergences, only: [:index, :show] do
     collection do
       post :run_detection
     end
   end
+
+  resources :briefings, only: [:index, :show, :create]
 
   resources :intelligence_reports, only: %i[create show] do
     member do

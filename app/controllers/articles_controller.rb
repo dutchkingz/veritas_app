@@ -23,7 +23,12 @@ class ArticlesController < ApplicationController
       AnalyzeArticleJob.perform_later(@article.id)
     end
 
+    # Contradiction Engine — semantically similar articles with opposing bias/sentiment
+    @contradictions = find_contradictions(@article)
+
     return unless @article.content.blank? && @article.source_url.present?
+
+
 
     base_uri = URI.parse(@article.source_url)
     base = "#{base_uri.scheme}://#{base_uri.host}"
@@ -89,5 +94,45 @@ class ArticlesController < ApplicationController
     rescue StandardError => e
       @article.update!(content: "<p class='text-danger'>[SYSTEM WARNING] Could not parse document stream: #{e.message}. Access Original Source manually.</p>")
     end
+  end
+
+  private
+
+  OPPOSING_BIAS_PAIRS = [
+    %w[LEFT RIGHT],
+    %w[RIGHT LEFT]
+  ].freeze
+
+  def find_contradictions(article)
+    return [] unless article.embedding.present? &&
+                     article.ai_analysis&.analysis_status == 'complete'
+
+    our_bias      = article.ai_analysis.sentinel_response&.dig('bias_direction')
+    our_sentiment = article.ai_analysis.sentiment_label
+
+    candidates = article.nearest_neighbors(:embedding)
+                        .distance(:cosine)
+                        .joins(:ai_analysis)
+                        .where(ai_analyses: { analysis_status: 'complete' })
+                        .where.not(id: article.id)
+                        .preload(:ai_analysis, :country)
+                        .limit(25)
+                        .to_a
+                        .select { |a| a.neighbor_distance < 0.22 }
+
+    candidates.select { |a|
+      their_bias      = a.ai_analysis.sentinel_response&.dig('bias_direction')
+      their_sentiment = a.ai_analysis.sentiment_label
+      opposing_bias?(our_bias, their_bias) || opposing_sentiments?(our_sentiment, their_sentiment)
+    }.first(3)
+  end
+
+  def opposing_bias?(a, b)
+    return false if a.blank? || b.blank? || a == 'NEUTRAL' || a == 'CENTER' || a == 'UNCLEAR'
+    OPPOSING_BIAS_PAIRS.any? { |pair| pair[0] == a && pair[1] == b }
+  end
+
+  def opposing_sentiments?(a, b)
+    (a == 'POSITIVE' && b == 'NEGATIVE') || (a == 'NEGATIVE' && b == 'POSITIVE')
   end
 end

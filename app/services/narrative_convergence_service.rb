@@ -124,6 +124,28 @@ class NarrativeConvergenceService
     nil
   end
 
+  public
+
+  # Articles that are NOT part of any active convergence cluster but are high-threat.
+  # These are genuinely isolated signals — not coordinated, potentially unique intelligence.
+  def top_outliers(limit: 8)
+    clustered_ids = NarrativeConvergence.active.flat_map(&:article_ids).compact.uniq
+    scope = Article
+      .joins(:ai_analysis)
+      .where(published_at: 7.days.ago..Time.current)
+      .where(ai_analyses: { threat_level: %w[CRITICAL HIGH], analysis_status: 'complete' })
+      .includes(:ai_analysis, :country)
+      .order('ai_analyses.trust_score DESC')
+
+    scope = scope.where.not(id: clustered_ids) if clustered_ids.any?
+    scope.limit(limit)
+  rescue StandardError => e
+    Rails.logger.error "[CONVERGENCE] top_outliers failed: #{e.message}"
+    []
+  end
+
+  private
+
   def generate_label(cluster)
     headlines = cluster.first(6).map { |a| "- #{a.headline}" }.join("\n")
     system_prompt = <<~SYS

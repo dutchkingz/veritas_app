@@ -1,6 +1,7 @@
 class NarrativeConvergencesController < ApplicationController
   def index
     @convergences = NarrativeConvergence.active.recent.limit(30)
+    @outliers     = NarrativeConvergenceService.new.top_outliers(limit: 8)
   end
 
   def show

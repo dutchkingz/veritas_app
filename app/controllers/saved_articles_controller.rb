@@ -32,4 +32,43 @@ class SavedArticlesController < ApplicationController
     @saved_article.destroy
     redirect_to saved_articles_path, notice: "Saved article removed."
   end
+
+  def watchlist
+    saved = current_user.saved_articles.includes(:article).to_a
+    signature_articles = saved.map(&:article).compact.select { |a| a.embedding.present? }
+
+    if signature_articles.empty?
+      @watchlist_hits = []
+      return
+    end
+
+    saved_ids = saved.map(&:article_id).compact.to_set
+    raw_hits  = []
+
+    signature_articles.each do |sig|
+      Article
+        .joins(:ai_analysis)
+        .where.not(id: saved_ids.to_a)
+        .where(published_at: 7.days.ago..Time.current)
+        .where(ai_analyses: { analysis_status: 'complete' })
+        .nearest_neighbors(:embedding, sig.embedding, distance: "cosine")
+        .preload(:ai_analysis, :country)
+        .limit(8)
+        .each do |hit|
+          next unless hit.neighbor_distance < 0.25
+          raw_hits << {
+            article:    hit,
+            signature:  sig,
+            similarity: ((1.0 - hit.neighbor_distance) * 100).round(1)
+          }
+        end
+    end
+
+    # Deduplicate: if the same article matches multiple signatures, keep the closest
+    @watchlist_hits = raw_hits
+      .group_by { |h| h[:article].id }
+      .map       { |_, hits| hits.max_by { |h| h[:similarity] } }
+      .sort_by   { |h| -h[:similarity] }
+      .first(20)
+  end
 end

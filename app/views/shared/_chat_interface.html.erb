@@ -12,7 +12,7 @@
       <h6 class="mb-0 text-white" style="font-family: 'JetBrains Mono', monospace; font-weight: bold; letter-spacing: 1px;">
         <i class="fa fa-brain text-info me-2"></i> VERITAS RAG CORE
       </h6>
-      <div style="font-size: 0.65rem; color: #38BDF8; font-family: 'JetBrains Mono', monospace; margin-top: 2px;">
+      <div id="chatStatusBar" style="font-size: 0.65rem; color: #38BDF8; font-family: 'JetBrains Mono', monospace; margin-top: 2px;">
         [ STATUS: ONLINE ] | [ MODEL: CLAUDE-HAIKU ]
       </div>
     </div>
@@ -20,6 +20,35 @@
       <i class="fa fa-times"></i>
     </button>
   </div>
+
+  <!-- Perspective Lens Selector -->
+  <% perspectives = PerspectiveFilter.all rescue [] %>
+  <% if perspectives.any? %>
+    <div style="padding:7px 12px 8px;border-bottom:1px solid rgba(56,189,248,0.12);background:rgba(0,0,0,0.15);">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:0.5rem;color:#475569;letter-spacing:1.5px;margin-bottom:5px;">PERSPECTIVE LENS</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;">
+        <button class="perspective-pill active-pill" data-perspective-id=""
+                style="font-family:'JetBrains Mono',monospace;font-size:0.58rem;padding:2px 8px;
+                       border-radius:3px;cursor:pointer;border:1px solid rgba(100,116,139,0.5);
+                       background:rgba(100,116,139,0.15);color:#94a3b8;letter-spacing:0.5px;
+                       transition:all 0.15s;">
+          NEUTRAL
+        </button>
+        <% perspectives.each do |pf| %>
+          <button class="perspective-pill" data-perspective-id="<%= pf.id %>"
+                  data-color="<%= pf.color %>" data-name="<%= pf.name.upcase %>"
+                  style="font-family:'JetBrains Mono',monospace;font-size:0.58rem;padding:2px 8px;
+                         border-radius:3px;cursor:pointer;
+                         border:1px solid <%= pf.color %>40;
+                         background:<%= pf.color %>12;
+                         color:<%= pf.color %>cc;letter-spacing:0.5px;
+                         transition:all 0.15s;">
+            <%= pf.name.upcase.gsub(' MEDIA','').gsub(' MAINSTREAM','') %>
+          </button>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
 
   <!-- Messages Area -->
   <div id="chatMessages" class="chat-messages p-3 flex-grow-1" style="overflow-y: auto; display: flex; flex-direction: column; gap: 15px;">
@@ -117,8 +146,28 @@
     const msgsArea = document.getElementById('chatMessages');
     const submitBtn = document.getElementById('chatSubmitBtn');
     let loadingDiv = null;
+    let activePerspectiveId = '';
 
     if (!chatBtn) return; // guard against double-init
+
+    // Perspective pill wiring
+    document.querySelectorAll('.perspective-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.perspective-pill').forEach(b => {
+          b.style.fontWeight = 'normal';
+          b.style.boxShadow  = 'none';
+        });
+        btn.style.fontWeight = '700';
+        btn.style.boxShadow  = `0 0 8px ${btn.dataset.color || 'rgba(100,116,139,0.4)'}60`;
+        activePerspectiveId  = btn.dataset.perspectiveId || '';
+        const statusBar      = document.getElementById('chatStatusBar');
+        if (statusBar) {
+          statusBar.textContent = activePerspectiveId
+            ? `[ LENS: ${btn.dataset.name || btn.textContent.trim()} ] | [ MODEL: CLAUDE-HAIKU ]`
+            : '[ STATUS: ONLINE ] | [ MODEL: CLAUDE-HAIKU ]';
+        }
+      });
+    });
 
     // Auto-scroll helper
     const scrollToBottom = () => {
@@ -198,7 +247,7 @@
             'Content-Type': 'application/json',
             'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
           },
-          body: JSON.stringify({ message: query })
+          body: JSON.stringify({ message: query, perspective_id: activePerspectiveId || null })
         });
         
         const data = await response.json();
@@ -206,7 +255,32 @@
 
         const ragDiv = document.createElement('div');
         ragDiv.className = 'chat-message rag-msg';
-        ragDiv.innerHTML = formatResponse(data.response, data.sources || []);
+
+        // Active perspective badge
+        if (activePerspectiveId) {
+          const activePill = document.querySelector(`.perspective-pill[data-perspective-id="${activePerspectiveId}"]`);
+          if (activePill) {
+            const lensDiv = document.createElement('div');
+            const lensColor = activePill.dataset.color || '#64748b';
+            lensDiv.style.cssText = `font-family:'JetBrains Mono',monospace;font-size:0.55rem;letter-spacing:1.5px;margin-bottom:4px;`;
+            lensDiv.innerHTML = `<span style="color:${lensColor};border:1px solid ${lensColor}30;background:${lensColor}12;padding:2px 7px;border-radius:2px;">LENS: ${activePill.dataset.name}</span>`;
+            ragDiv.appendChild(lensDiv);
+          }
+        }
+
+        // Confidence badge
+        if (data.confidence) {
+          const confColors = { HIGH: '#22c55e', MEDIUM: '#eab308', LOW: '#ef4444' };
+          const color = confColors[data.confidence] || '#64748b';
+          const badge = document.createElement('div');
+          badge.style.cssText = `font-family:'JetBrains Mono',monospace;font-size:0.55rem;letter-spacing:1.5px;margin-bottom:6px;`;
+          badge.innerHTML = `<span style="color:${color};border:1px solid ${color}30;background:${color}12;padding:2px 7px;border-radius:2px;">CONFIDENCE: ${data.confidence}</span>`;
+          ragDiv.appendChild(badge);
+        }
+
+        const responseBody = document.createElement('div');
+        responseBody.innerHTML = formatResponse(data.response, data.sources || []);
+        ragDiv.appendChild(responseBody);
 
         // Compact sources footer
         if (data.sources && data.sources.length > 0) {
