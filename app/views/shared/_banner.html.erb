@@ -26,6 +26,19 @@
   </div>
 
   <div class="d-flex align-items-center gap-4">
+    <!-- Convergence Alerts Link -->
+    <% convergence_count = NarrativeConvergence.active.count rescue 0 %>
+    <%= link_to narrative_convergences_path,
+          class: "d-none d-lg-flex align-items-center gap-2",
+          style: "text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #{convergence_count > 0 ? '#ef4444' : '#475569'}; letter-spacing: 1px; transition: color 0.2s;",
+          data: { turbo: false } do %>
+      <i class="fa fa-radiation" style="<%= convergence_count > 0 ? 'animation: pulse 1.5s infinite;' : '' %>"></i>
+      CONVERGENCES
+      <% if convergence_count > 0 %>
+        <span style="background: #ef4444; color: white; font-size: 0.6rem; padding: 1px 5px; border-radius: 3px;"><%= convergence_count %></span>
+      <% end %>
+    <% end %>
+
     <!-- Time & Weather Widget -->
     <div class="d-flex align-items-center gap-3 veritas-meta">
       <div data-controller="time" class="d-flex align-items-center text-monospace">

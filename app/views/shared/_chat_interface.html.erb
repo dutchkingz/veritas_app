@@ -108,7 +108,7 @@
 </style>
 
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
+  (() => {
     const chatBtn = document.getElementById('veritasChatBtn');
     const chatPanel = document.getElementById('veritasChatPanel');
     const closeBtn = document.getElementById('closeChatBtn');
@@ -116,10 +116,20 @@
     const input = document.getElementById('chatInput');
     const msgsArea = document.getElementById('chatMessages');
     const submitBtn = document.getElementById('chatSubmitBtn');
-    
+    let loadingDiv = null;
+
+    if (!chatBtn) return; // guard against double-init
+
     // Auto-scroll helper
     const scrollToBottom = () => {
       msgsArea.scrollTop = msgsArea.scrollHeight;
+    };
+
+    // Remove typing indicator
+    const hideTypingIndicator = () => {
+      if (loadingDiv && loadingDiv.parentNode === msgsArea) {
+        msgsArea.removeChild(loadingDiv);
+      }
     };
     
     // Toggles
@@ -135,13 +145,24 @@
       chatBtn.style.display = 'flex';
     });
     
-    // Markdown formatting helper
-    const formatResponse = (text) => {
+    // Markdown formatting helper — links citations to source articles
+    function formatResponse(text, sources = []) {
+      const sourceMap = {};
+      sources.forEach(s => { sourceMap[s.index] = s.id; });
+
       return text
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\n/g, '<br/>')
-        .replace(/\[\d+\]/g, '<span style="color:#22c55e; font-family:JetBrains Mono, monospace;">$&</span>');
-    };
+        .replace(/\n/g, '<br>')
+        .replace(/\[(\d+)\]/g, (match, num) => {
+          const articleId = sourceMap[parseInt(num)];
+          if (articleId) {
+            return `<a href="/articles/${articleId}" target="_blank"
+              style="color:#22c55e;font-family:'JetBrains Mono',monospace;font-weight:bold;
+                     text-decoration:none;border-bottom:1px dotted rgba(34,197,94,0.5);">[${num}]</a>`;
+          }
+          return `<span style="color:#22c55e;font-family:'JetBrains Mono',monospace;">[${num}]</span>`;
+        });
+    }
     
     // Submit Handler
     form.addEventListener('submit', async (e) => {
@@ -160,7 +181,7 @@
       scrollToBottom();
       
       // Add Loading Indicator
-      const loadingDiv = document.createElement('div');
+      loadingDiv = document.createElement('div');
       loadingDiv.className = 'chat-message rag-msg typing-indicator';
       loadingDiv.innerHTML = '<span></span><span></span><span></span> <span style="font-family:JetBrains Mono; font-size:0.6rem; color:#64748b; background:transparent; margin-left:8px; animation:none;">CROSS-REFERENCING VECTOR DB...</span>';
       msgsArea.appendChild(loadingDiv);
@@ -181,18 +202,28 @@
         });
         
         const data = await response.json();
-        
-        // Remove Loading
-        msgsArea.removeChild(loadingDiv);
-        
-        // Add RAG Message
+        hideTypingIndicator();
+
         const ragDiv = document.createElement('div');
         ragDiv.className = 'chat-message rag-msg';
-        ragDiv.innerHTML = formatResponse(data.response);
+        ragDiv.innerHTML = formatResponse(data.response, data.sources || []);
+
+        // Compact sources footer
+        if (data.sources && data.sources.length > 0) {
+          const footer = document.createElement('div');
+          footer.style.cssText = 'margin-top:8px;padding-top:8px;border-top:1px solid rgba(56,189,248,0.15);font-family:"JetBrains Mono",monospace;font-size:0.65rem;color:#64748b;';
+          footer.innerHTML = 'SOURCES: ' + data.sources.map(s =>
+            `<a href="/articles/${s.id}" target="_blank"
+               style="color:#38bdf8;text-decoration:none;margin-right:10px;">[${s.index}] ${s.source_name}</a>`
+          ).join('');
+          ragDiv.appendChild(footer);
+        }
+
         msgsArea.appendChild(ragDiv);
+        scrollToBottom();
         
       } catch (error) {
-        msgsArea.removeChild(loadingDiv);
+        hideTypingIndicator();
         const errDiv = document.createElement('div');
         errDiv.className = 'chat-message rag-msg';
         errDiv.innerHTML = '<span class="text-danger">Connection Error. VERITAS DB unreachable.</span>';
@@ -204,5 +235,5 @@
         scrollToBottom();
       }
     });
-  });
+  })();
 </script>

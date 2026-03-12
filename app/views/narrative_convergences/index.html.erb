@@ -1,0 +1,251 @@
+<% content_for :head do %>
+  <style>
+    .convergence-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+      gap: 16px;
+      padding: 0 24px 40px;
+    }
+
+    .convergence-card {
+      background: rgba(13, 17, 23, 0.95);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 8px;
+      padding: 18px 20px;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .convergence-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--threat-color, #64748b);
+    }
+
+    .convergence-card:hover {
+      border-color: rgba(56, 189, 248, 0.5);
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.08);
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .conv-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      line-height: 1.3;
+    }
+
+    .conv-meta-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .conv-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .conv-stat-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+
+    .conv-stat-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.55rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .conv-threat-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 3px;
+      border: 1px solid;
+      letter-spacing: 1px;
+    }
+
+    .conv-countries {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      color: #64748b;
+      margin-top: 10px;
+      letter-spacing: 0.5px;
+    }
+
+    .conv-age {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      color: #475569;
+      position: absolute;
+      top: 12px; right: 14px;
+    }
+
+    .page-header {
+      padding: 24px 24px 20px;
+      border-bottom: 1px solid rgba(56, 189, 248, 0.15);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 24px;
+    }
+
+    .page-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #38bdf8;
+      letter-spacing: 2px;
+      margin: 0;
+    }
+
+    .page-subtitle {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      color: #475569;
+      margin-top: 4px;
+      letter-spacing: 1px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 80px 24px;
+      color: #475569;
+    }
+
+    .empty-state .fa-satellite-dish {
+      font-size: 3rem;
+      margin-bottom: 20px;
+      opacity: 0.4;
+    }
+
+    .empty-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+
+    .empty-sub {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: #334155;
+    }
+  </style>
+<% end %>
+
+<div style="min-height: 100vh; background: rgba(7, 10, 15, 0.8);">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <i class="fa fa-radiation me-2" style="color: #ef4444;"></i>
+        CONVERGENCE ALERTS
+      </h1>
+      <p class="page-subtitle">
+        [ <%= @convergences.count %> ACTIVE NARRATIVE CLUSTERS ] &nbsp;|&nbsp;
+        COSINE THRESHOLD: 0.15 &nbsp;|&nbsp; LOOKBACK: 7 DAYS
+      </p>
+    </div>
+
+    <div class="d-flex align-items-center gap-3">
+      <%= link_to root_path, class: "btn btn-sm btn-outline-secondary veritas-btn-outline" do %>
+        <i class="fa fa-arrow-left me-1"></i> WAR ROOM
+      <% end %>
+
+      <%= button_to run_detection_narrative_convergences_path,
+            method: :post,
+            class: "btn btn-sm veritas-btn-outline",
+            style: "border-color: #22c55e; color: #22c55e; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; letter-spacing: 1px;" do %>
+        <i class="fa fa-rotate me-1"></i> RUN DETECTION
+      <% end %>
+    </div>
+  </div>
+
+  <% if @convergences.any? %>
+    <div class="convergence-grid">
+      <% @convergences.each do |conv| %>
+        <%= link_to narrative_convergence_path(conv),
+              class: "convergence-card",
+              style: "--threat-color: #{conv.threat_color}",
+              data: { turbo: false } do %>
+
+          <span class="conv-age"><%= conv.age_label %></span>
+
+          <div class="conv-label"><%= conv.label %></div>
+
+          <div class="conv-meta-row">
+            <div class="conv-stat">
+              <span class="conv-stat-value"><%= conv.article_count %></span>
+              <span class="conv-stat-label">ARTICLES</span>
+            </div>
+            <div class="conv-stat">
+              <span class="conv-stat-value"><%= conv.countries.size %></span>
+              <span class="conv-stat-label">COUNTRIES</span>
+            </div>
+            <div class="conv-stat">
+              <span class="conv-stat-value"><%= conv.source_names.size %></span>
+              <span class="conv-stat-label">OUTLETS</span>
+            </div>
+            <div class="conv-stat">
+              <span class="conv-stat-value"><%= conv.convergence_percentage.round %>%</span>
+              <span class="conv-stat-label">DIVERSITY</span>
+            </div>
+            <div class="conv-stat" style="margin-left: auto;">
+              <span class="conv-threat-badge"
+                    style="color: <%= conv.threat_color %>; border-color: <%= conv.threat_color %>20; background: <%= conv.threat_color %>15;">
+                <%= conv.dominant_threat_level %>
+              </span>
+              <span class="conv-stat-label" style="margin-top: 4px;">THREAT</span>
+            </div>
+          </div>
+
+          <div class="conv-countries">
+            <i class="fa fa-globe me-1"></i>
+            <%= conv.countries.first(8).join(' · ') %><%= ' ...' if conv.countries.size > 8 %>
+          </div>
+
+        <% end %>
+      <% end %>
+    </div>
+
+  <% else %>
+    <div class="empty-state">
+      <div><i class="fa fa-satellite-dish text-secondary"></i></div>
+      <p class="empty-title">NO CONVERGENCES DETECTED</p>
+      <p class="empty-sub">
+        No coordinated narrative clusters found in the past 7 days.<br>
+        Run detection to scan the current article database.
+      </p>
+      <div class="mt-4">
+        <%= button_to run_detection_narrative_convergences_path,
+              method: :post,
+              class: "btn btn-outline-success veritas-btn-outline",
+              style: "font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; letter-spacing: 1px;" do %>
+          <i class="fa fa-rotate me-2"></i> RUN DETECTION NOW
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+</div>

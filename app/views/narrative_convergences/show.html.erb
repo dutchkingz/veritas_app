@@ -1,0 +1,334 @@
+<% content_for :head do %>
+  <style>
+    .conv-show-layout {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 20px;
+      padding: 0 24px 40px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .conv-show-header {
+      padding: 24px 24px 0;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .conv-hero-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      letter-spacing: 1px;
+      margin: 12px 0 8px;
+    }
+
+    .conv-hero-meta {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      padding: 16px 0;
+      border-top: 1px solid rgba(56, 189, 248, 0.15);
+      border-bottom: 1px solid rgba(56, 189, 248, 0.15);
+      margin-bottom: 24px;
+    }
+
+    .hero-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .hero-stat-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+
+    .hero-stat-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      color: #64748b;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    .section-header {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: #38bdf8;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      border-bottom: 1px solid rgba(56, 189, 248, 0.15);
+      padding-bottom: 8px;
+      margin-bottom: 14px;
+    }
+
+    .article-row {
+      background: rgba(13, 17, 23, 0.95);
+      border: 1px solid rgba(148, 163, 184, 0.1);
+      border-radius: 6px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+      transition: border-color 0.2s;
+      position: relative;
+    }
+
+    .article-row.origin-article {
+      border-color: rgba(234, 179, 8, 0.4);
+    }
+
+    .article-row.origin-article::before {
+      content: 'ORIGIN';
+      position: absolute;
+      top: 8px; right: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.55rem;
+      color: #eab308;
+      letter-spacing: 1.5px;
+      background: rgba(234, 179, 8, 0.1);
+      padding: 2px 6px;
+      border-radius: 2px;
+    }
+
+    .article-row:hover {
+      border-color: rgba(56, 189, 248, 0.3);
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .art-headline {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      color: #e2e8f0;
+      margin-bottom: 8px;
+      line-height: 1.4;
+      padding-right: 60px;
+    }
+
+    .art-meta {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .art-source {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      color: #38bdf8;
+    }
+
+    .art-country {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      color: #64748b;
+    }
+
+    .art-time {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      color: #475569;
+      margin-left: auto;
+    }
+
+    .art-threat {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      padding: 2px 6px;
+      border-radius: 2px;
+    }
+
+    .sidebar-card {
+      background: rgba(13, 17, 23, 0.95);
+      border: 1px solid rgba(56, 189, 248, 0.15);
+      border-radius: 8px;
+      padding: 16px 18px;
+      margin-bottom: 16px;
+    }
+
+    .country-pill {
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      padding: 3px 8px;
+      border-radius: 3px;
+      margin: 3px 3px 3px 0;
+    }
+
+    .source-item {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(56, 189, 248, 0.07);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .source-item:last-child { border-bottom: none; }
+  </style>
+<% end %>
+
+<div style="min-height: 100vh; background: rgba(7, 10, 15, 0.8);">
+
+  <!-- Header -->
+  <div class="conv-show-header">
+    <div class="d-flex justify-content-between align-items-center py-3 border-bottom"
+         style="border-color: rgba(56,189,248,0.15) !important;">
+      <%= link_to narrative_convergences_path, class: "btn btn-sm btn-outline-secondary veritas-btn-outline" do %>
+        <i class="fa fa-arrow-left me-1"></i> ALL ALERTS
+      <% end %>
+
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: #475569; letter-spacing: 1px;">
+        DETECTED: <%= @convergence.calculated_at&.strftime("%b %d, %Y — %H:%M UTC") %>
+      </div>
+    </div>
+
+    <!-- Threat banner -->
+    <div class="d-flex align-items-center gap-3 py-3">
+      <div style="width: 10px; height: 10px; border-radius: 50%;
+                  background: <%= @convergence.threat_color %>;
+                  box-shadow: 0 0 10px <%= @convergence.threat_color %>;
+                  flex-shrink: 0;"></div>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+                   color: <%= @convergence.threat_color %>; letter-spacing: 2px;">
+        <%= @convergence.dominant_threat_level %> THREAT CONVERGENCE
+      </span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #334155;">
+        &nbsp;|&nbsp; AVG TRUST SCORE: <%= @convergence.avg_trust_score %>
+      </span>
+    </div>
+
+    <h1 class="conv-hero-label"><%= @convergence.label %></h1>
+
+    <div class="conv-hero-meta">
+      <div class="hero-stat">
+        <span class="hero-stat-value"><%= @convergence.article_count %></span>
+        <span class="hero-stat-label">Articles</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-value"><%= @convergence.countries.size %></span>
+        <span class="hero-stat-label">Countries</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-value"><%= @convergence.source_names.size %></span>
+        <span class="hero-stat-label">Outlets</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-value"><%= @convergence.convergence_percentage.round %>%</span>
+        <span class="hero-stat-label">Src Diversity</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-value" style="color: #eab308;"><%= @convergence.origin_country %></span>
+        <span class="hero-stat-label">Origin</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Two-column layout -->
+  <div class="conv-show-layout">
+
+    <!-- LEFT: Article list -->
+    <div>
+      <p class="section-header">
+        <i class="fa fa-newspaper me-2"></i>CLUSTER ARTICLES
+        <span style="color: #475569; font-size: 0.6rem; margin-left: 10px;">
+          (sorted by publish date, origin marked in amber)
+        </span>
+      </p>
+
+      <% @articles.each do |article| %>
+        <% analysis = article.ai_analysis %>
+        <% is_origin = article.id == @convergence.origin_article_id %>
+        <%= link_to article_path(article),
+              class: "article-row #{'origin-article' if is_origin}",
+              data: { turbo: false } do %>
+
+          <p class="art-headline"><%= article.headline %></p>
+
+          <div class="art-meta">
+            <span class="art-source"><%= article.source_name %></span>
+            <span class="art-country">
+              <i class="fa fa-map-marker-alt me-1"></i>
+              <%= article.country&.name || 'Unknown' %>
+            </span>
+            <% if analysis %>
+              <span class="art-threat"
+                    style="background: <%= NarrativeConvergence::THREAT_COLORS[analysis.threat_level] || '#64748b' %>18;
+                           color: <%= NarrativeConvergence::THREAT_COLORS[analysis.threat_level] || '#64748b' %>;">
+                <%= analysis.threat_level %>
+              </span>
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: #475569;">
+                TRUST <%= analysis.trust_score.to_i %>
+              </span>
+            <% end %>
+            <span class="art-time"><%= article.published_at&.strftime("%b %d, %H:%M") %></span>
+          </div>
+
+        <% end %>
+      <% end %>
+    </div>
+
+    <!-- RIGHT: Sidebar -->
+    <div>
+
+      <!-- Countries involved -->
+      <div class="sidebar-card">
+        <p class="section-header">
+          <i class="fa fa-globe me-1"></i> COUNTRIES INVOLVED
+        </p>
+        <% @convergence.countries.each do |iso| %>
+          <span class="country-pill"><%= iso %></span>
+        <% end %>
+        <% if @convergence.countries.empty? %>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #475569;">No geo data</span>
+        <% end %>
+      </div>
+
+      <!-- Outlet breakdown -->
+      <div class="sidebar-card">
+        <p class="section-header">
+          <i class="fa fa-broadcast-tower me-1"></i> AMPLIFYING OUTLETS
+        </p>
+        <% outlet_counts = @articles.group_by(&:source_name).transform_values(&:count).sort_by { |_, v| -v } %>
+        <% outlet_counts.each do |source, count| %>
+          <div class="source-item">
+            <span><%= source %></span>
+            <span style="color: #38bdf8;"><%= count %> art.</span>
+          </div>
+        <% end %>
+      </div>
+
+      <!-- Origin article -->
+      <% if @origin_article %>
+        <div class="sidebar-card" style="border-color: rgba(234,179,8,0.3);">
+          <p class="section-header" style="color: #eab308;">
+            <i class="fa fa-crosshairs me-1"></i> ORIGIN ARTICLE
+          </p>
+          <p style="font-family: 'Inter', sans-serif; font-size: 0.8rem; color: #e2e8f0; margin-bottom: 10px; line-height: 1.4;">
+            <%= @origin_article.headline %>
+          </p>
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: #64748b; margin-bottom: 10px;">
+            <%= @origin_article.source_name %> &nbsp;·&nbsp;
+            <%= @origin_article.published_at&.strftime("%b %d, %Y") %>
+          </div>
+          <%= link_to "VIEW ARTICLE →", article_path(@origin_article),
+                style: "font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: #eab308; text-decoration: none; letter-spacing: 1px;",
+                data: { turbo: false } %>
+        </div>
+      <% end %>
+
+    </div>
+  </div>
+
+</div>

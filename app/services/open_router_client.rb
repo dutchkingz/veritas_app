@@ -16,7 +16,7 @@ class OpenRouterClient
 
   # Send a prompt to a specific agent model and return parsed JSON
   def chat(agent_role, system_prompt, user_prompt, expect_json: true)
-    model = MODELS.fetch(agent_role)
+    model = MODELS.fetch(agent_role) { agent_role.to_s }
 
     body = {
       model: model,
