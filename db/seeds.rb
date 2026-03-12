@@ -26,6 +26,7 @@ NarrativeArc.destroy_all
 AiAnalysis.destroy_all
 Article.destroy_all
 Country.destroy_all
+IntelligenceReport.destroy_all
 Region.destroy_all
 User.destroy_all
 
