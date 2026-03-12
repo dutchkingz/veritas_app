@@ -1,0 +1,69 @@
+<div class="p-4" style="height: calc(100vh - 64px); overflow-y: auto; background: #0a0f1a;">
+  <div class="container-fluid px-4 px-md-5">
+
+    <div class="article-brief-header mb-5 mt-3 position-relative">
+      <div style="height: 1px; background: linear-gradient(90deg, transparent, rgba(56,189,248,0.6), transparent); margin-bottom: 18px;"></div>
+
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+          <h1 style="font-family: 'Inter', sans-serif; font-size: clamp(1.5rem, 4vw, 2.5rem); font-weight: 800; color: white; letter-spacing: -0.03em; margin: 0;">
+            SAVED_INTELLIGENCE
+          </h1>
+          <p style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #64748b; margin-top: 8px;">
+            > ARCHIVED FOR OFFLINE REVIEW <
+          </p>
+        </div>
+
+        <%= link_to root_path, style: "font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: rgba(56,189,248,0.7); border: 1px solid rgba(56,189,248,0.2); padding: 10px 20px; border-radius: 2px; text-decoration: none; letter-spacing: 2px; background: rgba(56,189,248,0.05); transition: all 0.2s; display: inline-block;" do %>
+          <i class="fa fa-arrow-left me-2"></i>RETURN_TO_WAR_ROOM
+        <% end %>
+      </div>
+
+      <div style="height: 1px; background: linear-gradient(90deg, rgba(56,189,248,0.3), transparent); margin-top: 20px;"></div>
+    </div>
+
+    <% if @saved_articles.any? %>
+      <div class="row g-4">
+        <% @saved_articles.each do |saved_article| %>
+          <div class="col-12 col-md-6 col-xl-4">
+            <div class="veritas-feed-card h-100" style="background: rgba(13, 17, 23, 0.9); padding: 1.5rem; border: 1px solid rgba(56,189,248,0.1); border-radius: 4px; display: flex; flex-direction: column;">
+              
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #38BDF8; letter-spacing: 1px;">
+                  <%= saved_article.source_name %>
+                </span>
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: #64748b;">
+                  <%= saved_article.created_at.strftime("%Y-%m-%d %H:%M") %>
+                </span>
+              </div>
+
+              <h3 style="font-family: 'Inter', sans-serif; font-size: 1.1rem; font-weight: 700; color: #e2e8f0; line-height: 1.4; margin-bottom: 1rem; flex-grow: 1;">
+                <%= saved_article.headline %>
+              </h3>
+
+              <div class="mt-auto pt-3 d-flex justify-content-between align-items-center" style="border-top: 1px solid rgba(255,255,255,0.05);">
+                <%= link_to saved_article_path(saved_article), class: "text-decoration-none", style: "font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #22c55e; letter-spacing: 1px;" do %>
+                  <i class="fa fa-eye me-1"></i> READ
+                <% end %>
+
+                <%= button_to saved_article_path(saved_article), method: :delete, form: { class: "m-0" }, style: "background: none; border: none; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #ef4444; letter-spacing: 1px;" do %>
+                  <i class="fa fa-trash me-1"></i> DELETE
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="text-center py-5" style="border: 1px dashed rgba(56,189,248,0.2); border-radius: 4px; background: rgba(13, 17, 23, 0.5);">
+        <i class="fa fa-folder-open fa-3x mb-3" style="color: #64748b;"></i>
+        <h4 style="font-family: 'JetBrains Mono', monospace; color: #94a3b8; font-size: 1rem; margin-bottom: 10px;">NO_ARCHIVED_INTELLIGENCE</h4>
+        <p style="font-family: 'Inter', sans-serif; color: #64748b; font-size: 0.9rem;">
+          You have not saved any articles yet.<br>
+          Return to the war room to discover and save intelligence.
+        </p>
+      </div>
+    <% end %>
+
+  </div>
+</div>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_12_110139) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_12_114424) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -121,6 +121,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_12_110139) do
     t.string "name"
     t.integer "threat_level"
     t.datetime "updated_at", null: false
+  end
+
+  create_table "saved_articles", force: :cascade do |t|
+    t.bigint "article_id", null: false
+    t.text "content"
+    t.datetime "created_at", null: false
+    t.string "headline"
+    t.datetime "published_at"
+    t.string "source_name"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["article_id"], name: "index_saved_articles_on_article_id"
+    t.index ["user_id"], name: "index_saved_articles_on_user_id"
   end
 
   create_table "solid_queue_blocked_executions", force: :cascade do |t|
@@ -264,6 +277,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_12_110139) do
   add_foreign_key "briefings", "users"
   add_foreign_key "countries", "regions"
   add_foreign_key "narrative_arcs", "articles"
+  add_foreign_key "saved_articles", "articles"
+  add_foreign_key "saved_articles", "users"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_failed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

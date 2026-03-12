@@ -1,0 +1,110 @@
+<div class="p-4" style="height: calc(100vh - 64px); overflow-y: auto; background: #0a0f1a;">
+  <div class="container-fluid px-4 px-md-5">
+
+    <!-- Intelligence Brief Header — Classified Dossier Style -->
+    <div class="article-brief-header mb-5 mt-3 position-relative">
+      <div style="height: 1px; background: linear-gradient(90deg, transparent, rgba(56,189,248,0.6), transparent); margin-bottom: 18px;"></div>
+
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+          <div class="d-flex align-items-center gap-3 mb-2">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #22c55e; letter-spacing: 3px; border: 1px solid rgba(34,197,94,0.4); padding: 2px 10px; border-radius: 2px;">
+              &#9632; OFFLINE ARCHIVE
+            </span>
+          </div>
+
+          <h1 style="font-family: 'Inter', sans-serif; font-size: clamp(1.5rem, 4vw, 3rem); font-weight: 800; color: white; letter-spacing: -0.03em; line-height: 1.1; margin: 0 0 12px 0;">
+            <%= @saved_article.headline %>
+          </h1>
+
+          <div class="d-flex flex-wrap gap-4 align-items-center" style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #64748b;">
+            <span><i class="fa fa-folder-open me-1" style="color: #38BDF8;"></i> ARCHIVE_<%= @saved_article.id %></span>
+            <span><i class="fa fa-globe me-1" style="color: #38BDF8;"></i> <%= @saved_article.source_name %></span>
+            <span><i class="fa fa-clock me-1" style="color: #38BDF8;"></i> <%= @saved_article.published_at&.strftime("%b %d, %Y %H:%M") %> UTC</span>
+            <span><i class="fa fa-save me-1" style="color: #22c55e;"></i> Saved on <%= @saved_article.created_at.strftime("%b %d, %Y %H:%M") %></span>
+          </div>
+        </div>
+
+        <div class="d-flex flex-column gap-2 text-end">
+          <%= link_to saved_articles_path, style: "font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: rgba(56,189,248,0.7); border: 1px solid rgba(56,189,248,0.2); padding: 10px 20px; border-radius: 2px; text-decoration: none; letter-spacing: 2px; background: rgba(56,189,248,0.05); white-space: nowrap; transition: all 0.2s;" do %>
+            <i class="fa fa-arrow-left me-2"></i>ARCHIVE_INDEX
+          <% end %>
+        </div>
+      </div>
+
+      <div style="height: 1px; background: linear-gradient(90deg, rgba(56,189,248,0.3), transparent); margin-top: 20px;"></div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="row justify-content-center">
+      <div class="col-md-10 col-lg-8">
+        <div class="veritas-feed-card h-100" style="background: rgba(13, 17, 23, 0.9); padding: 3rem; border-top: 3px solid #38BDF8;">
+
+          <div class="veritas-article-content px-3" style="color: #E2E8F0; font-size: 1.15rem; line-height: 1.8; font-family: 'Merriweather', Georgia, serif;">
+            <% if @saved_article.content.present? %>
+              <div class="article-body-format">
+                <%= raw @saved_article.content %>
+              </div>
+            <% else %>
+              <div class="text-center text-muted p-5">
+                <p style="font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: #ef4444;">
+                  ERROR: ARCHIVE CORRUPTED OR EMPTY.
+                </p>
+              </div>
+            <% end %>
+          </div>
+
+          <style>
+            .article-body-format p {
+              margin-bottom: 1.5em;
+              color: rgba(255, 255, 255, 0.85);
+            }
+            .article-body-format p:first-of-type::first-letter {
+              font-size: 3.5rem;
+              font-weight: bold;
+              float: left;
+              line-height: 1;
+              margin-right: 0.15em;
+              color: #38BDF8;
+              font-family: 'Inter', sans-serif;
+            }
+            .article-body-format img, .article-body-format picture, .article-body-format figure {
+              max-width: 100%;
+              height: auto;
+              border-radius: 4px;
+              margin: 2rem 0;
+              border: 1px solid rgba(56, 189, 248, 0.2);
+              box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            }
+            .article-body-format figcaption {
+              font-family: 'Inter', sans-serif;
+              font-size: 0.85rem;
+              color: #94A3B8;
+              text-align: center;
+              margin-top: 0.5rem;
+              font-style: italic;
+            }
+            .article-body-format h2, .article-body-format h3 {
+              font-family: 'Inter', sans-serif;
+              color: white;
+              margin-top: 2.5rem;
+              margin-bottom: 1rem;
+              font-weight: 600;
+              letter-spacing: -0.02em;
+            }
+            .article-body-format a {
+              color: #38BDF8;
+              text-decoration: none;
+              border-bottom: 1px dotted rgba(56, 189, 248, 0.5);
+            }
+            .article-body-format a:hover {
+              color: white;
+              border-bottom-color: white;
+            }
+          </style>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

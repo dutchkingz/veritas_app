@@ -5,4 +5,5 @@ class Article < ApplicationRecord
   belongs_to :region, optional: true
   has_one :ai_analysis, dependent: :destroy
   has_many :narrative_arcs, dependent: :destroy
+  has_many :saved_articles, dependent: :destroy
 end

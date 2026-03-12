@@ -42,6 +42,7 @@
         <% if current_user.admin? %>
           <%= link_to "ADMIN PANEL", admin_users_path, class: "btn btn-outline-warning btn-sm veritas-btn-outline me-2" %>
         <% end %>
+        <%= link_to "SAVED ARTICLES", saved_articles_path, class: "btn btn-outline-info btn-sm veritas-btn-outline me-2", style: "font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;" %>
         <div class="d-flex align-items-center gap-2">
           <%= image_tag "https://api.dicebear.com/7.x/bottts/svg?seed=#{current_user.email}", class: "rounded-circle bg-dark border border-secondary", style: "width: 32px; height: 32px;", alt: "Avatar" %>
           <span class="veritas-meta d-none d-md-inline ms-1"><%= current_user.email %></span>

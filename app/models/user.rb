@@ -4,6 +4,8 @@ class User < ApplicationRecord
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable
 
+  has_many :saved_articles, dependent: :destroy
+
   ROLES = %w[visitor user admin].freeze
 
   validates :role, inclusion: { in: ROLES }

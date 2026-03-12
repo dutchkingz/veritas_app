@@ -22,6 +22,7 @@ Rails.application.routes.draw do
 
   resources :perspective_filters, only: [:index, :show]
   resources :narrative_convergences, only: [:index, :show]
+  resources :saved_articles, only: [:index, :show, :create, :destroy]
 
   # -------------------------------------------------------
   # Admin namespace (protected routes)
