@@ -14,14 +14,14 @@ User.destroy_all
 
 puts "Creating Admin User..."
 User.create!(
-  email: 'admin@veritas.com',
+  email: 'admin@veritas.de',
   password: 'password123',
   password_confirmation: 'password123',
   role: 'admin'
 )
 
 puts "Creating Developer Users..."
-%w[vince@vince.com oli@oli.com selim@selim.com].each do |email|
+%w[vince@vince.ca oli@oli.com selim@selim.com].each do |email|
   User.create!(
     email: email,
     password: email,

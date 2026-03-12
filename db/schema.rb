@@ -75,13 +75,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_12_114424) do
   end
 
   create_table "intelligence_reports", force: :cascade do |t|
-    t.jsonb "analyzed_article_ids"
+    t.jsonb "analyzed_article_ids", default: []
     t.datetime "created_at", null: false
     t.bigint "region_id", null: false
-    t.string "status"
+    t.string "status", default: "pending", null: false
     t.text "summary"
     t.datetime "updated_at", null: false
     t.index ["region_id"], name: "index_intelligence_reports_on_region_id"
+    t.index ["status"], name: "index_intelligence_reports_on_status"
   end
 
   create_table "narrative_arcs", force: :cascade do |t|
