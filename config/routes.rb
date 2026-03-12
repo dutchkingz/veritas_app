@@ -27,7 +27,11 @@ Rails.application.routes.draw do
   # Admin namespace (protected routes)
   # -------------------------------------------------------
   namespace :admin do
-    resources :users
+    resources :users do
+      member do
+        patch :toggle_admin
+      end
+    end
     resources :articles
     resources :regions
     resources :countries

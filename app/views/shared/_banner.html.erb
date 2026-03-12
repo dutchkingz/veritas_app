@@ -39,6 +39,9 @@
     <!-- User Section -->
     <div class="d-flex align-items-center gap-3">
       <% if user_signed_in? %>
+        <% if current_user.admin? %>
+          <%= link_to "ADMIN PANEL", admin_users_path, class: "btn btn-outline-warning btn-sm veritas-btn-outline me-2" %>
+        <% end %>
         <div class="d-flex align-items-center gap-2">
           <%= image_tag "https://api.dicebear.com/7.x/bottts/svg?seed=#{current_user.email}", class: "rounded-circle bg-dark border border-secondary", style: "width: 32px; height: 32px;", alt: "Avatar" %>
           <span class="veritas-meta d-none d-md-inline ms-1"><%= current_user.email %></span>
