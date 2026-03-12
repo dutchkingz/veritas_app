@@ -2,6 +2,8 @@ class ArticlesController < ApplicationController
   require 'open-uri'
   require 'readability'
   require 'nokogiri'
+  require 'ipaddr'
+  require 'resolv'
 
   def show
     @article = Article.includes(:country, :region, :ai_analysis, :narrative_arcs).find(params[:id])
@@ -9,8 +11,7 @@ class ArticlesController < ApplicationController
     # Find Related Intel via Semantic Similarity (Narrative Convergence)
     # Use .preload (not .includes) + .to_a to avoid pgvector's AS neighbor_distance alias conflict
     @related_articles = if @article.embedding.present?
-                          @article.nearest_neighbors(:embedding)
-                                  .distance(:cosine)
+                          @article.nearest_neighbors(:embedding, distance: "cosine")
                                   .preload(:ai_analysis)
                                   .limit(3)
                                   .to_a
@@ -30,7 +31,12 @@ class ArticlesController < ApplicationController
 
 
 
-    base_uri = URI.parse(@article.source_url)
+    base_uri = safe_source_uri(@article.source_url)
+    unless base_uri
+      @article.update!(content: "<p class='text-danger'>[SYSTEM WARNING] Unsafe or invalid source URL. Access blocked.</p>")
+      return
+    end
+
     base = "#{base_uri.scheme}://#{base_uri.host}"
 
     begin
@@ -74,7 +80,8 @@ class ArticlesController < ApplicationController
         img.remove if img['src'].include?('1x1') || img['src'].include?('pixel') || img['src'].include?('tracking')
       end
 
-      @article.update!(content: parsed.at('body')&.inner_html || doc.content)
+      sanitized_content = helpers.sanitized_article_content(parsed.at('body')&.inner_html || doc.content)
+      @article.update!(content: sanitized_content)
     rescue OpenURI::HTTPError => e
       if e.message.include?('403') || e.message.include?('503') || e.message.include?('429')
         fallback_text = @article.raw_data['description'] || @article.raw_data['content'] || 'Content protected.'
@@ -87,7 +94,7 @@ class ArticlesController < ApplicationController
             </div>
             <p style="margin-top: 20px; font-size: 1.2rem;">#{fallback_text}</p>
         HTML
-        @article.update!(content: fallback_html)
+        @article.update!(content: helpers.sanitized_article_content(fallback_html))
       else
         @article.update!(content: "<p class='text-danger'>[SYSTEM WARNING] HTTP Error: #{e.message}. Access Original Source manually.</p>")
       end
@@ -110,8 +117,7 @@ class ArticlesController < ApplicationController
     our_bias      = article.ai_analysis.sentinel_response&.dig('bias_direction')
     our_sentiment = article.ai_analysis.sentiment_label
 
-    candidates = article.nearest_neighbors(:embedding)
-                        .distance(:cosine)
+    candidates = article.nearest_neighbors(:embedding, distance: "cosine")
                         .joins(:ai_analysis)
                         .where(ai_analyses: { analysis_status: 'complete' })
                         .where.not(id: article.id)
@@ -134,5 +140,26 @@ class ArticlesController < ApplicationController
 
   def opposing_sentiments?(a, b)
     (a == 'POSITIVE' && b == 'NEGATIVE') || (a == 'NEGATIVE' && b == 'POSITIVE')
+  end
+
+  def safe_source_uri(url)
+    uri = URI.parse(url)
+    return nil unless uri.is_a?(URI::HTTP) && uri.host.present?
+    return nil if private_host?(uri.host)
+
+    uri
+  rescue URI::InvalidURIError
+    nil
+  end
+
+  def private_host?(host)
+    return true if host.casecmp("localhost").zero?
+
+    Resolv.getaddresses(host).any? do |address|
+      ip = IPAddr.new(address)
+      ip.loopback? || ip.private? || ip.link_local?
+    end
+  rescue Resolv::ResolvError, IPAddr::InvalidAddressError
+    true
   end
 end

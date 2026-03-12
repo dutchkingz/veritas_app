@@ -5,7 +5,7 @@ class AnalyzeArticleJob < ApplicationJob
     article = Article.find(article_id)
 
     # Skip if already analyzed
-    return if article.ai_analysis&.analysis_status == 'complete'
+    return if %w[complete analyzing].include?(article.ai_analysis&.analysis_status)
 
     pipeline = AnalysisPipeline.new
     pipeline.analyze(article)
