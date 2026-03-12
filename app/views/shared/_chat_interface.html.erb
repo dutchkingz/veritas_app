@@ -1,0 +1,208 @@
+<!-- Floating Chat Button -->
+<button id="veritasChatBtn" class="veritas-chat-toggle shadow-lg" style="position: fixed; bottom: 30px; right: 30px; z-index: 1050; border-radius: 50%; width: 60px; height: 60px; background: rgba(13, 17, 23, 0.95); border: 1px solid #38BDF8; color: #38BDF8; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 0 20px rgba(56,189,248,0.2) !important;">
+  <i class="fa fa-comment-dots fa-xl"></i>
+</button>
+
+<!-- Full Chat Interface -->
+<div id="veritasChatPanel" class="veritas-feed-card shadow-lg" style="position: fixed; bottom: 100px; right: 30px; z-index: 1050; width: 450px; height: 550px; background: rgba(13, 17, 23, 0.98); border: 1px solid rgba(56,189,248,0.4); border-radius: 12px; display: none; flex-direction: column; overflow: hidden; backdrop-filter: blur(10px);">
+  
+  <!-- Header -->
+  <div class="chat-header p-3" style="background: rgba(56,189,248,0.1); border-bottom: 1px solid rgba(56,189,248,0.2); display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <h6 class="mb-0 text-white" style="font-family: 'JetBrains Mono', monospace; font-weight: bold; letter-spacing: 1px;">
+        <i class="fa fa-brain text-info me-2"></i> VERITAS RAG CORE
+      </h6>
+      <div style="font-size: 0.65rem; color: #38BDF8; font-family: 'JetBrains Mono', monospace; margin-top: 2px;">
+        [ STATUS: ONLINE ] | [ MODEL: CLAUDE-HAIKU ]
+      </div>
+    </div>
+    <button id="closeChatBtn" class="btn btn-link text-muted p-0 shadow-none text-decoration-none" style="font-size: 1.2rem;">
+      <i class="fa fa-times"></i>
+    </button>
+  </div>
+
+  <!-- Messages Area -->
+  <div id="chatMessages" class="chat-messages p-3 flex-grow-1" style="overflow-y: auto; display: flex; flex-direction: column; gap: 15px;">
+    <!-- System Welcome Message -->
+    <div class="chat-message system-msg p-3" style="background: rgba(56,189,248,0.05); border-left: 3px solid #38BDF8; border-radius: 4px; font-family: 'Inter', sans-serif; font-size: 0.85rem; color: #e2e8f0; line-height: 1.5;">
+      <strong style="color: #38BDF8; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; display: block; margin-bottom: 5px;">SYSTEM INITIALIZED</strong>
+      Welcome to the VERITAS Retrieval-Augmented Generation (RAG) assistant. I can search our vector database and synthesize intelligence briefings for you. What do you need to know?
+    </div>
+  </div>
+
+  <!-- Input Area -->
+  <div class="chat-input-area p-3" style="border-top: 1px solid rgba(56,189,248,0.2); background: rgba(0,0,0,0.2);">
+    <form id="ragChatForm" class="d-flex align-items-center gap-2">
+      <input type="text" id="chatInput" class="form-control bg-transparent text-white shadow-none" placeholder="Query VERITAS..." autocomplete="off" style="border: 1px solid rgba(56,189,248,0.3); font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;" required>
+      <button type="submit" id="chatSubmitBtn" class="btn btn-outline-info veritas-btn-outline" style="border-radius: 4px; width: 45px; height: calc(1.5em + .75rem + 2px);">
+        <i class="fa fa-paper-plane pos-abs-center"></i>
+      </button>
+    </form>
+  </div>
+  
+</div>
+
+<style>
+  .veritas-chat-toggle:hover {
+    background: rgba(56,189,248,0.1) !important;
+    transform: scale(1.05);
+  }
+  
+  .chat-message.user-msg {
+    align-self: flex-end;
+    background: rgba(56,189,248,0.15);
+    border: 1px solid rgba(56,189,248,0.3);
+    border-radius: 12px 12px 0 12px;
+    padding: 10px 14px;
+    max-width: 85%;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    color: white;
+  }
+  
+  .chat-message.rag-msg {
+    align-self: flex-start;
+    background: rgba(13, 17, 23, 0.8);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 12px 12px 12px 0;
+    padding: 12px 14px;
+    max-width: 90%;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    color: #e2e8f0;
+    line-height: 1.5;
+  }
+  
+  .chat-message.rag-msg strong {
+    color: #38BDF8;
+  }
+  
+  /* Loading dots animation */
+  .typing-indicator span {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background-color: #38BDF8;
+    border-radius: 50%;
+    margin-right: 3px;
+    animation: typing 1.4s infinite ease-in-out both;
+  }
+  .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+  .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+  @keyframes typing {
+    0%, 80%, 100% { transform: scale(0); }
+    40% { transform: scale(1); }
+  }
+  
+  /* Scrollbar override for chat */
+  #chatMessages::-webkit-scrollbar {
+    width: 6px;
+  }
+  #chatMessages::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.1);
+  }
+  #chatMessages::-webkit-scrollbar-thumb {
+    background: rgba(56,189,248,0.3);
+    border-radius: 3px;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const chatBtn = document.getElementById('veritasChatBtn');
+    const chatPanel = document.getElementById('veritasChatPanel');
+    const closeBtn = document.getElementById('closeChatBtn');
+    const form = document.getElementById('ragChatForm');
+    const input = document.getElementById('chatInput');
+    const msgsArea = document.getElementById('chatMessages');
+    const submitBtn = document.getElementById('chatSubmitBtn');
+    
+    // Auto-scroll helper
+    const scrollToBottom = () => {
+      msgsArea.scrollTop = msgsArea.scrollHeight;
+    };
+    
+    // Toggles
+    chatBtn.addEventListener('click', () => {
+      chatPanel.style.display = 'flex';
+      chatBtn.style.display = 'none';
+      input.focus();
+      scrollToBottom();
+    });
+    
+    closeBtn.addEventListener('click', () => {
+      chatPanel.style.display = 'none';
+      chatBtn.style.display = 'flex';
+    });
+    
+    // Markdown formatting helper
+    const formatResponse = (text) => {
+      return text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br/>')
+        .replace(/\[\d+\]/g, '<span style="color:#22c55e; font-family:JetBrains Mono, monospace;">$&</span>');
+    };
+    
+    // Submit Handler
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const query = input.value.trim();
+      if (!query) return;
+      
+      // Add User Message
+      const userDiv = document.createElement('div');
+      userDiv.className = 'chat-message user-msg';
+      userDiv.textContent = query;
+      msgsArea.appendChild(userDiv);
+      
+      input.value = '';
+      scrollToBottom();
+      
+      // Add Loading Indicator
+      const loadingDiv = document.createElement('div');
+      loadingDiv.className = 'chat-message rag-msg typing-indicator';
+      loadingDiv.innerHTML = '<span></span><span></span><span></span> <span style="font-family:JetBrains Mono; font-size:0.6rem; color:#64748b; background:transparent; margin-left:8px; animation:none;">CROSS-REFERENCING VECTOR DB...</span>';
+      msgsArea.appendChild(loadingDiv);
+      scrollToBottom();
+      
+      // Disable Input while fetching
+      input.disabled = true;
+      submitBtn.disabled = true;
+      
+      try {
+        const response = await fetch('/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+          },
+          body: JSON.stringify({ message: query })
+        });
+        
+        const data = await response.json();
+        
+        // Remove Loading
+        msgsArea.removeChild(loadingDiv);
+        
+        // Add RAG Message
+        const ragDiv = document.createElement('div');
+        ragDiv.className = 'chat-message rag-msg';
+        ragDiv.innerHTML = formatResponse(data.response);
+        msgsArea.appendChild(ragDiv);
+        
+      } catch (error) {
+        msgsArea.removeChild(loadingDiv);
+        const errDiv = document.createElement('div');
+        errDiv.className = 'chat-message rag-msg';
+        errDiv.innerHTML = '<span class="text-danger">Connection Error. VERITAS DB unreachable.</span>';
+        msgsArea.appendChild(errDiv);
+      } finally {
+        input.disabled = false;
+        submitBtn.disabled = false;
+        input.focus();
+        scrollToBottom();
+      }
+    });
+  });
+</script>

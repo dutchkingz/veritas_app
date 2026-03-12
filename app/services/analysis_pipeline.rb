@@ -47,6 +47,10 @@ class AnalysisPipeline
       )
 
       Rails.logger.info "[VERITAS TRIAD] ✅ Analysis pipeline COMPLETE for Article ##{article.id}"
+
+      # ━━━ PHASE 4: Semantic Intelligence (Vector Embedding) ━━━
+      EmbeddingService.new.generate(article)
+
       analysis
     rescue StandardError => e
       Rails.logger.error "[VERITAS TRIAD] ❌ Pipeline FAILED for Article ##{article.id}: #{e.message}"
