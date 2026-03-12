@@ -56,4 +56,32 @@ class OpenRouterClient
       content
     end
   end
+
+  # Generate a 1536-dimensional vector embedding for semantic search
+  def embed(text)
+    uri = URI("https://openrouter.ai/api/v1/embeddings")
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true
+
+    request = Net::HTTP::Post.new(uri)
+    request["Authorization"] = "Bearer #{@api_key}"
+    request["Content-Type"]  = "application/json"
+    request["HTTP-Referer"]  = "https://veritas-app.com"
+    request["X-Title"]       = "VERITAS Intelligence Platform"
+    
+    # OpenRouter fully supports OpenAI's native embedding endpoint format
+    request.body = {
+      model: "text-embedding-3-small", 
+      input: text
+    }.to_json
+
+    response = http.request(request)
+
+    unless response.is_a?(Net::HTTPSuccess)
+      raise "OpenRouter Embedding API error (#{response.code}): #{response.body}"
+    end
+
+    data = JSON.parse(response.body)
+    data.dig("data", 0, "embedding") # Returns the Array of 1536 floats
+  end
 end

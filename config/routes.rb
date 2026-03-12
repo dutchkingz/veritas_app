@@ -2,9 +2,11 @@ Rails.application.routes.draw do
   devise_for :users
 
   # -------------------------------------------------------
-  # Root
+  # Root & Search
   # -------------------------------------------------------
   root to: "pages#home"
+  get "search", to: "pages#search"
+  post "chat", to: "chats#create"
 
   # -------------------------------------------------------
   # Read-only public resources

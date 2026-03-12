@@ -6,6 +6,18 @@ class ArticlesController < ApplicationController
   def show
     @article = Article.includes(:country, :region, :ai_analysis, :narrative_arcs).find(params[:id])
 
+    # Find Related Intel via Semantic Similarity (Narrative Convergence)
+    # Use .preload (not .includes) + .to_a to avoid pgvector's AS neighbor_distance alias conflict
+    @related_articles = if @article.embedding.present?
+                          @article.nearest_neighbors(:embedding)
+                                  .distance(:cosine)
+                                  .preload(:ai_analysis)
+                                  .limit(3)
+                                  .to_a
+                        else
+                          []
+                        end
+
     # Kick off the VERITAS Triad analysis pipeline if not yet analyzed
     if @article.ai_analysis.blank? || @article.ai_analysis.analysis_status.nil?
       AnalyzeArticleJob.perform_later(@article.id)

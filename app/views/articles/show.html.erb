@@ -153,6 +153,54 @@
               <i class="fa fa-external-link-alt me-2"></i> ACCESS ORIGINAL SOURCE
             </a>
           </div>
+
+          <!-- NARRATIVE CONVERGENCE (Semantic Vector Search) -->
+          <% if @related_articles.any? %>
+            <div class="mt-5 pt-4" style="border-top: 1px solid rgba(56,189,248,0.15);">
+              <div class="d-flex align-items-center gap-2 mb-4">
+                <span class="panel-icon" style="color: #38BDF8;">&#9654;</span>
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: white; letter-spacing: 2px;">RELATED_INTELLIGENCE</span>
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: #64748b; margin-left: auto;">[VECTOR_PROXIMITY_MATCH]</span>
+              </div>
+              
+              <div class="row g-3">
+                <% @related_articles.each do |related| %>
+                  <% rel_trust = related.ai_analysis&.trust_score.to_i %>
+                  <% rel_color = rel_trust >= 70 ? '#22c55e' : rel_trust >= 40 ? '#f59e0b' : '#ef4444' %>
+                  
+                  <div class="col-md-4">
+                    <a href="<%= article_path(related) %>" class="text-decoration-none">
+                      <div class="veritas-sys-row" style="height: 100%; display: flex; flex-direction: column; background: rgba(56,189,248,0.03); border: 1px solid rgba(56,189,248,0.1); border-radius: 4px; padding: 12px; transition: all 0.2s ease;">
+                        
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                          <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: #94a3b8;">
+                            <%= related.country&.iso_code || 'UNK' %>
+                          </span>
+                          <% if related.ai_analysis.present? %>
+                            <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: <%= rel_color %>; font-weight: bold;">
+                              TRUST: <%= rel_trust %>
+                            </span>
+                          <% else %>
+                            <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: #64748b;">PENDING</span>
+                          <% end %>
+                        </div>
+                        
+                        <div style="font-family: 'Inter', sans-serif; font-size: 0.8rem; font-weight: 600; color: #e2e8f0; line-height: 1.4; margin-bottom: 8px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">
+                          <%= related.headline %>
+                        </div>
+                        
+                        <div class="mt-auto" style="font-family: 'JetBrains Mono', monospace; font-size: 0.55rem; color: #64748b; text-transform: uppercase;">
+                          <%= related.source_name %>
+                        </div>
+                        
+                      </div>
+                    </a>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+          
         </div>
       </div>
 

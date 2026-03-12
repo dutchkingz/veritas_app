@@ -18,6 +18,6 @@ This document contains key technical decisions and architectural rules for the V
 
 ## 3. External API Integrations (GDELT)
 *   **Strict Rate Limiting:** The free GDELT 2.0 DOC API enforces a strict rate limit of **1 request every 5 seconds**. 
-*   **Error Handling & Retries:** All backend fetchers interacting with GDELT must implement `sleep` intervals (e.g., `sleep 6`) between consecutive queries. They must also rescue from HTTP timeout and Too Many Requests (429) errors using exponential backoff or simply skipping the cycle until the next scheduled worker run. Never allow an API rate limit error to crash the background job queue.
+*   **Error Handling & Retries:** All backend fetchers interacting with GDELT must implement `sleep` intervals (e.g., `sleep 6`) between consecutive queries. They must also rescue from HTTP timeout and Too Many Requests (429) errors using exponential backoff or simply skipping the cycle until the next scheduled worker run. Never allow an API rate limit error to crash the background job queue. #### we are not using GDELT anymore cause it made huge problems, this is why we were implementing NEWSAPI instead, which is now working great!!!!!
 
 *(Note: Run `rails routes` in your terminal to see the full list of generated URLs once the `routes.rb` file is implemented according to these specs.)*
