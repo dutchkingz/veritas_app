@@ -22,6 +22,10 @@ class UserPolicy < ApplicationPolicy
     update?
   end
 
+  def toggle_admin?
+    user.admin?
+  end
+
   # Only admin can destroy users
   def destroy?
     user.admin?

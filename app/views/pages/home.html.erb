@@ -113,6 +113,47 @@
         <span class="sys-label">DATABASE</span>
         <span class="sys-value text-success">ONLINE</span>
       </div>
+
+      <hr class="veritas-divider mt-4 mb-3">
+
+      <%# ──────────────────────────────────────────────────────
+          REGIONAL ANALYSIS — Trigger Panel
+          Refactored: Uses Stimulus `run` action to avoid page reload.
+      ─────────────────────────────────────────────────────── %>
+      <div class="veritas-panel-header mb-2">
+        <span class="panel-icon">&#9670;</span>
+        <span class="panel-title">REGIONAL_ANALYSIS</span>
+      </div>
+
+      <% @regions.each do |region| %>
+        <div class="veritas-analysis-block mb-3"
+             data-controller="analysis-progress"
+             data-analysis-progress-region-id-value="<%= region.id %>"
+             data-analysis-progress-poll-interval-value="2500"
+             id="region-analysis-<%= region.id %>">
+
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="threat-region"><%= region.name %></span>
+
+            <button data-action="click->analysis-progress#run"
+                    data-analysis-progress-target="button"
+                    class="btn veritas-analysis-btn">
+              &#x25B6; RUN
+            </button>
+          </div>
+
+          <div class="veritas-analysis-bar-track">
+            <div data-analysis-progress-target="bar"
+                 class="veritas-analysis-bar-fill"
+                 style="width: 0%;"></div>
+          </div>
+          <p data-analysis-progress-target="label"
+             class="veritas-analysis-status"></p>
+
+          <div data-analysis-progress-target="result"
+               class="veritas-analysis-result d-none"></div>
+        </div>
+      <% end %>
     </div>
   </aside>
 

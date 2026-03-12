@@ -3,11 +3,26 @@
 # -------------------------------------------------------
 class Admin::UsersController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_user, only: %i[show edit update destroy]
+  before_action :set_user, only: %i[show edit update destroy toggle_admin]
 
   def index
     @users = policy_scope(User)
     authorize @users
+  end
+
+  def toggle_admin
+    authorize @user
+    
+    # Toggle the admin boolean
+    @user.admin = !@user.admin
+    # Ensure role string also updates for consistency if app uses it
+    @user.role = @user.admin ? "admin" : "user"
+    
+    if @user.save
+      redirect_to admin_users_path, notice: "User status updated: #{@user.email} is now #{@user.admin ? 'an Admin' : 'a User'}."
+    else
+      redirect_to admin_users_path, alert: "Failed to update user status."
+    end
   end
 
   def show

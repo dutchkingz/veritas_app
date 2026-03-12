@@ -1,0 +1,81 @@
+<div class="veritas-dossier-container py-5">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-10">
+        
+        <!-- Dossier Header -->
+        <div class="veritas-dossier-header mb-5">
+          <div class="d-flex justify-content-between align-items-end mb-3">
+            <div>
+              <nav aria-label="breadcrumb" class="mb-2">
+                <ol class="breadcrumb veritas-breadcrumb">
+                  <li class="breadcrumb-item"><%= link_to "HQ", root_path %></li>
+                  <li class="breadcrumb-item active">INTEL_DOSSIER</li>
+                </ol>
+              </nav>
+              <h1 class="veritas-glitch-text display-4 mb-0" data-text="<%= @report.region.name %>_BRIEFING">
+                <%= @report.region.name %>_BRIEFING
+              </h1>
+            </div>
+            <div class="text-end">
+              <div class="dossier-meta-item">
+                <span class="label">CLASSIFICATION:</span>
+                <span class="value text-warning">TOP SECRET // VERITAS</span>
+              </div>
+              <div class="dossier-meta-item">
+                <span class="label">TIMESTAMP:</span>
+                <span class="value"><%= @report.created_at.strftime("%Y-%m-%d %H:%M UTC") %></span>
+              </div>
+              <div class="dossier-meta-item">
+                <span class="label">SIGNALS:</span>
+                <span class="value"><%= @report.analyzed_article_ids.size %> ANALYZED</span>
+              </div>
+            </div>
+          </div>
+          <div class="veritas-cyan-divider"></div>
+        </div>
+
+        <!-- Dossier Body -->
+        <div class="veritas-dossier-card">
+          <div class="dossier-content" id="markdown-content" data-content="<%= @report.summary %>">
+            <%# We'll use a JS library for markdown if possible, otherwise render raw for now %>
+            <div class="veritas-report-text">
+              <%= simple_format @report.summary %>
+            </div>
+          </div>
+        </div>
+
+        <!-- Source Signals -->
+        <div class="mt-5">
+          <h3 class="veritas-panel-title mb-3">ANALYSED_SIGNALS</h3>
+          <div class="row">
+            <% Article.where(id: @report.analyzed_article_ids).each do |article| %>
+              <div class="col-md-6 mb-3">
+                <div class="veritas-signal-card">
+                  <div class="d-flex justify-content-between mb-1">
+                    <span class="source text-primary"><%= article.source_name %></span>
+                    <span class="time"><%= article.published_at.strftime("%H:%M") %></span>
+                  </div>
+                  <p class="headline mb-0"><%= truncate(article.headline, length: 80) %></p>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+  document.addEventListener("turbo:load", () => {
+    const contentDiv = document.getElementById('markdown-content');
+    if (contentDiv && window.marked) {
+      const rawText = contentDiv.dataset.content;
+      const html = marked.parse(rawText);
+      contentDiv.querySelector('.veritas-report-text').innerHTML = html;
+    }
+  });
+</script>

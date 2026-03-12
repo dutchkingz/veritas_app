@@ -1,0 +1,64 @@
+<div class="container my-5 text-light cyber-container">
+  <div class="mb-4">
+    <%= link_to admin_users_path, class: "btn btn-outline-info cyber-btn-back" do %>
+      <i class="bi bi-arrow-left"></i> Back to Roster
+    <% end %>
+  </div>
+
+  <div class="cyber-card p-4">
+    <h2 class="neon-text text-cyber-blue mb-4">Personnel Dossier: <%= @user.email %></h2>
+    
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label class="text-muted small text-uppercase tracking-wider">System ID</label>
+        <div class="fs-5 text-monospace">#<%= @user.id %></div>
+      </div>
+      <div class="col-md-6 mb-3">
+        <label class="text-muted small text-uppercase tracking-wider">Access Level</label>
+        <div class="fs-5">
+          <% if @user.admin? %>
+            <span class="text-danger fw-bold"><i class="bi bi-shield-lock-fill"></i> ADMIN</span>
+          <% else %>
+            <span class="text-info"><i class="bi bi-person-fill"></i> STANDARD USER</span>
+          <% end %>
+        </div>
+      </div>
+      <div class="col-md-6 mb-3">
+        <label class="text-muted small text-uppercase tracking-wider">Record Created</label>
+        <div class="fs-5"><%= @user.created_at.strftime("%B %d, %Y %H:%M:%S") %></div>
+      </div>
+      <div class="col-md-6 mb-3">
+        <label class="text-muted small text-uppercase tracking-wider">Last Updated</label>
+        <div class="fs-5"><%= @user.updated_at.strftime("%B %d, %Y %H:%M:%S") %></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.cyber-container {
+  font-family: 'Inter', sans-serif;
+}
+.cyber-card {
+  background: rgba(10, 15, 25, 0.85);
+  border: 1px solid #1e3a5f;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+}
+.cyber-btn-back {
+  border-color: #00e5ff;
+  color: #00e5ff;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 0.8rem;
+}
+.cyber-btn-back:hover {
+  background: rgba(0, 229, 255, 0.1);
+  color: #00e5ff;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
+}
+.tracking-wider {
+  letter-spacing: 2px;
+}
+</style>

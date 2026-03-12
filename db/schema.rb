@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_12_110139) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_12_113032) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -72,6 +72,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_12_110139) do
     t.bigint "region_id", null: false
     t.datetime "updated_at", null: false
     t.index ["region_id"], name: "index_countries_on_region_id"
+  end
+
+  create_table "intelligence_reports", force: :cascade do |t|
+    t.jsonb "analyzed_article_ids"
+    t.datetime "created_at", null: false
+    t.bigint "region_id", null: false
+    t.string "status"
+    t.text "summary"
+    t.datetime "updated_at", null: false
+    t.index ["region_id"], name: "index_intelligence_reports_on_region_id"
   end
 
   create_table "narrative_arcs", force: :cascade do |t|
@@ -263,6 +273,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_12_110139) do
   add_foreign_key "articles", "regions"
   add_foreign_key "briefings", "users"
   add_foreign_key "countries", "regions"
+  add_foreign_key "intelligence_reports", "regions"
   add_foreign_key "narrative_arcs", "articles"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

@@ -23,6 +23,12 @@ Rails.application.routes.draw do
   resources :perspective_filters, only: [:index, :show]
   resources :narrative_convergences, only: [:index, :show]
 
+  resources :intelligence_reports, only: %i[create show] do
+    member do
+      get :status
+    end
+  end
+
   # -------------------------------------------------------
   # Admin namespace (protected routes)
   # -------------------------------------------------------
