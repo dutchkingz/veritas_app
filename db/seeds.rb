@@ -114,11 +114,21 @@ def fallback_articles(created_regions, count:)
     headline = "#{story_templates[idx % story_templates.length]} ##{idx + 1}"
     source   = sources[idx % sources.length]
     time     = Time.current - ((idx % 72) * 1.hour)
+    body     = <<~HTML
+      <p>DEMO INTELLIGENCE SIGNAL</p>
+      <p>#{headline}</p>
+      <p>
+        This fallback article exists to keep the VERITAS demo operational when live NewsAPI
+        coverage is thin. It is a seeded narrative signal associated with #{geo[:region].name}
+        and source profile #{source}.
+      </p>
+    HTML
 
     {
       headline:       headline,
-      source_url:     "https://demo.veritas.local/articles/#{idx + 1}-#{SecureRandom.hex(4)}",
+      source_url:     nil,
       source_name:    source,
+      content:        body,
       published_at:   time,
       fetched_at:     Time.current,
       latitude:       geo[:region].latitude + rand(-2.0..2.0),
@@ -126,7 +136,7 @@ def fallback_articles(created_regions, count:)
       country:        geo[:country],
       region:         geo[:region],
       target_country: 1,
-      raw_data:       { "seed_mode" => "fallback_demo", "source" => source }
+      raw_data:       { "seed_mode" => "fallback_demo", "source" => source, "description" => headline }
     }
   end
 end

@@ -182,6 +182,7 @@ export default class extends Controller {
     if (!point) return
     this._flyTo(point.lat, point.lng)
     if (point.id) this._setActiveCard(point.id)
+    if (point.id) this._visitArticle(point.id)
   }
 
   _onArcClicked(arc) {
@@ -215,6 +216,10 @@ export default class extends Controller {
       card.classList.add('is-active')
       card.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }
+  }
+
+  _visitArticle(articleId) {
+    window.location.assign(`/articles/${articleId}`)
   }
 
   _onBroadcast(data) {

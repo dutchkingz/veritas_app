@@ -13,6 +13,9 @@ Rails.application.routes.draw do
   # Read-only public resources
   # -------------------------------------------------------
   resources :articles, only: [:index, :show] do
+    member do
+      get :analysis_status
+    end
     resources :ai_analyses, only: [:index], shallow: true, controller: "feature_previews", defaults: { feature: "ai_analyses" }
     resources :narrative_arcs, only: [:index], shallow: true, controller: "feature_previews", defaults: { feature: "narrative_arcs" }
   end

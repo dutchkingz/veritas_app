@@ -1,4 +1,10 @@
-<div class="p-4" style="height: calc(100vh - 64px); overflow-y: auto; background: #0a0f1a;">
+<% analysis_status = @article.ai_analysis&.analysis_status || "queued" %>
+<div class="p-4"
+     data-controller="article-analysis"
+     data-article-analysis-status-url-value="<%= analysis_status_article_path(@article) %>"
+     data-article-analysis-status-value="<%= analysis_status %>"
+     data-article-analysis-poll-interval-value="4000"
+     style="height: calc(100vh - 64px); overflow-y: auto; background: #0a0f1a;">
   <div class="container-fluid px-4 px-md-5">
 
     <!-- Intelligence Brief Header — Classified Dossier Style -->
@@ -169,11 +175,13 @@
 
           <hr class="veritas-divider">
           
-          <div class="mt-4 pb-3">
-            <a href="<%= @article.source_url %>" target="_blank" rel="noopener noreferrer" class="btn btn-outline-info veritas-btn-outline w-100" style="font-family: 'JetBrains Mono', monospace; letter-spacing: 2px;">
-              <i class="fa fa-external-link-alt me-2"></i> ACCESS ORIGINAL SOURCE
-            </a>
-          </div>
+          <% if @article.fetchable_source? %>
+            <div class="mt-4 pb-3">
+              <a href="<%= @article.source_url %>" target="_blank" rel="noopener noreferrer" class="btn btn-outline-info veritas-btn-outline w-100" style="font-family: 'JetBrains Mono', monospace; letter-spacing: 2px;">
+                <i class="fa fa-external-link-alt me-2"></i> ACCESS ORIGINAL SOURCE
+              </a>
+            </div>
+          <% end %>
 
           <!-- CONTRADICTION ENGINE — Semantically similar, opposing bias/sentiment -->
           <% if @contradictions&.any? %>
@@ -289,7 +297,7 @@
         <div class="veritas-feed-card h-100" style="background: rgba(13, 17, 23, 0.95); padding: 1.5rem;">
           
           <% analysis = @article.ai_analysis %>
-          <% status = analysis&.analysis_status %>
+          <% status = analysis_status %>
 
           <!-- Panel Header -->
           <div class="d-flex align-items-center justify-content-between mb-4 pb-3" style="border-bottom: 1px solid rgba(56,189,248,0.15);">
@@ -301,6 +309,8 @@
               <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: #22c55e; border: 1px solid rgba(34,197,94,0.3); padding: 2px 8px; border-radius: 2px;">VERIFIED</span>
             <% elsif status == 'analyzing' %>
               <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); padding: 2px 8px; border-radius: 2px;">ANALYZING</span>
+            <% elsif status == 'failed' %>
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: #ef4444; border: 1px solid rgba(239,68,68,0.3); padding: 2px 8px; border-radius: 2px;">RETRYING</span>
             <% else %>
               <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: #64748b; border: 1px solid rgba(100,116,139,0.3); padding: 2px 8px; border-radius: 2px;">QUEUED</span>
             <% end %>
@@ -409,20 +419,20 @@
               <% end %>
             </div>
 
-          <% elsif status == 'analyzing' %>
+          <% elsif status == 'analyzing' || status == 'failed' %>
             <!-- Analyzing state -->
             <div class="text-center py-5">
               <div style="margin-bottom: 20px;">
                 <i class="fa fa-circle-notch fa-spin fa-3x" style="color: #38BDF8;"></i>
               </div>
-              <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: white; margin-bottom: 8px;">TRIAD PROCESSING</div>
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: white; margin-bottom: 8px;"><%= status == 'failed' ? 'TRIAD RETRY INITIATED' : 'TRIAD PROCESSING' %></div>
               <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: #64748b; line-height: 1.8;">
                 🔍 ANALYST (Gemini Flash)<br>
                 🛡️ SENTINEL (GPT-4o-mini)<br>
                 ⚖️ ARBITER (Claude Haiku)
               </div>
               <p style="font-family: 'Inter', sans-serif; font-size: 0.75rem; color: #475569; margin-top: 15px;">
-                Cross-verifying intelligence...<br>Refresh page in ~15 seconds.
+                <%= status == 'failed' ? 'A previous run failed, so VERITAS is dispatching the triad again.' : 'Cross-verifying intelligence...' %><br>Auto-refresh will trigger when results are ready.
               </p>
             </div>
 
@@ -437,7 +447,7 @@
                 <span style="font-size: 0.65rem;">3 LLM agents dispatched</span>
               </div>
               <p style="font-family: 'Inter', sans-serif; font-size: 0.75rem; color: #475569; margin-top: 15px;">
-                Refresh in ~20 seconds to see results.
+                Awaiting agent execution...<br>Auto-refresh will trigger when results are ready.
               </p>
             </div>
           <% end %>

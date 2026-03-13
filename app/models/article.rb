@@ -1,4 +1,6 @@
 class Article < ApplicationRecord
+  DEMO_SOURCE_HOST = "demo.veritas.local".freeze
+
   has_neighbors :embedding
 
   belongs_to :country, optional: true
@@ -20,6 +22,16 @@ class Article < ApplicationRecord
   scope :by_region_name, ->(name) {
     joins(:region).where("LOWER(regions.name) = LOWER(?)", name)
   }
+
+  def fallback_demo?
+    raw_data.is_a?(Hash) && raw_data["seed_mode"] == "fallback_demo"
+  end
+
+  def fetchable_source?
+    return false if source_url.blank? || fallback_demo?
+
+    true
+  end
 
   private
 
