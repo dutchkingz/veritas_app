@@ -39,7 +39,7 @@ User.create!(
 )
 
 puts "Creating Developer Users..."
-%w[vince@vince.ca oli@oli.com selim@selim.com].each do |email|
+%w[vince@vince.au oli@oli.com selim@selim.com].each do |email|
   User.create!(
     email: email,
     password: email,
