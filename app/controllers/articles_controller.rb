@@ -20,14 +20,31 @@ class ArticlesController < ApplicationController
                         end
 
     # Kick off the VERITAS Triad analysis pipeline if not yet analyzed
-    if @article.ai_analysis.blank? || @article.ai_analysis.analysis_status.nil?
+    if @article.ai_analysis.blank? || @article.ai_analysis.analysis_status.in?([nil, "failed"])
       AnalyzeArticleJob.perform_later(@article.id)
     end
 
     # Contradiction Engine — semantically similar articles with opposing bias/sentiment
     @contradictions = find_contradictions(@article)
 
-    return unless @article.content.blank? && @article.source_url.present?
+    if @article.content.blank? && @article.fallback_demo?
+      fallback_content = <<~HTML
+        <p>DEMO INTELLIGENCE SIGNAL</p>
+        <p>#{ERB::Util.html_escape(@article.headline)}</p>
+        <p>
+          This fallback article is intentionally stored locally for demo stability and does not
+          have a live upstream parser target.
+        </p>
+      HTML
+
+      @article.update!(
+        content: fallback_content,
+        source_url: nil
+      )
+      return
+    end
+
+    return unless @article.content.blank? && @article.fetchable_source?
 
 
 
@@ -103,6 +120,18 @@ class ArticlesController < ApplicationController
     end
   end
 
+  def analysis_status
+    article = Article.includes(:ai_analysis).find(params[:id])
+    status = article.ai_analysis&.analysis_status || "queued"
+
+    render json: {
+      article_id: article.id,
+      status: status,
+      complete: status == "complete",
+      failed: status == "failed"
+    }
+  end
+
   private
 
   OPPOSING_BIAS_PAIRS = [
@@ -155,7 +184,10 @@ class ArticlesController < ApplicationController
   def private_host?(host)
     return true if host.casecmp("localhost").zero?
 
-    Resolv.getaddresses(host).any? do |address|
+    addresses = Resolv.getaddresses(host)
+    return true if addresses.empty?
+
+    addresses.any? do |address|
       ip = IPAddr.new(address)
       ip.loopback? || ip.private? || ip.link_local?
     end

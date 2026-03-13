@@ -15,7 +15,8 @@
 .veritas-war-room {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 56px);
+    height: calc(100vh - 88px);
+    height: calc(100dvh - 88px);
     overflow: hidden;
 }
 
@@ -82,7 +83,6 @@
 
 // --- Navbar ---
 .veritas-navbar {
-    height: 56px;
     background-color: rgba($veritas-surface, 0.95);
     border-bottom: 1px solid $veritas-border;
     backdrop-filter: blur(12px);
@@ -355,6 +355,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    min-height: 0;
+    padding-bottom: 60px;
     background: radial-gradient(circle at center, rgba($veritas-cyan, 0.06) 0%, $veritas-bg 65%);
     overflow: hidden;
 }
@@ -395,7 +397,7 @@
 // --- Globe Overlays ---
 .globe-overlay-stats {
     position: absolute;
-    bottom: 56px;
+    bottom: 68px;
     left: 20px;
     display: flex;
     gap: 20px;
@@ -408,14 +410,14 @@
     bottom: 0;
     left: 0;
     right: 0;
-    height: 48px;
+    min-height: 56px;
     background: linear-gradient(to top, rgba($veritas-bg, 0.95) 0%, rgba($veritas-bg, 0.5) 100%);
     backdrop-filter: blur(8px);
     border-top: 1px solid rgba($veritas-cyan, 0.1);
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 0 20px;
+    padding: 8px 20px;
     z-index: 10;
 
     .timeline-label {
@@ -784,5 +786,18 @@
         bottom: auto;
         top: 12px;
         left: 12px;
+    }
+
+    .veritas-globe-section {
+        padding-bottom: 72px;
+    }
+
+    .globe-timeline-bar {
+        gap: 8px;
+        padding: 8px 12px;
+    }
+
+    .globe-timeline-bar .timeline-date {
+        min-width: 88px;
     }
 }
