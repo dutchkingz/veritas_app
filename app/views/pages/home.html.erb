@@ -33,7 +33,7 @@
     <div class="veritas-panel-header">
       <span class="panel-icon">&#9654;</span>
       <span class="panel-title">LIVE_INTELLIGENCE_FEED</span>
-      <span class="panel-badge"><%= @articles.count %> SIGNALS</span>
+      <span class="panel-badge"><%= @signal_count %> SIGNALS</span>
     </div>
 
     <div class="veritas-feed-list">
@@ -91,7 +91,7 @@
     <!-- Overlay stats (bottom-left of globe, above timeline) -->
     <div class="globe-overlay-stats">
       <div class="globe-stat">
-        <span class="stat-value text-primary"><%= @articles.count %></span>
+        <span class="stat-value text-primary"><%= @signal_count %></span>
         <span class="stat-label">SIGNALS</span>
       </div>
       <div class="globe-stat">

@@ -13,6 +13,8 @@ export default class extends Controller {
   connect() {
     this._currentPerspective = localStorage.getItem("veritas:perspective") || "all"
     this._currentTimestamp   = null
+    this._pointHovered       = false
+    this._arcHovered         = false
     this._flyToHandler       = (e) => this._onFlyToEvent(e)
     this._perspectiveHandler = (e) => this._onPerspectiveChange(e)
     this._timelineHandler    = (e) => this._onTimelineChange(e)
@@ -61,13 +63,15 @@ export default class extends Controller {
       .pointColor("color")
       .pointRadius(0.35)
       // NOTE: pointsMerge disabled — required for individual point click events
+      .onPointHover(point => this._onPointHover(point))
       .onPointClick(point => this._onPointClicked(point))
       // Arcs layer (narrative arcs)
       .arcColor("color")
       .arcDashLength(0.4)
       .arcDashGap(0.2)
-      .arcDashAnimateTime(1500)
+      .arcDashAnimateTime(6400)
       .arcStroke(0.5)
+      .onArcHover(arc => this._onArcHover(arc))
       .onArcClick(arc => this._onArcClicked(arc))
       // Tooltips
       .pointLabel(d => `
@@ -104,6 +108,8 @@ export default class extends Controller {
         ">
           <div style="color:#00f0ff;font-size:9px;letter-spacing:0.1em;margin-bottom:4px;">NARRATIVE ARC</div>
           <div>${d.originCountry} → ${d.targetCountry}</div>
+          <div style="margin-top:4px;font-weight:600;">${d.headline || 'Linked intelligence signal'}</div>
+          <div style="color:#6b7280;font-size:9px;margin-top:4px;">${d.source || 'UNKNOWN SOURCE'}</div>
         </div>
       `)
       // Threat rings layer (pulsing radar rings per region)
@@ -185,11 +191,23 @@ export default class extends Controller {
     if (point.id) this._visitArticle(point.id)
   }
 
+  _onPointHover(point) {
+    this._pointHovered = Boolean(point)
+    this._syncAutoRotate()
+  }
+
   _onArcClicked(arc) {
     if (!arc) return
     const midLat = (arc.startLat + arc.endLat) / 2
     const midLng = (arc.startLng + arc.endLng) / 2
     this._flyTo(midLat, midLng, 2.0)
+    if (arc.articleId) this._setActiveCard(arc.articleId)
+    if (arc.articleId) this._visitArticle(arc.articleId)
+  }
+
+  _onArcHover(arc) {
+    this._arcHovered = Boolean(arc)
+    this._syncAutoRotate()
   }
 
   _onFlyToEvent(event) {
@@ -204,7 +222,7 @@ export default class extends Controller {
     controls.autoRotate = false
     this._globe.pointOfView({ lat, lng, altitude }, 1200)
     clearTimeout(this._rotateTimer)
-    this._rotateTimer = setTimeout(() => { controls.autoRotate = true }, 6000)
+    this._rotateTimer = setTimeout(() => this._syncAutoRotate(), 6000)
   }
 
   _setActiveCard(articleId) {
@@ -220,6 +238,13 @@ export default class extends Controller {
 
   _visitArticle(articleId) {
     window.location.assign(`/articles/${articleId}`)
+  }
+
+  _syncAutoRotate() {
+    if (!this._globe) return
+
+    const controls = this._globe.controls()
+    controls.autoRotate = !(this._pointHovered || this._arcHovered)
   }
 
   _onBroadcast(data) {
