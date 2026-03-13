@@ -6,9 +6,14 @@ class AnalysisPipeline
   end
 
   def analyze(article)
-    # Create or find the AiAnalysis record
-    analysis = article.ai_analysis || article.build_ai_analysis
-    analysis.update!(analysis_status: 'analyzing')
+    analysis = article.with_lock do
+      current = article.ai_analysis || article.build_ai_analysis
+      return current if current.analysis_status == 'complete'
+      return current if current.analysis_status == 'analyzing'
+
+      current.update!(analysis_status: 'analyzing')
+      current
+    end
 
     Rails.logger.info "[VERITAS TRIAD] Starting analysis pipeline for Article ##{article.id}"
 

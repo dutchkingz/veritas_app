@@ -20,7 +20,8 @@ export default class extends Controller {
     pending:    "Signal Queued...",
     processing: "Analysing Signal Intelligence...",
     completed:  "Briefing Ready.",
-    failed:     "System Failure."
+    failed:     "System Failure.",
+    forbidden:  "Admin Access Required."
   }
 
   connect() {
@@ -57,6 +58,12 @@ export default class extends Controller {
         body: JSON.stringify({ region_id: this.regionIdValue })
       })
 
+      if (response.status === 403) {
+        this.#restoreButton("LOCKED")
+        this.#applyStatus("forbidden")
+        return
+      }
+
       if (!response.ok) throw new Error("Network response was not ok")
 
       const data = await response.json()
@@ -66,6 +73,7 @@ export default class extends Controller {
       this.#startPolling()
     } catch (error) {
       console.error("[AnalysisProgress] Run error:", error)
+      this.#restoreButton("RETRY")
       this.#applyStatus("failed")
     }
   }
@@ -91,6 +99,13 @@ export default class extends Controller {
         headers: { Accept: "application/json" }
       })
 
+      if (res.status === 403) {
+        this.#stopPolling()
+        this.#restoreButton("LOCKED")
+        this.#applyStatus("forbidden")
+        return
+      }
+
       if (!res.ok) return
 
       const data = await res.json()
@@ -98,7 +113,11 @@ export default class extends Controller {
 
       if (data.status === "completed" || data.status === "failed") {
         this.#stopPolling()
-        if (data.status === "completed") this.#showLink()
+        if (data.status === "completed") {
+          this.#showLink()
+        } else {
+          this.#restoreButton("RETRY")
+        }
       }
     } catch (err) {
       console.warn("[AnalysisProgress] Polling error:", err)
@@ -108,7 +127,7 @@ export default class extends Controller {
   #applyStatus(status) {
     const width = this.STATUS_WIDTHS[status]  || "0%"
     const label = this.STATUS_LABELS[status]  || "Working..."
-    const colour = status === "failed" ? "var(--neon-red)" : "var(--neon-blue)"
+    const colour = (status === "failed" || status === "forbidden") ? "var(--neon-red)" : "var(--neon-blue)"
 
     if (this.hasBarTarget) {
       this.barTarget.style.width = width
@@ -117,6 +136,13 @@ export default class extends Controller {
     if (this.hasLabelTarget) {
       this.labelTarget.innerHTML = `<span class="veritas-glitch-text" data-text="${label}">${label}</span>`
     }
+  }
+
+  #restoreButton(label = "RUN") {
+    if (!this.hasButtonTarget) return
+
+    this.buttonTarget.disabled = label === "LOCKED"
+    this.buttonTarget.textContent = label
   }
 
   #showLink() {

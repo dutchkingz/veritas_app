@@ -135,11 +135,20 @@
           <div class="d-flex justify-content-between align-items-center mb-1">
             <span class="threat-region"><%= region.name %></span>
 
-            <button data-action="click->analysis-progress#run"
-                    data-analysis-progress-target="button"
-                    class="btn veritas-analysis-btn">
-              &#x25B6; RUN
-            </button>
+            <% if current_user.admin? %>
+              <button data-action="click->analysis-progress#run"
+                      data-analysis-progress-target="button"
+                      class="btn veritas-analysis-btn">
+                &#x25B6; RUN
+              </button>
+            <% else %>
+              <button data-analysis-progress-target="button"
+                      class="btn veritas-analysis-btn"
+                      disabled
+                      title="Regional analysis dossiers are currently restricted to admin users.">
+                LOCKED
+              </button>
+            <% end %>
           </div>
 
           <div class="veritas-analysis-bar-track">

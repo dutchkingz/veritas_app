@@ -195,11 +195,17 @@
     });
     
     // Markdown formatting helper — links citations to source articles
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+
     function formatResponse(text, sources = []) {
       const sourceMap = {};
       sources.forEach(s => { sourceMap[s.index] = s.id; });
 
-      return text
+      return escapeHtml(text)
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\n/g, '<br>')
         .replace(/\[(\d+)\]/g, (match, num) => {
@@ -263,7 +269,10 @@
             const lensDiv = document.createElement('div');
             const lensColor = activePill.dataset.color || '#64748b';
             lensDiv.style.cssText = `font-family:'JetBrains Mono',monospace;font-size:0.55rem;letter-spacing:1.5px;margin-bottom:4px;`;
-            lensDiv.innerHTML = `<span style="color:${lensColor};border:1px solid ${lensColor}30;background:${lensColor}12;padding:2px 7px;border-radius:2px;">LENS: ${activePill.dataset.name}</span>`;
+            const lensBadge = document.createElement('span');
+            lensBadge.style.cssText = `color:${lensColor};border:1px solid ${lensColor}30;background:${lensColor}12;padding:2px 7px;border-radius:2px;`;
+            lensBadge.textContent = `LENS: ${activePill.dataset.name || activePill.textContent.trim()}`;
+            lensDiv.appendChild(lensBadge);
             ragDiv.appendChild(lensDiv);
           }
         }
@@ -274,7 +283,10 @@
           const color = confColors[data.confidence] || '#64748b';
           const badge = document.createElement('div');
           badge.style.cssText = `font-family:'JetBrains Mono',monospace;font-size:0.55rem;letter-spacing:1.5px;margin-bottom:6px;`;
-          badge.innerHTML = `<span style="color:${color};border:1px solid ${color}30;background:${color}12;padding:2px 7px;border-radius:2px;">CONFIDENCE: ${data.confidence}</span>`;
+          const badgeText = document.createElement('span');
+          badgeText.style.cssText = `color:${color};border:1px solid ${color}30;background:${color}12;padding:2px 7px;border-radius:2px;`;
+          badgeText.textContent = `CONFIDENCE: ${data.confidence}`;
+          badge.appendChild(badgeText);
           ragDiv.appendChild(badge);
         }
 
@@ -286,10 +298,16 @@
         if (data.sources && data.sources.length > 0) {
           const footer = document.createElement('div');
           footer.style.cssText = 'margin-top:8px;padding-top:8px;border-top:1px solid rgba(56,189,248,0.15);font-family:"JetBrains Mono",monospace;font-size:0.65rem;color:#64748b;';
-          footer.innerHTML = 'SOURCES: ' + data.sources.map(s =>
-            `<a href="/articles/${s.id}" target="_blank"
-               style="color:#38bdf8;text-decoration:none;margin-right:10px;">[${s.index}] ${s.source_name}</a>`
-          ).join('');
+          footer.append('SOURCES: ');
+          data.sources.forEach(s => {
+            const link = document.createElement('a');
+            link.href = `/articles/${s.id}`;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.style.cssText = 'color:#38bdf8;text-decoration:none;margin-right:10px;';
+            link.textContent = `[${s.index}] ${s.source_name}`;
+            footer.appendChild(link);
+          });
           ragDiv.appendChild(footer);
         }
 

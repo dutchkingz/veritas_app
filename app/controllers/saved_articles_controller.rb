@@ -11,9 +11,9 @@ class SavedArticlesController < ApplicationController
 
   def create
     @article = Article.find(params[:article_id])
-    
-    @saved_article = current_user.saved_articles.build(
-      article: @article,
+
+    @saved_article = current_user.saved_articles.find_or_initialize_by(article: @article)
+    @saved_article.assign_attributes(
       headline: @article.headline,
       content: @article.content,
       source_name: @article.source_name,
@@ -21,7 +21,8 @@ class SavedArticlesController < ApplicationController
     )
 
     if @saved_article.save
-      redirect_to article_path(@article), notice: "Article correctly saved. It will now be available in your Saved Articles page."
+      message = @saved_article.previously_new_record? ? "Article correctly saved. It will now be available in your Saved Articles page." : "Article already exists in your saved intelligence."
+      redirect_to article_path(@article), notice: message
     else
       redirect_to article_path(@article), alert: "Unable to save article."
     end

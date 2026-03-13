@@ -27,7 +27,7 @@ class PagesController < ApplicationController
         end
       rescue StandardError => e
         @results = []
-        flash.now[:alert] = "Search Error: #{e.message}"
+        flash.now[:alert] = "Search is temporarily unavailable."
         Rails.logger.error "[SEMANTIC SEARCH] Error: #{e.message}"
       end
     else

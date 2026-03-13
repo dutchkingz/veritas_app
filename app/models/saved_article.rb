@@ -4,4 +4,5 @@ class SavedArticle < ApplicationRecord
 
   validates :headline, presence: true
   validates :content, presence: true
+  validates :article_id, uniqueness: { scope: :user_id }, allow_nil: true
 end

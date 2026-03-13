@@ -38,9 +38,8 @@
         <!-- Dossier Body -->
         <div class="veritas-dossier-card">
           <div class="dossier-content" id="markdown-content" data-content="<%= @report.summary %>">
-            <%# We'll use a JS library for markdown if possible, otherwise render raw for now %>
             <div class="veritas-report-text">
-              <%= simple_format @report.summary %>
+              <%= formatted_report_html(@report.summary) %>
             </div>
           </div>
         </div>
@@ -67,15 +66,3 @@
     </div>
   </div>
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script>
-  document.addEventListener("turbo:load", () => {
-    const contentDiv = document.getElementById('markdown-content');
-    if (contentDiv && window.marked) {
-      const rawText = contentDiv.dataset.content;
-      const html = marked.parse(rawText);
-      contentDiv.querySelector('.veritas-report-text').innerHTML = html;
-    }
-  });
-</script>
