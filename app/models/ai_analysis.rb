@@ -17,5 +17,7 @@ class AiAnalysis < ApplicationRecord
         color: sentiment_color || "#00f0ff"
       }
     })
+  rescue StandardError => e
+    Rails.logger.warn "[VERITAS Globe] Broadcast skipped for Article ##{article_id}: #{e.class} #{e.message}"
   end
 end
