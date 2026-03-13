@@ -7,6 +7,7 @@ Rails.application.routes.draw do
   root to: "pages#home"
   get "search", to: "pages#search"
   post "chat", to: "chats#create"
+  get "api/globe_data", to: "pages#globe_data"
 
   # -------------------------------------------------------
   # Read-only public resources

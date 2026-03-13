@@ -7,3 +7,10 @@ pin "@hotwired/stimulus-loading", to: "stimulus-loading.js"
 pin_all_from "app/javascript/controllers", under: "controllers"
 pin "bootstrap", to: "bootstrap.min.js", preload: true
 pin "@popperjs/core", to: "popper.js", preload: true
+
+# ActionCable — WebSocket consumer
+pin "@rails/actioncable", to: "actioncable.esm.js"
+pin_all_from "app/javascript/channels", under: "channels"
+
+# Globe.gl — 3D globe visualisation for the war room
+pin "globe.gl", to: "https://cdn.jsdelivr.net/npm/globe.gl@2.41.2/+esm"

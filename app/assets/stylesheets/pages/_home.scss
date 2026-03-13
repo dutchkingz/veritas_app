@@ -12,12 +12,72 @@
     overflow: hidden;
 }
 
+.veritas-war-room {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 56px);
+    overflow: hidden;
+}
+
 .veritas-dashboard {
     display: grid;
     grid-template-columns: 340px 1fr 280px;
     grid-template-rows: 1fr;
-    height: calc(100vh - 56px);
+    flex: 1;
+    min-height: 0;
     overflow: hidden;
+}
+
+// --- Perspective Selector Bar ---
+.veritas-perspective-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 16px;
+    height: 40px;
+    flex-shrink: 0;
+    background: rgba($veritas-surface, 0.9);
+    border-bottom: 1px solid $veritas-border;
+    overflow-x: auto;
+
+    &::-webkit-scrollbar { display: none; }
+
+    .perspective-label {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.6rem;
+        letter-spacing: 0.15em;
+        color: $veritas-text-dim;
+        margin-right: 4px;
+        white-space: nowrap;
+    }
+}
+
+.veritas-perspective-pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.08em;
+    padding: 3px 10px;
+    border-radius: 2px;
+    border: 1px solid color-mix(in srgb, var(--pill-color) 35%, transparent);
+    background: transparent;
+    color: color-mix(in srgb, var(--pill-color) 65%, #aaa);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.18s ease;
+
+    &:hover {
+        background: color-mix(in srgb, var(--pill-color) 12%, transparent);
+        border-color: var(--pill-color);
+        color: var(--pill-color);
+        box-shadow: 0 0 10px color-mix(in srgb, var(--pill-color) 25%, transparent);
+    }
+
+    &.is-active {
+        background: color-mix(in srgb, var(--pill-color) 18%, transparent);
+        border-color: var(--pill-color);
+        color: var(--pill-color);
+        box-shadow: 0 0 12px color-mix(in srgb, var(--pill-color) 30%, transparent);
+    }
 }
 
 // --- Navbar ---
@@ -223,6 +283,34 @@
         }
     }
 
+    &.is-active {
+        color: $veritas-white;
+        border-color: $veritas-cyan;
+        background: rgba($veritas-cyan, 0.08);
+        box-shadow: 0 0 20px rgba($veritas-cyan, 0.15);
+        transform: translateX(2px);
+
+        &::before {
+            opacity: 1;
+            background: $veritas-cyan;
+        }
+    }
+
+    .feed-card-open-link {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.7rem;
+        color: rgba($veritas-cyan, 0.4);
+        text-decoration: none;
+        padding: 1px 4px;
+        border-radius: 2px;
+        transition: color 0.2s ease;
+
+        &:hover {
+            color: $veritas-cyan;
+            background: rgba($veritas-cyan, 0.1);
+        }
+    }
+
     .feed-source {
         font-family: 'JetBrains Mono', monospace;
         font-size: 0.6rem;
@@ -301,6 +389,110 @@
         top: 50%;
         width: 24px;
         height: 1px;
+    }
+}
+
+// --- Globe Overlays ---
+.globe-overlay-stats {
+    position: absolute;
+    bottom: 56px;
+    left: 20px;
+    display: flex;
+    gap: 20px;
+    z-index: 5;
+    pointer-events: none;
+}
+
+.globe-timeline-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 48px;
+    background: linear-gradient(to top, rgba($veritas-bg, 0.95) 0%, rgba($veritas-bg, 0.5) 100%);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid rgba($veritas-cyan, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 20px;
+    z-index: 10;
+
+    .timeline-label {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.55rem;
+        letter-spacing: 0.15em;
+        color: $veritas-text-dim;
+        white-space: nowrap;
+    }
+
+    .timeline-date {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.65rem;
+        letter-spacing: 0.06em;
+        color: $veritas-cyan;
+        white-space: nowrap;
+        min-width: 128px;
+        text-align: center;
+        text-shadow: 0 0 8px rgba($veritas-cyan, 0.5);
+    }
+}
+
+.timeline-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.08em;
+    padding: 3px 9px;
+    border-radius: 2px;
+    border: 1px solid rgba($veritas-cyan, 0.25);
+    background: transparent;
+    color: rgba($veritas-cyan, 0.45);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.18s ease;
+
+    &:hover,
+    &.is-active {
+        border-color: $veritas-cyan;
+        color: $veritas-cyan;
+        background: rgba($veritas-cyan, 0.1);
+        box-shadow: 0 0 8px rgba($veritas-cyan, 0.2);
+    }
+}
+
+.timeline-scrubber {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 2px;
+    background: rgba($veritas-cyan, 0.15);
+    border-radius: 1px;
+    outline: none;
+    cursor: pointer;
+
+    &::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: $veritas-cyan;
+        box-shadow: 0 0 8px rgba($veritas-cyan, 0.7);
+        cursor: pointer;
+        transition: box-shadow 0.2s ease;
+
+        &:hover {
+            box-shadow: 0 0 16px rgba($veritas-cyan, 0.9);
+        }
+    }
+
+    &::-moz-range-thumb {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: $veritas-cyan;
+        box-shadow: 0 0 8px rgba($veritas-cyan, 0.7);
+        border: none;
+        cursor: pointer;
     }
 }
 
@@ -500,5 +692,97 @@
 
     to {
         transform: rotate(360deg);
+    }
+}
+
+// -------------------------------------------------------
+// Mobile Tab Bar (desktop: hidden)
+// -------------------------------------------------------
+.veritas-mobile-tabs {
+    display: none;
+}
+
+.mobile-tab {
+    flex: 1;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    background: transparent;
+    border: none;
+    border-right: 1px solid $veritas-border;
+    color: $veritas-text-dim;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    padding: 0;
+
+    &:last-child { border-right: none; }
+    &:hover { color: $veritas-text; background: rgba($veritas-border, 0.3); }
+
+    &.is-active {
+        color: $veritas-cyan;
+        background: rgba($veritas-cyan, 0.08);
+        border-bottom: 2px solid $veritas-cyan;
+    }
+}
+
+// -------------------------------------------------------
+// Mobile Responsive (≤ 767px)
+// -------------------------------------------------------
+@media (max-width: 767px) {
+    // Allow body to handle scroll on panels
+    .veritas-body { overflow: hidden; }
+
+    // Perspective bar wraps pills onto two lines if needed
+    .veritas-perspective-bar {
+        height: auto;
+        min-height: 40px;
+        flex-wrap: wrap;
+        padding: 6px 10px;
+        gap: 4px;
+    }
+
+    // Dashboard becomes a positioning context; panels layer on top of each other
+    .veritas-dashboard {
+        display: block;
+        position: relative;
+        flex: 1;
+        min-height: 0;
+    }
+
+    // All three panels fill the dashboard absolutely
+    .veritas-feed-sidebar,
+    .veritas-globe-section,
+    .veritas-status-sidebar {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: none;
+        overflow-y: auto;
+    }
+
+    // mobile-hidden utility toggled by mobile_tabs_controller.
+    // Sidebars start with this class in HTML; JS removes it to reveal them.
+    .mobile-hidden {
+        display: none !important;
+    }
+
+    // Crosshairs hidden on mobile (too small to matter)
+    .veritas-crosshair { display: none; }
+
+    // Show the tab bar
+    .veritas-mobile-tabs {
+        display: flex;
+        flex-shrink: 0;
+        height: 48px;
+        background: rgba($veritas-surface, 0.97);
+        border-top: 1px solid $veritas-border;
+    }
+
+    // Globe stats: move to top-left so they don't clash with timeline
+    .globe-overlay-stats {
+        bottom: auto;
+        top: 12px;
+        left: 12px;
     }
 }

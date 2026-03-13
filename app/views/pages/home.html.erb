@@ -1,8 +1,35 @@
+<!-- VERITAS War Room -->
+<div class="veritas-war-room">
+
+<!-- Perspective Selector Bar -->
+<div class="veritas-perspective-bar"
+     data-controller="perspective">
+  <span class="perspective-label">LENS</span>
+
+  <button class="veritas-perspective-pill"
+          style="--pill-color: #64748b;"
+          data-perspective-id="all"
+          data-perspective-target="pill"
+          data-action="click->perspective#select">
+    ALL_SOURCES
+  </button>
+
+  <% @perspective_filters.each do |filter| %>
+    <button class="veritas-perspective-pill"
+            style="--pill-color: <%= filter.color %>;"
+            data-perspective-id="<%= filter.id %>"
+            data-perspective-target="pill"
+            data-action="click->perspective#select">
+      <%= filter.name.upcase.tr(' ', '_') %>
+    </button>
+  <% end %>
+</div>
+
 <!-- VERITAS Main Dashboard -->
 <div class="veritas-dashboard">
 
   <!-- LEFT SIDEBAR: Live Intelligence Feed -->
-  <aside class="veritas-feed-sidebar">
+  <aside class="veritas-feed-sidebar mobile-hidden">
     <div class="veritas-panel-header">
       <span class="panel-icon">&#9654;</span>
       <span class="panel-title">LIVE_INTELLIGENCE_FEED</span>
@@ -11,11 +38,23 @@
 
     <div class="veritas-feed-list">
       <% @articles.each do |article| %>
-        <%= link_to article_path(article), class: "veritas-feed-card", data: { turbo: false } do %>
-          <!-- Source + Time Row -->
+        <div class="veritas-feed-card"
+             data-controller="feed-card"
+             data-feed-card-lat-value="<%= article.latitude %>"
+             data-feed-card-lng-value="<%= article.longitude %>"
+             data-feed-card-article-id-value="<%= article.id %>"
+             data-article-id="<%= article.id %>"
+             data-action="click->feed-card#select">
+
+          <!-- Source + Time + Open link Row -->
           <div class="d-flex justify-content-between align-items-center mb-1">
             <span class="feed-source"><%= article.source_name %></span>
-            <span class="feed-time"><%= time_ago_in_words(article.published_at) %> ago</span>
+            <div class="d-flex align-items-center gap-2">
+              <span class="feed-time"><%= time_ago_in_words(article.published_at) %> ago</span>
+              <%= link_to "→", article_path(article),
+                    class: "feed-card-open-link",
+                    data: { turbo: false, action: "click->feed-card#openArticle" } %>
+            </div>
           </div>
 
           <!-- Headline -->
@@ -31,43 +70,61 @@
               <%= article.latitude.round(2) %>°, <%= article.longitude.round(2) %>°
             </span>
           </div>
-        <% end %>
+        </div>
       <% end %>
     </div>
   </aside>
 
-  <!-- CENTER: 3D Globe Placeholder -->
+  <!-- CENTER: 3D Globe (Globe.gl) -->
   <section class="veritas-globe-section">
     <div class="veritas-crosshair top"></div>
     <div class="veritas-crosshair bottom"></div>
     <div class="veritas-crosshair left"></div>
     <div class="veritas-crosshair right"></div>
 
-    <div class="text-center">
-      <div class="globe-offline-icon mb-3">
-        <i class="fa fa-globe fa-3x veritas-spin-slow text-primary"></i>
+    <div id="globe-container"
+         data-controller="globe"
+         data-globe-data-url-value="/api/globe_data"
+         style="width: 100%; height: 100%;">
+    </div>
+
+    <!-- Overlay stats (bottom-left of globe, above timeline) -->
+    <div class="globe-overlay-stats">
+      <div class="globe-stat">
+        <span class="stat-value text-primary"><%= @articles.count %></span>
+        <span class="stat-label">SIGNALS</span>
       </div>
-      <h2 class="globe-offline-title">3D WAR ROOM</h2>
-      <p class="globe-offline-subtitle">Awaiting Phase 3: Globe.gl Integration</p>
-      <div class="globe-stats mt-4 d-flex justify-content-center gap-4">
-        <div class="globe-stat">
-          <span class="stat-value text-primary"><%= @articles.count %></span>
-          <span class="stat-label">SIGNALS</span>
-        </div>
-        <div class="globe-stat">
-          <span class="stat-value text-success">5</span>
-          <span class="stat-label">REGIONS</span>
-        </div>
-        <div class="globe-stat">
-          <span class="stat-value text-warning">3</span>
-          <span class="stat-label">THREAT ZONES</span>
-        </div>
+      <div class="globe-stat">
+        <span class="stat-value text-success"><%= Region.count %></span>
+        <span class="stat-label">REGIONS</span>
       </div>
+      <div class="globe-stat">
+        <span class="stat-value text-warning"><%= NarrativeArc.count %></span>
+        <span class="stat-label">ARCS</span>
+      </div>
+    </div>
+
+    <!-- Timeline Scrubber -->
+    <div class="globe-timeline-bar"
+         data-controller="timeline"
+         data-timeline-min-value="<%= @timeline_min %>"
+         data-timeline-max-value="<%= @timeline_max %>">
+      <span class="timeline-label">TIMELINE</span>
+      <button class="timeline-btn" data-action="click->timeline#rewind" title="Jump to oldest">◄◄</button>
+      <input type="range"
+             class="timeline-scrubber"
+             data-timeline-target="scrubber"
+             data-action="input->timeline#scrub"
+             min="0" max="100" value="100">
+      <span class="timeline-date" data-timeline-target="date">LIVE</span>
+      <button class="timeline-btn"
+              data-timeline-target="liveBtn"
+              data-action="click->timeline#goLive">LIVE</button>
     </div>
   </section>
 
   <!-- RIGHT SIDEBAR: Status Panel -->
-  <aside class="veritas-status-sidebar">
+  <aside class="veritas-status-sidebar mobile-hidden">
     <div class="veritas-panel-header">
       <span class="panel-icon">&#9632;</span>
       <span class="panel-title">THREAT_MATRIX</span>
@@ -103,7 +160,7 @@
       </div>
       <div class="veritas-sys-row">
         <span class="sys-label">WEBSOCKET</span>
-        <span class="sys-value text-warning">PENDING</span>
+        <span class="sys-value text-success">ONLINE</span>
       </div>
       <div class="veritas-sys-row">
         <span class="sys-label">DATA FEED</span>
@@ -166,4 +223,29 @@
     </div>
   </aside>
 
-</div>
+</div><!-- .veritas-dashboard -->
+
+<!-- Mobile Tab Bar (hidden on desktop) -->
+<nav class="veritas-mobile-tabs"
+     data-controller="mobile-tabs">
+  <button class="mobile-tab is-active"
+          data-mobile-tabs-target="tab"
+          data-panel="globe"
+          data-action="click->mobile-tabs#show">
+    ◎ GLOBE
+  </button>
+  <button class="mobile-tab"
+          data-mobile-tabs-target="tab"
+          data-panel="feed"
+          data-action="click->mobile-tabs#show">
+    ⊞ INTEL
+  </button>
+  <button class="mobile-tab"
+          data-mobile-tabs-target="tab"
+          data-panel="threat"
+          data-action="click->mobile-tabs#show">
+    ◈ THREAT
+  </button>
+</nav>
+
+</div><!-- .veritas-war-room -->

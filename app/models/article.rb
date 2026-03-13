@@ -7,6 +7,8 @@ class Article < ApplicationRecord
   has_many :narrative_arcs, dependent: :destroy
   has_many :saved_articles, dependent: :destroy
 
+  after_create_commit :broadcast_to_globe
+
   # ----------------------------------------------------------
   # Scopes for Regional Intelligence Analysis
   # ----------------------------------------------------------
@@ -18,4 +20,21 @@ class Article < ApplicationRecord
   scope :by_region_name, ->(name) {
     joins(:region).where("LOWER(regions.name) = LOWER(?)", name)
   }
+
+  private
+
+  def broadcast_to_globe
+    ActionCable.server.broadcast("globe", {
+      type: "new_point",
+      point: {
+        id:       id,
+        lat:      latitude,
+        lng:      longitude,
+        size:     0.4,
+        color:    ai_analysis&.sentiment_color || "#00f0ff",
+        headline: headline,
+        source:   source_name
+      }
+    })
+  end
 end
