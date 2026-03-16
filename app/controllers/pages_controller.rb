@@ -9,6 +9,12 @@ class PagesController < ApplicationController
     @resource = User.new
     @resource_name = :user
     @devise_mapping = Devise.mappings[:user]
+
+    # Top stories for the hero ticker
+    @top_stories = Article.includes(:ai_analysis)
+                          .where.not(ai_analysis: { threat_level: nil })
+                          .order('ai_analysis.threat_level DESC, published_at DESC')
+                          .limit(10)
   end
 
   def home

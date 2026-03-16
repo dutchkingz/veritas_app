@@ -5,58 +5,80 @@
     <span class="brand-sub">// WAR ROOM</span>
   </a>
 
-  <div class="navbar-center d-none d-md-flex align-items-center gap-4 flex-grow-1 justify-content-center">
-    <div class="veritas-status me-3">
+  <div class="navbar-center d-none d-md-flex align-items-center gap-5 flex-grow-1 justify-content-center">
+    <!-- System Status (Visible Always but styled differently for Welcome) -->
+    <div class="veritas-status <%= (controller_name == 'pages' && action_name == 'welcome') ? 'hero-status-widget' : '' %>">
       <span class="status-dot live"></span>
       <span class="status-label">SYSTEM ONLINE</span>
     </div>
-    
-    <!-- Semantic Search Bar -->
-    <form action="<%= search_path %>" method="get" class="d-flex align-items-center" style="width: 400px;">
-      <div class="input-group">
-        <span class="input-group-text bg-transparent border-info text-info" style="border-right: none;">
-          <i class="fa fa-search"></i>
-        </span>
-        <input type="text" name="q" class="form-control bg-transparent border-info text-white shadow-none" placeholder="Semantic Threat Search (e.g. 'maritime escalation')" value="<%= params[:q] %>" style="border-left: none; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;" required>
-        <button class="btn btn-outline-info veritas-btn-outline" type="submit" style="border-left: none;">
-          <i class="fa fa-arrow-right"></i>
-        </button>
+
+    <% if controller_name == "pages" && action_name == "welcome" %>
+      <!-- High-Trust Data Widgets for Welcome Page -->
+      <div class="d-flex align-items-center gap-4 hero-meta-widgets">
+        <div data-controller="ping" class="d-flex align-items-center gap-2 text-monospace">
+          <span class="widget-label">LATENCY:</span>
+          <span data-ping-target="output" class="widget-value">--ms</span>
+        </div>
+        
+        <div data-controller="time" class="d-flex align-items-center gap-2 text-monospace">
+          <span class="widget-label">U_TIME:</span>
+          <span data-time-target="output" class="widget-value">00:00:00</span>
+        </div>
+
+        <div data-controller="weather" class="d-flex align-items-center gap-2 text-monospace">
+          <span class="widget-label">ENV_SIG:</span>
+          <span data-weather-target="output" class="widget-value">Wait...</span>
+        </div>
       </div>
-    </form>
+    <% else %>
+      <!-- Semantic Search Bar (Hidden on Welcome) -->
+      <form action="<%= search_path %>" method="get" class="d-flex align-items-center" style="width: 400px;">
+        <div class="input-group">
+          <span class="input-group-text bg-transparent border-info text-info" style="border-right: none;">
+            <i class="fa fa-search"></i>
+          </span>
+          <input type="text" name="q" class="form-control bg-transparent border-info text-white shadow-none" placeholder="Semantic Threat Search (e.g. 'maritime escalation')" value="<%= params[:q] %>" style="border-left: none; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;" required>
+          <button class="btn btn-outline-info veritas-btn-outline" type="submit" style="border-left: none;">
+            <i class="fa fa-arrow-right"></i>
+          </button>
+        </div>
+      </form>
+    <% end %>
   </div>
 
   <div class="d-flex align-items-center gap-4">
-    <!-- Briefings Link -->
-    <%= link_to briefings_path,
-          class: "d-none d-lg-flex align-items-center gap-2",
-          style: "text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #94a3b8; letter-spacing: 1px; transition: color 0.2s;",
-          data: { turbo: false } do %>
-      <i class="fa fa-file-shield"></i>
-      BRIEFINGS
-    <% end %>
-
-    <!-- Convergence Alerts Link -->
-    <% convergence_count = NarrativeConvergence.active.count rescue 0 %>
-    <%= link_to narrative_convergences_path,
-          class: "d-none d-lg-flex align-items-center gap-2",
-          style: "text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #{convergence_count > 0 ? '#ef4444' : '#475569'}; letter-spacing: 1px; transition: color 0.2s;",
-          data: { turbo: false } do %>
-      <i class="fa fa-radiation" style="<%= convergence_count > 0 ? 'animation: pulse 1.5s infinite;' : '' %>"></i>
-      CONVERGENCES
-      <% if convergence_count > 0 %>
-        <span style="background: #ef4444; color: white; font-size: 0.6rem; padding: 1px 5px; border-radius: 3px;"><%= convergence_count %></span>
+    <% unless controller_name == "pages" && action_name == "welcome" %>
+      <!-- Briefings & Convergences (Hidden on Welcome) -->
+      <%= link_to briefings_path,
+            class: "d-none d-lg-flex align-items-center gap-2",
+            style: "text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #94a3b8; letter-spacing: 1px; transition: color 0.2s;",
+            data: { turbo: false } do %>
+        <i class="fa fa-file-shield"></i>
+        BRIEFINGS
       <% end %>
-    <% end %>
 
-    <!-- Time & Weather Widget -->
-    <div class="d-flex align-items-center gap-3 veritas-meta">
-      <div data-controller="time" class="d-flex align-items-center text-monospace">
-        <span data-time-target="output">00:00:00</span>
+      <% convergence_count = NarrativeConvergence.active.count rescue 0 %>
+      <%= link_to narrative_convergences_path,
+            class: "d-none d-lg-flex align-items-center gap-2",
+            style: "text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #{convergence_count > 0 ? '#ef4444' : '#475569'}; letter-spacing: 1px; transition: color 0.2s;",
+            data: { turbo: false } do %>
+        <i class="fa fa-radiation" style="<%= convergence_count > 0 ? 'animation: pulse 1.5s infinite;' : '' %>"></i>
+        CONVERGENCES
+        <% if convergence_count > 0 %>
+          <span style="background: #ef4444; color: white; font-size: 0.6rem; padding: 1px 5px; border-radius: 3px;"><%= convergence_count %></span>
+        <% end %>
+      <% end %>
+
+      <!-- Standard Time & Weather for non-welcome pages -->
+      <div class="d-flex align-items-center gap-3 veritas-meta">
+        <div data-controller="time" class="d-flex align-items-center text-monospace">
+          <span data-time-target="output">00:00:00</span>
+        </div>
+        <div data-controller="weather" class="d-flex align-items-center text-monospace text-muted">
+          <span data-weather-target="output">Wait...</span>
+        </div>
       </div>
-      <div data-controller="weather" class="d-flex align-items-center text-monospace text-muted">
-        <span data-weather-target="output">Wait...</span>
-      </div>
-    </div>
+    <% end %>
 
     <!-- User Section -->
     <div class="d-flex align-items-center gap-3">

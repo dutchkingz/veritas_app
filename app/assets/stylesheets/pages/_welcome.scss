@@ -22,18 +22,191 @@ $welcome-glass: rgba(15, 23, 42, 0.6);
   align-items: center;
   justify-content: center;
 
+  // Targeting banner refinements from welcome wrapper
+  .welcome-banner-center {
+    .ticker-label-static {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.4rem;
+      letter-spacing: 0.5em;
+      color: $welcome-accent;
+      text-shadow: 0 0 15px rgba($welcome-accent, 0.5);
+      font-weight: 700;
+      position: relative;
+      padding: 5px 20px;
+      overflow: hidden;
+
+      &::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, 
+          transparent 0%, 
+          rgba($welcome-accent, 0.1) 20%, 
+          rgba($welcome-accent, 0.15) 50%, 
+          rgba($welcome-accent, 0.1) 80%, 
+          transparent 100%
+        );
+        transform: skewX(-20deg);
+        border: 1px solid rgba($welcome-accent, 0.3);
+        box-shadow: inset 0 0 20px rgba($welcome-accent, 0.1);
+        z-index: -1;
+        animation: welcome-glimmer 3s infinite linear;
+      }
+
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: $welcome-accent;
+        box-shadow: 0 0 15px $welcome-accent, 0 0 5px $welcome-accent;
+      }
+    }
+  }
+
+  .hero-status-widget {
+    padding: 0 15px;
+    border-right: 1px solid rgba($welcome-accent, 0.2);
+    height: 100%;
+    display: flex;
+    align-items: center;
+    
+    .status-label {
+      font-size: 1.2rem !important;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+    }
+  }
+
+  .hero-meta-widgets {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+
+    .widget-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.8rem;
+      color: $welcome-accent-dim;
+      letter-spacing: 0.1em;
+    }
+
+    .widget-value {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.6rem !important; // Doubled scale as requested before
+      font-weight: 700;
+      color: $welcome-accent !important;
+      text-shadow: 0 0 10px rgba($welcome-accent, 0.3);
+    }
+  }
+
+  // --- TOP TICKER ---
+  .welcome-ticker {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 80px;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(15px);
+    border-bottom: 2px solid $welcome-border;
+    display: flex;
+    align-items: center;
+    z-index: 100;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.5rem;
+
+    .ticker-label {
+      padding: 0 30px;
+      color: $welcome-bg;
+      background: $welcome-accent;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      font-weight: bold;
+      letter-spacing: 0.15em;
+      white-space: nowrap;
+    }
+
+    .ticker-wrapper {
+      flex-grow: 1;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+    }
+
+    .ticker-content {
+      display: flex;
+      white-space: nowrap;
+      animation: ticker-slide 80s linear infinite;
+      padding-left: 20px;
+    }
+
+    .ticker-item {
+      margin-right: 80px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+
+      .ticker-source { color: $welcome-accent; }
+      .ticker-text { color: $welcome-text; opacity: 0.9; }
+      .ticker-threat { font-weight: bold; }
+    }
+
+    .ticker-date {
+      padding: 0 30px;
+      color: $welcome-text-dim;
+      border-left: 1px solid $welcome-border;
+      font-size: 0.8rem;
+    }
+  }
+
+  // --- STATUS WIDGETS ---
+  .welcome-status-widgets {
+    position: absolute;
+    bottom: 80px;
+    left: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    z-index: 10;
+
+    .widget {
+      display: flex;
+      flex-direction: column;
+      
+      .widget-label {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.55rem;
+        color: $welcome-accent-dim;
+        letter-spacing: 0.25em;
+        margin-bottom: 4px;
+      }
+
+      .widget-value {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 1rem;
+        color: $welcome-text;
+        letter-spacing: 0.1em;
+      }
+    }
+  }
+
   // --- BACKGROUND ELEMENTS ---
   .welcome-globe-container {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 150vw;
-    height: 150vh;
+    width: 100vw;
+    height: 100vh;
     z-index: 1;
-    opacity: 0.8;
-    filter: blur(0px); // Clearer
+    opacity: 1; // High visibility
     pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .welcome-overlay {
@@ -116,6 +289,30 @@ $welcome-glass: rgba(15, 23, 42, 0.6);
     border-radius: 4px;
     padding: 2.5rem;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+
+    &.shrunk-card {
+      max-width: 320px;
+      padding: 1.2rem 1.8rem;
+      
+      .auth-header { 
+        margin-bottom: 0.8rem; 
+        .auth-status { transform: scale(0.9); }
+      }
+      .welcome-input-group { 
+        margin-bottom: 0.8rem;
+        label { font-size: 0.55rem; }
+        .welcome-input { padding: 0.5rem 0.8rem; font-size: 0.8rem; }
+      }
+      .auth-actions { margin-top: 1rem; }
+      .auth-footer { 
+        margin-top: 1.2rem;
+        font-size: 0.55rem;
+      }
+      .welcome-submit-btn {
+        padding: 0.75rem;
+        font-size: 0.85rem;
+      }
+    }
 
     .auth-header {
       margin-bottom: 2rem;
@@ -316,6 +513,16 @@ $welcome-glass: rgba(15, 23, 42, 0.6);
 }
 
 // --- ANIMATIONS ---
+@keyframes welcome-glimmer {
+  0% { transform: skewX(-20deg) translateX(-100%); }
+  100% { transform: skewX(-20deg) translateX(100%); }
+}
+
+@keyframes ticker-slide {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
 @keyframes welcome-pulse {
   0% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.4; transform: scale(0.8); }
