@@ -1,8 +1,17 @@
 class PagesController < ApplicationController
   DEFAULT_ARC_COLOR = "#00f0ff".freeze
+  skip_before_action :authenticate_user!, only: [:home, :globe_data, :search]
 
   def home
-    @articles            = Article.includes(:country, :region).order(published_at: :desc)
+    # Hot articles: highest threat level first, then trust score (lower = more suspicious)
+    @hot_articles = Article
+      .includes(:country, :region, :ai_analysis)
+      .where.not(ai_analysis: { threat_level: nil })
+      .order('ai_analysis.threat_level DESC, ai_analysis.trust_score ASC, articles.published_at DESC')
+      .limit(15)
+    
+    # Fallback: all articles ordered by date (if not enough hot articles)
+    @articles = Article.includes(:country, :region).order(published_at: :desc).limit(50)
     @signal_count        = Article.count
     @regions             = Region.order(:name)
     @perspective_filters = PerspectiveFilter.order(:name)
@@ -14,10 +23,32 @@ class PagesController < ApplicationController
   def globe_data
     perspective = PerspectiveFilter.find_by(id: params[:perspective_id])
     to_time     = params[:to].present? ? Time.at(params[:to].to_i) : nil
+    view_mode   = params[:view] || "arcs"  # arcs | segments
+    search_query = params[:search_query]
 
     scope  = Article.includes(:country, :region, :ai_analysis)
     scope  = scope.where("published_at <= ?", to_time) if to_time
     scope  = scope.order(published_at: :desc)
+
+    # Filter by search query if provided
+    if search_query.present?
+      # Use pgvector similarity search for semantic matching
+      begin
+        vector = OpenRouterClient.new.embed(search_query)
+        if vector.present?
+          # Get semantically similar articles
+          similar_ids = Article.nearest_neighbors(:embedding, vector, distance: "cosine")
+                               .limit(100)
+                               .pluck(:id)
+          scope = scope.where(id: similar_ids)
+        end
+      rescue StandardError => e
+        Rails.logger.warn "[globe_data] Semantic search failed: #{e.message}"
+        # Fallback to text search
+        scope = scope.where("headline ILIKE ?", "%#{search_query}%")
+                     .or(scope.where("content ILIKE ?", "%#{search_query}%"))
+      end
+    end
 
     filtered_articles = scope.limit(250).select do |article|
       perspective.nil? || perspective.matches_source?(article.source_name)
@@ -39,14 +70,47 @@ class PagesController < ApplicationController
       }
     end
 
-    arcs = build_globe_arcs(filtered_articles, perspective, to_time)
+    arcs = if view_mode == "segments"
+             build_route_segments(filtered_articles, perspective, to_time)
+           else
+             build_globe_arcs(filtered_articles, perspective, to_time)
+           end
 
-    regions = Region.order(:id).map do |r|
+    # Dynamic regions: countries that actually have articles
+    # Use country coordinates (hardcoded for top countries)
+    country_coordinates = {
+      'UKR' => [48.3794, 31.1656],   # Ukraine
+      'DEU' => [51.1657, 10.4515],   # Germany
+      'CHN' => [35.8617, 104.1954],  # China
+      'ISR' => [31.0461, 34.8516],   # Israel
+      'USA' => [37.0902, -95.7129],  # United States
+      'RUS' => [61.5240, 105.3188], # Russia
+      'FRA' => [46.2276, 2.2137],    # France
+      'GBR' => [55.3781, -3.4360],   # United Kingdom
+      'IRN' => [32.4279, 53.6880],   # Iran
+      'IND' => [20.5937, 78.9629]    # India
+    }
+    
+    countries_with_articles = Country
+      .joins(:articles)
+      .select('countries.*, COUNT(articles.id) as article_count')
+      .group('countries.id')
+      .having('COUNT(articles.id) > 0')
+      .order('article_count DESC')
+      .limit(25)  # Top 25 countries by article count
+    
+    regions = countries_with_articles.map do |c|
+      article_count = c.attributes['article_count'].to_i
+      threat = [article_count, 10].min
+      coords = country_coordinates[c.iso_code] || [0.0, 0.0]
+      
       {
-        lat:    r.latitude,
-        lng:    r.longitude,
-        name:   r.name,
-        threat: r.threat_level.to_i
+        lat:    coords[0],
+        lng:    coords[1],
+        name:   c.name,
+        threat: threat,
+        radius: article_count > 0 ? [Math.sqrt(article_count) * 0.25, 1.5].min : 0.3,
+        articleCount: article_count
       }
     end
 
@@ -85,6 +149,65 @@ class PagesController < ApplicationController
   end
 
   private
+
+  def build_route_segments(filtered_articles, perspective, to_time)
+    # Fetch narrative routes with their hops, filtered by time and perspective
+    scope = NarrativeRoute.joins(narrative_arc: :article)
+                          .includes(narrative_arc: { article: :ai_analysis })
+                          .where.not(hops: nil)
+                          .order("narrative_routes.created_at DESC")
+    
+    # Filter by timestamp if provided
+    if to_time
+      scope = scope.where("articles.published_at <= ?", to_time)
+    end
+    
+    # Filter by perspective if provided
+    if perspective
+      scope = scope.select do |route|
+        perspective.matches_source?(route.narrative_arc.article.source_name)
+      end
+    else
+      scope = scope.limit(100)
+    end
+
+    segments = []
+    
+    scope.each do |route|
+      route_data = route.as_globe_data
+      next unless route_data[:segments] && route_data[:segments].any?
+      
+      article = route.narrative_arc.article
+      route_metadata = {
+        routeId: route.id,
+        routeName: route.name,
+        arcId: route.narrative_arc_id,
+        manipulationScore: route.manipulation_score,
+        amplificationScore: route.amplification_score,
+        totalHops: route.total_hops,
+        isComplete: route.is_complete,
+        articleId: article&.id,
+        headline: article&.headline,
+        source: article&.source_name,
+        originCountry: route.narrative_arc.origin_country,
+        targetCountry: route.narrative_arc.target_country
+      }
+      
+      route_data[:segments].each do |segment|
+        # Add route metadata to each segment for hover/click events
+        segments << segment.merge(route_metadata).merge(
+          # Ensure required fields for globe rendering
+          color: segment[:color] || '#00f0ff',
+          startLat: segment[:startLat],
+          startLng: segment[:startLng],
+          endLat: segment[:endLat],
+          endLng: segment[:endLng]
+        )
+      end
+    end
+    
+    segments.first(200) # Limit total segments for performance
+  end
 
   def build_globe_arcs(filtered_articles, perspective, to_time)
     article_flow_arcs = build_article_flow_arcs(filtered_articles, perspective)

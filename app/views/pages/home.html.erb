@@ -31,13 +31,13 @@
   <!-- LEFT SIDEBAR: Live Intelligence Feed -->
   <aside class="veritas-feed-sidebar mobile-hidden">
     <div class="veritas-panel-header">
-      <span class="panel-icon">&#9654;</span>
-      <span class="panel-title">LIVE_INTELLIGENCE_FEED</span>
-      <span class="panel-badge"><%= @signal_count %> SIGNALS</span>
+      <span class="panel-icon">🔥</span>
+      <span class="panel-title">HIGH‑THREAT SIGNALS</span>
+      <span class="panel-badge"><%= @hot_articles.count %> HOT</span>
     </div>
 
     <div class="veritas-feed-list">
-      <% @articles.each do |article| %>
+      <% @hot_articles.each do |article| %>
         <div class="veritas-feed-card"
              data-controller="feed-card"
              data-feed-card-lat-value="<%= article.latitude %>"
@@ -46,10 +46,15 @@
              data-article-id="<%= article.id %>"
              data-action="click->feed-card#select">
 
-          <!-- Source + Time + Open link Row -->
+          <!-- Source + Time + Threat + Open link Row -->
           <div class="d-flex justify-content-between align-items-center mb-1">
             <span class="feed-source"><%= article.source_name %></span>
             <div class="d-flex align-items-center gap-2">
+              <% if article.ai_analysis&.threat_level %>
+                <span class="feed-threat" style="color: <%= article.ai_analysis.threat_color %>;">
+                  THREAT <%= article.ai_analysis.threat_level %>
+                </span>
+              <% end %>
               <span class="feed-time"><%= time_ago_in_words(article.published_at) %> ago</span>
               <%= link_to "→", article_path(article),
                     class: "feed-card-open-link",
@@ -220,6 +225,22 @@
                class="veritas-analysis-result d-none"></div>
         </div>
       <% end %>
+
+      <hr class="veritas-divider mt-4 mb-3">
+      
+      <div class="veritas-panel-header mb-2">
+        <span class="panel-icon">⏱️</span>
+        <span class="panel-title">HOP_TIMELINE</span>
+      </div>
+      
+      <div id="hop-timeline" class="hop-timeline-container">
+        <div class="hop-timeline-empty">
+          Click on a narrative segment to view hop details
+        </div>
+        <div id="hop-details" class="hop-details d-none">
+          <!-- Filled by JavaScript -->
+        </div>
+      </div>
     </div>
   </aside>
 

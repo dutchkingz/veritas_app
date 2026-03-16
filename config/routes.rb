@@ -7,7 +7,11 @@ Rails.application.routes.draw do
   root to: "pages#home"
   get "search", to: "pages#search"
   post "chat", to: "chats#create"
+  
+  # Globe & Search APIs
   get "api/globe_data", to: "pages#globe_data"
+  get "api/trending_topics", to: "api/trending_topics#index"
+  get "api/search_suggestions", to: "api/search_suggestions#index"
 
   # -------------------------------------------------------
   # Read-only public resources
@@ -53,6 +57,10 @@ Rails.application.routes.draw do
         patch :toggle_admin
       end
     end
+    
+    # Narrative route generation endpoint
+    post "narrative_routes/generate", to: "narrative_routes#generate", as: :narrative_routes_generate
+    
     resources :articles, controller: "feature_previews", defaults: { feature: "admin_articles" }
     resources :regions, controller: "feature_previews", defaults: { feature: "admin_regions" }
     resources :countries, controller: "feature_previews", defaults: { feature: "admin_countries" }

@@ -44,3 +44,5 @@
 .DS_Store
 
 .env
+vendor/bundle
+vendor/bundle

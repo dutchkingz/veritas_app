@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VERITAS Globe - Packet Animation Test</title>
+    <script src="https://unpkg.com/three@0.154.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/globe.gl@2.29.0/dist/globe.gl.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; background: #0a0c14; color: #e0e6ed; font-family: 'JetBrains Mono', monospace; }
+        #globe-container { width: 100vw; height: 100vh; }
+        #sidebar {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            background: rgba(10, 12, 20, 0.92);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.15);
+            z-index: 1000;
+        }
+        .hop-details { margin-top: 20px; }
+        .btn { background: #00f0ff; color: #0a0c14; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        .btn:hover { background: #00c0ff; }
+        .segment-info { margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div id="globe-container"></div>
+    <div id="sidebar">
+        <h3 style="color: #00f0ff;">VERITAS Globe Test</h3>
+        <p>Packet animation and segment hover test.</p>
+        <button class="btn" onclick="loadSegments()">Load Test Segments</button>
+        <button class="btn" onclick="toggleAnimation()">Toggle Animation</button>
+        <div id="hop-details" class="hop-details"></div>
+    </div>
+
+    <script>
+        // Mock segment data (same as from our database)
+        const testSegments = [
+            {
+                startLat: 55.7558, startLng: 37.6173,
+                endLat: 47.4979, endLng: 19.0402,
+                color: '#22c55e',
+                sourceName: 'RT',
+                targetSourceName: 'Sputnik',
+                delaySeconds: 0,
+                publishedAt: '2026-03-15T10:00:00Z',
+                segmentIndex: 0,
+                totalSegments: 2,
+                routeName: 'Test Route: RT → Sputnik → Fox Blog',
+                routeId: 1,
+                arcId: 11,
+                manipulationScore: 0.0,
+                amplificationScore: 0.0,
+                totalHops: 0,
+                isComplete: true,
+                articleId: 395,
+                headline: 'Iran war reality check: Why the US miscalculated Tehran’s political resilience',
+                source: 'RT',
+                originCountry: 'Russia',
+                targetCountry: 'United States'
+            },
+            {
+                startLat: 47.4979, startLng: 19.0402,
+                endLat: 40.7128, endLng: -74.0060,
+                color: '#f59e0b',
+                sourceName: 'Sputnik',
+                targetSourceName: 'Fox Blog',
+                delaySeconds: 1800,
+                publishedAt: '2026-03-15T10:30:00Z',
+                segmentIndex: 1,
+                totalSegments: 2,
+                routeName: 'Test Route: RT → Sputnik → Fox Blog',
+                routeId: 1,
+                arcId: 11,
+                manipulationScore: 0.0,
+                amplificationScore: 0.0,
+                totalHops: 0,
+                isComplete: true,
+                articleId: 395,
+                headline: 'Iran war reality check: Why the US miscalculated Tehran’s political resilience',
+                source: 'RT',
+                originCountry: 'Russia',
+                targetCountry: 'United States'
+            },
+            {
+                startLat: 33.7490, startLng: -84.3880,
+                endLat: 51.5074, endLng: -0.1278,
+                color: '#22c55e',
+                sourceName: 'CNN',
+                targetSourceName: 'BBC',
+                delaySeconds: 0,
+                publishedAt: '2026-03-15T12:00:00Z',
+                segmentIndex: 0,
+                totalSegments: 1,
+                routeName: 'Two-Hop Test: CNN → BBC',
+                routeId: 2,
+                arcId: 11,
+                manipulationScore: 0.0,
+                amplificationScore: 0.0,
+                totalHops: 0,
+                isComplete: true,
+                articleId: 395,
+                headline: 'Iran war reality check: Why the US miscalculated Tehran’s political resilience',
+                source: 'RT',
+                originCountry: 'Russia',
+                targetCountry: 'United States'
+            }
+        ];
+
+        let globe = null;
+        let packetGroup = null;
+        let packets = [];
+        let animationId = null;
+        let segmentsData = [];
+
+        // Fetch segments from API
+        async function fetchSegments() {
+            try {
+                const response = await fetch('http://localhost:3001/api/globe_data?view=segments');
+                const data = await response.json();
+                segmentsData = data.arcs || [];
+                console.log('✅ Loaded', segmentsData.length, 'segments from API');
+                return segmentsData;
+            } catch (err) {
+                console.error('❌ Failed to fetch segments:', err);
+                return [];
+            }
+        }
+
+        function initGlobe() {
+            const container = document.getElementById('globe-container');
+            
+            globe = Globe()
+                .globeImageUrl('//unpkg.com/three-globe/example/img/earth-night.jpg')
+                .bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
+                .backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
+                .width(container.clientWidth)
+                .height(container.clientHeight)
+                .atmosphereColor('#00f0ff')
+                .atmosphereAltitude(0.25)
+                .arcColor('color')
+                .arcDashLength(0.4)
+                .arcDashGap(0.2)
+                .arcDashAnimateTime(6400)
+                .arcStroke(0.5)
+                .onArcHover(arc => onArcHover(arc))
+                .onArcClick(arc => onArcClick(arc))
+                .arcLabel(arc => `
+                    <div style="background: rgba(10,12,20,0.92); border: 1px solid rgba(0,240,255,0.3); border-radius: 4px; padding: 8px 12px; font-family: monospace; font-size: 11px; color: #e0e6ed;">
+                        <div style="color:#00f0ff;font-size:9px;margin-bottom:4px;">NARRATIVE SEGMENT</div>
+                        <div>${arc.sourceName} → ${arc.targetSourceName}</div>
+                        <div style="color:#6b7280;font-size:9px;margin-top:4px;">Hop ${arc.segmentIndex + 1} of ${arc.totalSegments}</div>
+                    </div>
+                `)(container);
+
+            const controls = globe.controls();
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.4;
+            controls.enableZoom = true;
+            controls.minDistance = 150;
+            controls.maxDistance = 500;
+
+            globe.pointOfView({ lat: 20, lng: 10, altitude: 2.5 }, 0);
+        }
+
+        async function loadSegments() {
+            if (!globe) return;
+            
+            const segments = await fetchSegments();
+            if (segments.length === 0) {
+                document.getElementById('hop-details').innerHTML = '<div class="segment-info" style="color: #ff3a5e;">⚠️ No segments loaded from API. Check console for errors.</div>';
+                return;
+            }
+            
+            globe.arcsData(segments);
+            initPacketAnimation();
+            
+            document.getElementById('hop-details').innerHTML = `<div class="segment-info">✅ Loaded <strong>${segments.length}</strong> segments from API. Click on any arc to see details.</div>`;
+        }
+
+        function initPacketAnimation() {
+            if (!globe || !window.THREE) return;
+            
+            const scene = globe.scene();
+            if (!scene) return;
+            
+            // Remove previous packet group
+            if (packetGroup) {
+                scene.remove(packetGroup);
+                packetGroup = null;
+            }
+            
+            packetGroup = new THREE.Group();
+            scene.add(packetGroup);
+            packets = [];
+            
+            const arcs = globe.arcsData();
+            arcs.forEach(segment => {
+                const geometry = new THREE.SphereGeometry(0.08, 8, 8);
+                const material = new THREE.MeshBasicMaterial({
+                    color: segment.color || '#00f0ff',
+                    transparent: true,
+                    opacity: 0.9
+                });
+                const sphere = new THREE.Mesh(geometry, material);
+                
+                packets.push({
+                    segment,
+                    mesh: sphere,
+                    progress: Math.random() * 0.8 + 0.1,
+                    speed: 0.00015 * (segment.delaySeconds ? Math.max(0.5, Math.min(2.0, 1800 / segment.delaySeconds)) : 1.0)
+                });
+                
+                packetGroup.add(sphere);
+            });
+            
+            if (animationId) cancelAnimationFrame(animationId);
+            animatePackets();
+        }
+
+        function animatePackets() {
+            if (!globe || !packetGroup) return;
+            
+            packets.forEach(packet => {
+                packet.progress += packet.speed;
+                if (packet.progress > 1.0) packet.progress = 0.0;
+                
+                const startLat = packet.segment.startLat;
+                const startLng = packet.segment.startLng;
+                const endLat = packet.segment.endLat;
+                const endLng = packet.segment.endLng;
+                
+                const lat = startLat + (endLat - startLat) * packet.progress;
+                const lng = startLng + (endLng - startLng) * packet.progress;
+                
+                const radius = globe.getGlobeRadius() || 100;
+                const phi = (90 - lat) * Math.PI / 180;
+                const theta = (lng + 180) * Math.PI / 180;
+                
+                const x = -radius * Math.sin(phi) * Math.cos(theta);
+                const y = radius * Math.cos(phi);
+                const z = radius * Math.sin(phi) * Math.sin(theta);
+                
+                const elevation = 1.02;
+                packet.mesh.position.set(x * elevation, y * elevation, z * elevation);
+            });
+            
+            animationId = requestAnimationFrame(animatePackets);
+        }
+
+        function toggleAnimation() {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+                document.getElementById('hop-details').innerHTML = '<div class="segment-info">Animation paused.</div>';
+            } else {
+                animatePackets();
+                document.getElementById('hop-details').innerHTML = '<div class="segment-info">Animation resumed.</div>';
+            }
+        }
+
+        function onArcHover(arc) {
+            if (!arc) return;
+            console.log('Hover:', arc.sourceName, '→', arc.targetSourceName);
+        }
+
+        function onArcClick(arc) {
+            if (!arc) return;
+            
+            const details = document.getElementById('hop-details');
+            details.innerHTML = `
+                <div class="segment-info">
+                    <h4>${arc.routeName}</h4>
+                    <p><strong>${arc.sourceName}</strong> → <strong>${arc.targetSourceName}</strong></p>
+                    <p>Framing: <span style="color: ${arc.color}">${arc.color === '#22c55e' ? 'Original' : arc.color === '#f59e0b' ? 'Amplified' : arc.color === '#ef4444' ? 'Distorted' : 'Neutralized'}</span></p>
+                    <p>Delay: ${arc.delaySeconds}s</p>
+                    <p>Hop ${arc.segmentIndex + 1} of ${arc.totalSegments}</p>
+                </div>
+            `;
+            
+            // Fly to segment midpoint
+            const midLat = (arc.startLat + arc.endLat) / 2;
+            const midLng = (arc.startLng + arc.endLng) / 2;
+            globe.pointOfView({ lat: midLat, lng: midLng, altitude: 2.0 }, 1000);
+        }
+
+        // Initialize globe on load
+        window.addEventListener('load', initGlobe);
+        // Handle resize
+        window.addEventListener('resize', () => {
+            if (globe) {
+                const container = document.getElementById('globe-container');
+                globe.width(container.clientWidth).height(container.clientHeight);
+            }
+        });
+    </script>
+</body>
+</html>

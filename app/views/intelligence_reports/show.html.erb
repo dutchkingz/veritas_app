@@ -37,7 +37,7 @@
 
         <!-- Dossier Body -->
         <div class="veritas-dossier-card">
-          <div class="dossier-content" id="markdown-content" data-content="<%= @report.summary %>">
+          <div class="dossier-content" id="markdown-content" data-content="<%= sanitized_report_summary(@report.summary) %>">
             <div class="veritas-report-text">
               <%= formatted_report_html(@report.summary) %>
             </div>

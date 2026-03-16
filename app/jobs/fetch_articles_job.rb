@@ -13,12 +13,15 @@ class FetchArticlesJob < ApplicationJob
     created = 0
     articles_data.each do |attrs|
       article = Article.create!(attrs)
+      
+      # Queue AI analysis (includes embedding generation)
       AnalyzeArticleJob.perform_later(article.id)
+      
       created += 1
     rescue ActiveRecord::RecordInvalid => e
       Rails.logger.warn "[FetchArticlesJob] Skipped: #{e.message}"
     end
 
-    Rails.logger.info "[FetchArticlesJob] Imported #{created} new articles, queued AI analysis."
+    Rails.logger.info "[FetchArticlesJob] Imported #{created} new articles, queued AI analysis + embedding generation."
   end
 end

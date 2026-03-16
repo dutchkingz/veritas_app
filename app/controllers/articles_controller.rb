@@ -120,6 +120,35 @@ class ArticlesController < ApplicationController
     end
   end
 
+  # SECURITY FIX 1.1d: Domain whitelist for source fetching
+  # Only allows established news domains to prevent SSRF and malicious content
+  ALLOWED_SOURCE_DOMAINS = %w[
+    bbc.co.uk bbc.com
+    cnn.com edition.cnn.com
+    foxnews.com
+    reuters.com
+    apnews.com
+    politico.com
+    theguardian.com
+    washingtonpost.com
+    nytimes.com
+    wsj.com
+    bloomberg.com
+    aljazeera.com
+    rt.com
+    sputniknews.com
+    xinhuanet.com
+    globaltimes.cn
+    newsweek.com
+    thehill.com
+    axios.com
+    buzzfeednews.com
+    vice.com
+    huffpost.com
+    dailymail.co.uk
+    thesun.co.uk
+  ].freeze
+
   def analysis_status
     article = Article.includes(:ai_analysis).find(params[:id])
     status = article.ai_analysis&.analysis_status || "queued"
@@ -175,10 +204,29 @@ class ArticlesController < ApplicationController
     uri = URI.parse(url)
     return nil unless uri.is_a?(URI::HTTP) && uri.host.present?
     return nil if private_host?(uri.host)
+    return nil unless allowed_news_domain?(uri.host)
 
     uri
   rescue URI::InvalidURIError
     nil
+  end
+
+  # SECURITY FIX 1.1d: Check if domain is in whitelist
+  # Extracts root domain and checks against ALLOWED_SOURCE_DOMAINS
+  def allowed_news_domain?(host)
+    host_downcase = host.downcase
+    
+    # Direct match
+    return true if ALLOWED_SOURCE_DOMAINS.include?(host_downcase)
+    
+    # Check parent domains (e.g., news.bbc.co.uk -> bbc.co.uk)
+    parts = host_downcase.split('.')
+    (1...parts.length).each do |i|
+      parent_domain = parts[i..-1].join('.')
+      return true if ALLOWED_SOURCE_DOMAINS.include?(parent_domain)
+    end
+    
+    false
   end
 
   def private_host?(host)

@@ -1,4 +1,4 @@
-<div class="container-fluid px-4 py-4">
+<div class="container-fluid px-4 py-4" data-controller="search">
   <div class="row mb-4">
     <div class="col-12">
       <div class="d-flex align-items-center justify-content-between">
@@ -14,9 +14,40 @@
     </div>
   </div>
 
-  <div class="row">
+  <!-- Search Form with Autocomplete -->
+  <div class="row mb-4">
     <div class="col-12">
-      <div class="veritas-feed-card p-4 mb-4" style="background: rgba(13, 17, 23, 0.9);">
+      <form class="veritas-search-form position-relative" data-search-target="searchForm" data-action="submit->search#submit">
+        <div class="input-group input-group-lg">
+          <span class="input-group-text bg-dark border-info text-info">
+            <i class="fa fa-search"></i>
+          </span>
+          <input 
+            type="text" 
+            class="form-control bg-dark border-info text-white" 
+            placeholder="Search Intelligence Topics (e.g., 'Ukraine', 'Iran missiles', 'NATO deployment')..."
+            data-search-target="queryInput"
+            autocomplete="off"
+          >
+          <button class="btn btn-info" type="submit">
+            <i class="fa fa-crosshairs me-2"></i>SEARCH
+          </button>
+          <button class="btn btn-outline-secondary" type="button" data-action="click->search#clear" title="Clear search">
+            <i class="fa fa-times"></i>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Trending Topics -->
+  <div class="row mb-4" data-search-target="trendingContainer">
+    <!-- Filled by JavaScript -->
+  </div>
+
+  <!-- Search Results -->
+  <div class="row" data-search-target="resultsContainer">
+    <div class="col-12" style="background: rgba(13, 17, 23, 0.9); min-height: 60vh; overflow-y: auto; padding: 1.5rem; border-radius: 8px; border: 1px solid rgba(56,189,248,0.2);">
         
         <div class="mb-5 text-center">
           <p class="text-muted" style="font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">

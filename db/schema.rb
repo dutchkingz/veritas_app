@@ -108,6 +108,39 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_142000) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "narrative_routes", force: :cascade do |t|
+    t.float "amplification_score", default: 0.0
+    t.string "arc_color"
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.datetime "first_hop_at"
+    t.jsonb "hops", default: [], null: false
+    t.boolean "is_complete", default: false
+    t.datetime "last_hop_at"
+    t.float "manipulation_score", default: 0.0
+    t.string "name"
+    t.bigint "narrative_arc_id", null: false
+    t.string "origin_country"
+    t.float "origin_lat"
+    t.float "origin_lng"
+    t.float "propagation_speed"
+    t.string "status", default: "tracking"
+    t.string "target_country"
+    t.float "target_lat"
+    t.float "target_lng"
+    t.jsonb "timeline", default: []
+    t.integer "total_duration_seconds", default: 0
+    t.integer "total_hops", default: 0
+    t.integer "total_reach_countries", default: 0
+    t.datetime "updated_at", null: false
+    t.index ["first_hop_at"], name: "index_narrative_routes_on_first_hop_at"
+    t.index ["is_complete"], name: "index_narrative_routes_on_is_complete"
+    t.index ["last_hop_at"], name: "index_narrative_routes_on_last_hop_at"
+    t.index ["manipulation_score"], name: "index_narrative_routes_on_manipulation_score"
+    t.index ["narrative_arc_id"], name: "index_narrative_routes_on_narrative_arc_id"
+    t.index ["origin_country", "target_country"], name: "index_narrative_routes_on_origin_country_and_target_country"
+  end
+
   create_table "pages", force: :cascade do |t|
     t.text "content"
     t.datetime "created_at", null: false
@@ -299,6 +332,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_142000) do
   add_foreign_key "countries", "regions"
   add_foreign_key "intelligence_reports", "regions"
   add_foreign_key "narrative_arcs", "articles"
+  add_foreign_key "narrative_routes", "narrative_arcs"
   add_foreign_key "saved_articles", "articles"
   add_foreign_key "saved_articles", "users"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

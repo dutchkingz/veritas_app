@@ -1,0 +1,148 @@
+// VERITAS Search Page Styles
+
+.veritas-search-form {
+  .input-group {
+    box-shadow: 0 0 30px rgba(56, 189, 248, 0.15);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  
+  .input-group-text,
+  .form-control {
+    border-color: rgba(56, 189, 248, 0.3);
+  }
+  
+  .form-control {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    
+    &::placeholder {
+      color: rgba(148, 163, 184, 0.6);
+    }
+  }
+  
+  .btn-info {
+    background: #38BDF8;
+    border: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    letter-spacing: 1px;
+    
+    &:hover {
+      background: #0EA5E9;
+    }
+  }
+}
+
+// Trending Topics
+.trending-topics {
+  background: rgba(13, 17, 23, 0.6);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 8px;
+  padding: 16px 20px;
+  
+  .trending-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: #94A3B8;
+    letter-spacing: 1.5px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    
+    .fa-fire {
+      animation: pulse 2s infinite;
+    }
+  }
+  
+  .trending-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .trending-tag {
+    background: rgba(56, 189, 248, 0.1);
+    border: 1px solid var(--tag-color, #38BDF8);
+    color: var(--tag-color, #38BDF8);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    
+    &:hover {
+      background: var(--tag-color, #38BDF8);
+      color: #0A0C14;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+    }
+    
+    .topic-count {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 2px 8px;
+      font-size: 0.7rem;
+    }
+  }
+}
+
+// Search loading state
+.is-searching {
+  .veritas-search-form {
+    .btn-info {
+      position: relative;
+      
+      &::after {
+        content: '';
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        top: 50%;
+        left: 50%;
+        margin-left: -8px;
+        margin-top: -8px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      
+      span {
+        opacity: 0;
+      }
+    }
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .veritas-search-form {
+    .input-group {
+      flex-wrap: wrap;
+      
+      .btn {
+        width: 100%;
+        margin-top: 8px;
+      }
+    }
+  }
+  
+  .trending-topics {
+    .trending-tags {
+      justify-content: center;
+    }
+  }
+}

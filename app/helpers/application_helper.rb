@@ -22,6 +22,13 @@ module ApplicationHelper
     safe_join(blocks.map { |block| format_report_block(block) })
   end
 
+  # SECURITY FIX 1.1b: Strip ALL HTML from LLM-generated report summaries
+  # Used for data-attributes and tooltips where no HTML is acceptable
+  # Prevents XSS via data-content attributes with injected JavaScript
+  def sanitized_report_summary(text)
+    strip_tags(text.to_s)
+  end
+
   private
 
   def format_report_block(block)
