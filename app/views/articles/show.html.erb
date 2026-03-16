@@ -94,7 +94,8 @@
     <div class="row g-4">
       <!-- Left Column: Article Content -->
       <div class="col-md-8">
-        <div class="veritas-feed-card h-100" style="background: rgba(13, 17, 23, 0.9); padding: 2rem;">
+        <div class="veritas-feed-card h-100" style="background: rgba(13, 17, 23, 0.9); padding: 2rem;"
+             data-controller="lightbox">
           <!-- Geolocation compact bar -->
           <div class="d-flex flex-wrap gap-4 mb-4 pb-3" style="border-bottom: 1px solid rgba(56,189,248,0.1);">
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #64748b;">
@@ -108,6 +109,27 @@
           </div>
 
           
+          <% if @article.article_images.present? %>
+            <div class="article-image-strip">
+
+              <div class="article-image-strip__label">
+                <span>&#9632;</span> VISUAL_INTELLIGENCE [ <%= @article.article_images.size %> ]
+              </div>
+
+              <div class="article-image-strip__scroll">
+                <% @article.article_images.each do |img| %>
+                  <div class="article-image-thumb"
+                       data-action="click->lightbox#open"
+                       data-full="<%= img['url'] %>"
+                       data-caption="<%= img['alt'] %>">
+                    <img src="<%= img['url'] %>" alt="<%= img['alt'] %>" loading="lazy">
+                  </div>
+                <% end %>
+              </div>
+
+            </div>
+          <% end %>
+
           <div class="veritas-article-content mt-5 mb-4 px-3" style="color: #E2E8F0; font-size: 1.15rem; line-height: 1.8; font-family: 'Merriweather', Georgia, serif; max-height: 65vh; overflow-y: auto; padding-right: 20px;">
             <% if @article.content.present? %>
               <div class="article-body-format">
@@ -138,7 +160,17 @@
               color: #38BDF8;
               font-family: 'Inter', sans-serif;
             }
-            .article-body-format img, .article-body-format picture, .article-body-format figure {
+            .article-body-format img {
+              max-height: 200px;
+              width: auto;
+              max-width: 100%;
+              border-radius: 4px;
+              margin: 2rem 0;
+              border: 1px solid rgba(56, 189, 248, 0.2);
+              box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+              display: block;
+            }
+            .article-body-format picture, .article-body-format figure {
               max-width: 100%;
               height: auto;
               border-radius: 4px;
@@ -288,7 +320,15 @@
               </div>
             </div>
           <% end %>
-          
+
+          <!-- Lightbox overlay — scoped to this card, covers strip + inline images -->
+          <div class="lightbox-overlay" data-lightbox-target="overlay" data-action="click->lightbox#backdropClick">
+            <button class="lightbox-close" data-action="click->lightbox#close">&#10005;</button>
+            <img class="lightbox-img" data-lightbox-target="img" src="" alt=""
+                 data-action="click->lightbox#close">
+            <p class="lightbox-caption" data-lightbox-target="caption"></p>
+          </div>
+
         </div>
       </div>
 
