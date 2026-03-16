@@ -197,7 +197,7 @@
           <div class="d-flex justify-content-between align-items-center mb-1">
             <span class="threat-region"><%= region.name %></span>
 
-            <% if current_user.admin? %>
+            <% if current_user&.admin? %>
               <button data-action="click->analysis-progress#run"
                       data-analysis-progress-target="button"
                       class="btn veritas-analysis-btn">

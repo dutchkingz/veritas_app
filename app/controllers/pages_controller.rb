@@ -210,18 +210,22 @@ class PagesController < ApplicationController
   end
 
   def build_globe_arcs(filtered_articles, perspective, to_time)
-    article_flow_arcs = build_article_flow_arcs(filtered_articles, perspective)
-    return article_flow_arcs if article_flow_arcs.any?
+    # 1. Flow arcs (auto-generated from article sequence)
+    flow_arcs = build_article_flow_arcs(filtered_articles, perspective)
 
+    # 2. Database arcs (seeded NarrativeArcs)
     scope = NarrativeArc.includes(article: :ai_analysis).order(:id)
     scope = scope.joins(:article).where("articles.published_at <= ?", to_time) if to_time
 
-    if perspective
-      scope = scope.joins(:article).select { |arc| perspective.matches_source?(arc.article.source_name) }
-      scope.first(50).map { |arc| serialize_arc(arc, perspective.color) }
-    else
-      scope.limit(50).map { |arc| serialize_arc(arc) }
-    end
+    db_arcs = if perspective
+                scope.joins(:article).select { |arc| perspective.matches_source?(arc.article.source_name) }
+                     .map { |arc| serialize_arc(arc, perspective.color) }
+              else
+                scope.limit(50).map { |arc| serialize_arc(arc) }
+              end
+
+    # Combine both, prioritizing DB arcs
+    (db_arcs + flow_arcs).first(100)
   end
 
   def build_article_flow_arcs(filtered_articles, perspective)

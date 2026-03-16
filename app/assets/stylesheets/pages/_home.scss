@@ -217,6 +217,7 @@
 .veritas-feed-sidebar {
     display: flex;
     flex-direction: column;
+    order: 1;
     border-right: 1px solid $veritas-border;
     background: rgba($veritas-surface, 0.7);
     overflow: hidden;
@@ -351,6 +352,7 @@
 
 // --- CENTER: Globe ---
 .veritas-globe-section {
+    order: 2;
     position: relative;
     display: flex;
     align-items: center;
@@ -545,6 +547,7 @@
 
 // --- RIGHT SIDEBAR: Threat Matrix ---
 .veritas-status-sidebar {
+    order: 3;
     border-left: 1px solid $veritas-border;
     background: rgba($veritas-surface, 0.7);
     overflow-y: auto;
