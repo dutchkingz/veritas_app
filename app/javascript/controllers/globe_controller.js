@@ -15,16 +15,18 @@ export default class extends Controller {
     this._currentTimestamp   = null
     this._pointHovered       = false
     this._arcHovered         = false
-    this._flyToHandler       = (e) => this._onFlyToEvent(e)
-    this._perspectiveHandler = (e) => this._onPerspectiveChange(e)
-    this._timelineHandler    = (e) => this._onTimelineChange(e)
-    this._searchHandler      = (e) => this._onSearchEvent(e)
-    this._searchClearHandler = (e) => this._onSearchClearEvent(e)
+    this._flyToHandler          = (e) => this._onFlyToEvent(e)
+    this._perspectiveHandler    = (e) => this._onPerspectiveChange(e)
+    this._timelineHandler       = (e) => this._onTimelineChange(e)
+    this._searchHandler         = (e) => this._onSearchEvent(e)
+    this._searchClearHandler    = (e) => this._onSearchClearEvent(e)
+    this._breakingAlertHandler  = (e) => this._onBreakingAlert(e)
     window.addEventListener("veritas:flyTo",             this._flyToHandler)
     window.addEventListener("veritas:perspectiveChange", this._perspectiveHandler)
     window.addEventListener("veritas:timelineChange",    this._timelineHandler)
     window.addEventListener("veritas:search",            this._searchHandler)
     window.addEventListener("veritas:searchClear",       this._searchClearHandler)
+    window.addEventListener("veritas:breakingAlert",     this._breakingAlertHandler)
     this._initGlobe()
     this._subscription = consumer.subscriptions.create("GlobeChannel", {
       received:     (data) => this._onBroadcast(data),
@@ -44,6 +46,7 @@ export default class extends Controller {
     window.removeEventListener("veritas:timelineChange",    this._timelineHandler)
     window.removeEventListener("veritas:search",            this._searchHandler)
     window.removeEventListener("veritas:searchClear",       this._searchClearHandler)
+    window.removeEventListener("veritas:breakingAlert",     this._breakingAlertHandler)
     clearTimeout(this._rotateTimer)
     if (this._resizeObserver) this._resizeObserver.disconnect()
     if (this._globe) {
@@ -384,6 +387,39 @@ export default class extends Controller {
     const { lat, lng, articleId } = event.detail
     this._flyTo(lat, lng)
     if (articleId) this._setActiveCard(articleId)
+  }
+
+  _onBreakingAlert(event) {
+    const { lat, lng, severity, color } = event.detail
+    if (!lat || !lng) return
+
+    // Fly closer than normal — this is a priority target
+    this._flyTo(lat, lng, 1.1)
+
+    // Inject a surge ring that persists for 30s, then fades
+    this._addSurgeRing(lat, lng, severity, color)
+  }
+
+  _addSurgeRing(lat, lng, severity, color) {
+    if (!this._globe) return
+
+    const ringColor = color || "#ff3a5e"
+    const surgeRing = {
+      lat, lng,
+      color:             ringColor,
+      maxRadius:         12,
+      propagationSpeed:  4.5,
+      repeatPeriod:      600
+    }
+
+    const current = this._globe.ringsData() || []
+    this._globe.ringsData([...current, surgeRing])
+
+    // Remove after 30s — alert window
+    setTimeout(() => {
+      const updated = (this._globe.ringsData() || []).filter(r => r !== surgeRing)
+      this._globe.ringsData(updated)
+    }, 30000)
   }
 
   _flyTo(lat, lng, altitude = 1.5) {

@@ -1,0 +1,276 @@
+// -------------------------------------------------------
+// VERITAS — Breaking Intelligence Alert Overlay
+// -------------------------------------------------------
+
+// --- Keyframes ---
+
+@keyframes ba-slide-in {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+
+@keyframes ba-pulse-border {
+  0%, 100% { box-shadow: 0 0 20px var(--ba-color), inset 0 0 20px rgba(0,0,0,0.8); }
+  50%       { box-shadow: 0 0 50px var(--ba-color), 0 0 100px color-mix(in srgb, var(--ba-color) 30%, transparent), inset 0 0 30px rgba(0,0,0,0.6); }
+}
+
+@keyframes ba-scanline {
+  0%   { top: -4px; }
+  100% { top: 100%; }
+}
+
+@keyframes ba-text-flicker {
+  0%, 95%, 100% { opacity: 1; }
+  96%           { opacity: 0.7; }
+  97%           { opacity: 1; }
+  98%           { opacity: 0.85; }
+}
+
+@keyframes ba-countdown {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
+
+@keyframes ba-severity-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(1.05); }
+}
+
+@keyframes ba-screen-flash {
+  0%   { opacity: 0; }
+  15%  { opacity: 0.12; }
+  30%  { opacity: 0; }
+  45%  { opacity: 0.06; }
+  100% { opacity: 0; }
+}
+
+// --- Overlay container ---
+
+.breaking-alert-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(6px);
+  animation: ba-slide-in 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --ba-color: #{$veritas-red};
+
+  &[data-severity="high"]     { --ba-color: #f97316; }
+  &[data-severity="elevated"] { --ba-color: #{$veritas-yellow}; }
+  &[data-severity="moderate"] { --ba-color: #{$veritas-cyan}; }
+
+  // Screen flash on entry
+  &::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: var(--ba-color);
+    pointer-events: none;
+    animation: ba-screen-flash 0.6s ease-out forwards;
+    z-index: -1;
+  }
+}
+
+// Scanline sweep
+.breaking-alert-scanline {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--ba-color), transparent);
+  opacity: 0.4;
+  animation: ba-scanline 3s linear infinite;
+  pointer-events: none;
+}
+
+// --- Main panel ---
+
+.breaking-alert-panel {
+  position: relative;
+  width: 90vw;
+  max-width: 760px;
+  border: 1px solid var(--ba-color);
+  background: rgba(9, 9, 15, 0.97);
+  animation: ba-pulse-border 2.5s ease-in-out infinite;
+  overflow: hidden;
+
+  // Corner accents
+  &::before, &::after {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-color: var(--ba-color);
+    border-style: solid;
+  }
+  &::before { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+  &::after  { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+}
+
+// --- Header bar ---
+
+.breaking-alert-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ba-color) 25%, transparent);
+  background: color-mix(in srgb, var(--ba-color) 8%, transparent);
+}
+
+.breaking-alert-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  color: var(--ba-color);
+  text-transform: uppercase;
+  animation: ba-text-flicker 4s ease-in-out infinite;
+}
+
+.breaking-alert-timestamp {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  color: $veritas-text-dim;
+  letter-spacing: 0.1em;
+}
+
+// --- Severity badge ---
+
+.breaking-alert-severity {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  padding: 3px 10px;
+  border: 1px solid var(--ba-color);
+  color: var(--ba-color);
+  background: color-mix(in srgb, var(--ba-color) 12%, transparent);
+  animation: ba-severity-pulse 1.4s ease-in-out infinite;
+}
+
+// --- Body ---
+
+.breaking-alert-body {
+  padding: 24px 28px 20px;
+}
+
+.breaking-alert-headline {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: $veritas-white;
+  margin-bottom: 16px;
+  letter-spacing: -0.01em;
+
+  span.ba-surge-prefix {
+    color: var(--ba-color);
+    margin-right: 6px;
+  }
+}
+
+.breaking-alert-briefing {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  line-height: 1.7;
+  color: $veritas-text;
+  border-left: 2px solid color-mix(in srgb, var(--ba-color) 40%, transparent);
+  padding-left: 14px;
+  min-height: 2.8em; // Reserve space during typewriter effect
+}
+
+// --- Meta row ---
+
+.breaking-alert-meta {
+  display: flex;
+  gap: 20px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid $veritas-border;
+}
+
+.breaking-alert-meta-item {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.62rem;
+  color: $veritas-text-dim;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+
+  .ba-meta-value {
+    color: $veritas-text;
+    font-weight: 500;
+    margin-left: 4px;
+  }
+}
+
+// --- Footer ---
+
+.breaking-alert-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-top: 1px solid $veritas-border;
+  background: rgba(0,0,0,0.3);
+}
+
+.breaking-alert-countdown-bar {
+  flex: 1;
+  height: 2px;
+  background: $veritas-border;
+  margin-right: 16px;
+  overflow: hidden;
+
+  .ba-countdown-fill {
+    height: 100%;
+    background: var(--ba-color);
+    animation: ba-countdown var(--ba-duration, 8s) linear forwards;
+  }
+}
+
+.breaking-alert-dismiss {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: $veritas-text-dim;
+  background: none;
+  border: 1px solid $veritas-border;
+  padding: 5px 14px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.15s ease;
+
+  &:hover {
+    color: var(--ba-color);
+    border-color: var(--ba-color);
+    background: color-mix(in srgb, var(--ba-color) 8%, transparent);
+  }
+}
+
+// --- Stealth pixel trigger ---
+// Near-invisible. You know where it is. No one else does.
+
+.ba-stealth-trigger {
+  position: fixed;
+  width: 8px;
+  height: 8px;
+  bottom: 24px;
+  right: 28px;
+  background: rgba($veritas-red, 0.04);
+  border: 1px solid rgba($veritas-red, 0.06);
+  border-radius: 50%;
+  cursor: default;
+  z-index: 5000;
+  transition: background 0.2s ease, border-color 0.2s ease;
+
+  &:hover {
+    background: rgba($veritas-red, 0.12);
+    border-color: rgba($veritas-red, 0.2);
+    cursor: pointer;
+  }
+}

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_16_151842) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_16_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -53,6 +53,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_16_151842) do
     t.datetime "updated_at", null: false
     t.index ["country_id"], name: "index_articles_on_country_id"
     t.index ["region_id"], name: "index_articles_on_region_id"
+  end
+
+  create_table "breaking_alerts", force: :cascade do |t|
+    t.text "briefing", null: false
+    t.datetime "created_at", null: false
+    t.datetime "expires_at"
+    t.string "headline", null: false
+    t.float "lat", null: false
+    t.float "lng", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.bigint "region_id"
+    t.integer "severity", default: 0, null: false
+    t.string "source_type", default: "auto", null: false
+    t.integer "status", default: 0, null: false
+    t.bigint "triggered_by_id"
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_breaking_alerts_on_created_at"
+    t.index ["region_id"], name: "index_breaking_alerts_on_region_id"
+    t.index ["status"], name: "index_breaking_alerts_on_status"
+    t.index ["triggered_by_id"], name: "index_breaking_alerts_on_triggered_by_id"
   end
 
   create_table "briefings", force: :cascade do |t|
@@ -331,6 +351,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_16_151842) do
   add_foreign_key "ai_analyses", "articles"
   add_foreign_key "articles", "countries"
   add_foreign_key "articles", "regions"
+  add_foreign_key "breaking_alerts", "regions"
+  add_foreign_key "breaking_alerts", "users", column: "triggered_by_id"
   add_foreign_key "briefings", "users"
   add_foreign_key "countries", "regions"
   add_foreign_key "intelligence_reports", "regions"
