@@ -25,6 +25,11 @@ production:
     args: [{ limit: 50 }]
     schedule: every hour at minute 15
 
+  regional_analysis_refresh:
+    class: ScheduleRegionalAnalysisJob
+    queue: default
+    schedule: every 6 hours at minute 30
+
 development:
   fetch_articles:
     class: FetchArticlesJob
@@ -36,3 +41,8 @@ development:
     queue: default
     args: [{ limit: 50 }]
     schedule: every hour at minute 15
+
+  regional_analysis_refresh:
+    class: ScheduleRegionalAnalysisJob
+    queue: default
+    schedule: every 6 hours at minute 30

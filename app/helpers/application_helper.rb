@@ -32,8 +32,12 @@ module ApplicationHelper
   private
 
   def format_report_block(block)
-    if block.start_with?("## ")
+    if block.start_with?("# ")
+      content_tag(:h1, block.delete_prefix("# ").strip, class: "veritas-report-heading veritas-report-h1")
+    elsif block.start_with?("## ")
       content_tag(:h2, block.delete_prefix("## ").strip, class: "veritas-report-heading")
+    elsif block.start_with?("### ")
+      content_tag(:h3, block.delete_prefix("### ").strip, class: "veritas-report-subheading")
     else
       simple_format(ERB::Util.html_escape(block), {}, sanitize: false)
     end

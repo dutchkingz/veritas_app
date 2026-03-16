@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_13_142000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_16_151842) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -78,9 +78,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_142000) do
     t.jsonb "analyzed_article_ids", default: []
     t.datetime "created_at", null: false
     t.bigint "region_id", null: false
+    t.jsonb "signal_stats"
     t.string "status", default: "pending", null: false
     t.text "summary"
     t.datetime "updated_at", null: false
+    t.string "verdict"
     t.index ["region_id"], name: "index_intelligence_reports_on_region_id"
     t.index ["status"], name: "index_intelligence_reports_on_status"
   end

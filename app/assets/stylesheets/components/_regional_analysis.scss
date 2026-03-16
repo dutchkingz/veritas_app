@@ -199,7 +199,9 @@
   line-height: 1.8;
   
   h1, h2, h3 { color: #00e5ff; margin-top: 2rem; margin-bottom: 1rem; font-weight: 700; }
-  h3 { font-size: 1.25rem; letter-spacing: 1px; border-bottom: 1px solid rgba(0, 229, 255, 0.2); display: inline-block; padding-bottom: 4px; }
+  h1 { font-size: 1.6rem; letter-spacing: 1px; }
+  h2 { font-size: 1.3rem; border-left: 3px solid #00e5ff; padding-left: 0.75rem; }
+  h3 { font-size: 1rem; letter-spacing: 1px; color: rgba(0, 229, 255, 0.75); padding-bottom: 4px; }
   
   p { margin-bottom: 1.5rem; }
   ul { padding-left: 1.2rem; margin-bottom: 1.5rem; }
@@ -211,8 +213,361 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   padding: 1rem;
   border-radius: 4px;
-  
+
   .source { font-size: 0.65rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; }
   .time { font-size: 0.65rem; color: rgba(255,255,255,0.4); font-family: 'JetBrains Mono', monospace; }
   .headline { font-size: 0.85rem; line-height: 1.4; color: #fff; margin-top: 0.5rem; }
+
+  .signal-trust {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    font-weight: 700;
+  }
+
+  .anomaly-flag {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #f97316;
+    text-transform: uppercase;
+  }
+}
+
+.veritas-prev-link {
+  color: rgba(0, 229, 255, 0.5);
+  text-decoration: none;
+  font-size: 0.65rem;
+  &:hover { color: #00e5ff; }
+}
+
+.veritas-panel-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: rgba(0, 229, 255, 0.7);
+  text-transform: uppercase;
+  margin: 0;
+}
+
+// -------------------------------------------------------------------
+// SIGNAL STATS BAR — Bloomberg terminal-style metrics row
+// -------------------------------------------------------------------
+
+.veritas-stats-bar {
+  display: flex;
+  gap: 0;
+  border: 1px solid rgba(0, 229, 255, 0.15);
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.stat-cell {
+  flex: 1;
+  padding: 0.9rem 1rem;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  min-width: 0;
+
+  &:last-child { border-right: none; }
+
+  &--wide { flex: 1.6; }
+}
+
+.stat-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.stat-unit {
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.4);
+  font-weight: 400;
+}
+
+.stat-label {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: rgba(0, 229, 255, 0.5);
+  margin-bottom: 6px;
+}
+
+.stat-bar-track {
+  height: 2px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+
+.stat-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+
+.top-sources-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.source-chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  padding: 2px 6px;
+  background: rgba(0, 229, 255, 0.08);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  border-radius: 2px;
+  color: rgba(255,255,255,0.7);
+  white-space: nowrap;
+
+  .chip-count {
+    color: #00e5ff;
+    font-weight: 700;
+    margin-left: 3px;
+  }
+}
+
+// -------------------------------------------------------------------
+// HISTORICAL DELTA PANEL — Trend comparison vs previous report
+// -------------------------------------------------------------------
+
+.veritas-delta-panel {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.delta-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.delta-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+}
+
+.delta-direction {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.delta-age {
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.3);
+  margin-left: auto;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.delta-grid {
+  display: flex;
+  padding: 0.75rem 1rem;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.delta-cell {
+  min-width: 100px;
+}
+
+.delta-label {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.delta-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.delta-number {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.delta-arrow {
+  font-size: 0.7rem;
+  opacity: 0.6;
+}
+
+.delta-indicator {
+  font-size: 0.65rem;
+  opacity: 0.7;
+}
+
+// -------------------------------------------------------------------
+// TEMPORAL EVOLUTION PANEL — 4×12h bar chart
+// -------------------------------------------------------------------
+
+.veritas-temporal-panel {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(0, 229, 255, 0.1);
+  border-radius: 4px;
+  padding: 1rem;
+}
+
+.temporal-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.temporal-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: rgba(0, 229, 255, 0.6);
+  text-transform: uppercase;
+}
+
+.temporal-grid {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  height: 80px;
+}
+
+.temporal-bucket {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+
+  &--latest .bucket-bar-fill {
+    background: linear-gradient(180deg, #00e5ff, rgba(0, 229, 255, 0.3));
+    box-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
+  }
+}
+
+.bucket-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.45rem;
+  color: rgba(255, 255, 255, 0.3);
+  text-align: center;
+  white-space: nowrap;
+  order: 3;
+}
+
+.bucket-bar-track {
+  flex: 1;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 2px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  order: 1;
+}
+
+.bucket-bar-fill {
+  width: 100%;
+  background: linear-gradient(180deg, rgba(0, 229, 255, 0.6), rgba(0, 229, 255, 0.15));
+  border-radius: 2px;
+  transition: height 0.6s ease;
+  min-height: 2px;
+}
+
+.bucket-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  order: 2;
+}
+
+.bucket-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.5rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.bucket-trust {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.5rem;
+  font-weight: 700;
+}
+
+.bucket-anomaly {
+  font-size: 0.45rem;
+  color: #f97316;
+}
+
+// -------------------------------------------------------------------
+// VERDICT INDICATORS
+// -------------------------------------------------------------------
+
+// Compact pill used in the dashboard sidebar per region
+.veritas-verdict-pill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 0.15rem 0.45rem;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  background: transparent;
+  white-space: nowrap;
+  opacity: 0.9;
+}
+
+// Large badge used on the dossier show page
+.veritas-verdict-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 0.4rem 1rem;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.3);
+
+  .verdict-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    animation: verdict-pulse 2s ease-in-out infinite;
+  }
+}
+
+@keyframes verdict-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px currentColor; }
+  50%       { opacity: 0.4; box-shadow: none; }
 }

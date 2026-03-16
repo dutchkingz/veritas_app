@@ -32,6 +32,14 @@ class PagesController < ApplicationController
     @perspective_filters = PerspectiveFilter.order(:name)
     @timeline_min        = Article.minimum(:published_at)&.to_i || Time.now.to_i
     @timeline_max        = Article.maximum(:published_at)&.to_i || Time.now.to_i
+
+    # Latest completed IntelligenceReport per region — keyed by region_id.
+    # Used to show verdict badge + dossier link for all users in the sidebar.
+    @latest_reports = IntelligenceReport
+      .where(status: "completed")
+      .order(created_at: :desc)
+      .group_by(&:region_id)
+      .transform_values(&:first)
   end
 
   # GET /api/globe_data — JSON feed for Globe.gl
