@@ -1,6 +1,6 @@
 class PagesController < ApplicationController
   DEFAULT_ARC_COLOR = "#00f0ff".freeze
-  skip_before_action :authenticate_user!, only: [:welcome, :home, :globe_data, :search, :narrative_dna]
+  skip_before_action :authenticate_user!, only: [:welcome, :home, :globe_data, :search, :narrative_dna, :tribunal]
 
   def welcome
     redirect_to dashboard_path if user_signed_in?
@@ -139,6 +139,15 @@ class PagesController < ApplicationController
     end
 
     render json: { points: points, arcs: arcs, regions: regions }
+  end
+
+  # GET /api/tribunal/:article_id — Agent debate JSON for War Room Tribunal
+  def tribunal
+    article = Article.includes(:ai_analysis, :country).find_by(id: params[:article_id])
+    return render json: { error: "Not found" }, status: :not_found unless article
+
+    data = TribunalService.new(article).call
+    render json: data
   end
 
   # GET /api/narrative_dna/:article_id — Graph JSON for Narrative DNA panel

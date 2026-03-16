@@ -19,4 +19,11 @@ export default class extends Controller {
       detail: { articleId: this.articleIdValue }
     }))
   }
+
+  openTribunal(event) {
+    event.stopPropagation()
+    window.dispatchEvent(new CustomEvent("veritas:openTribunal", {
+      detail: { articleId: this.articleIdValue }
+    }))
+  }
 }

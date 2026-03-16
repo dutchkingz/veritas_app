@@ -1,6 +1,6 @@
 <!-- VERITAS War Room -->
 <div class="veritas-war-room"
-     data-controller="narrative-dna">
+     data-controller="narrative-dna tribunal">
 
 <!-- Perspective Selector Bar -->
 <div class="veritas-perspective-bar"
@@ -60,6 +60,9 @@
               <button class="ndna-trigger-btn"
                       data-action="click->feed-card#openDna"
                       title="View Narrative DNA">◈ DNA</button>
+              <button class="tribunal-trigger-btn"
+                      data-action="click->feed-card#openTribunal"
+                      title="Open Intelligence Tribunal">⬟ TRIBUNAL</button>
               <%= link_to "→", article_path(article),
                     class: "feed-card-open-link",
                     data: { turbo: false, action: "click->feed-card#openArticle" } %>
