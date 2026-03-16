@@ -87,8 +87,8 @@ end
 def news_api_articles
   return [] if ENV["NEWS_API_KEY"].blank?
 
-  puts "Fetching live articles from NewsAPI..."
-  NewsApiService.new.fetch_latest(page_size: 100)
+  puts "Fetching up to 300 demo articles from NewsAPI..."
+  NewsApiService.new.fetch_demo_batch(limit: 300)
 end
 
 def fallback_articles(created_regions, count:)
@@ -135,7 +135,6 @@ def fallback_articles(created_regions, count:)
       longitude:      geo[:region].longitude + rand(-2.0..2.0),
       country:        geo[:country],
       region:         geo[:region],
-      country: geo[:country],
       raw_data:       { "seed_mode" => "fallback_demo", "source" => source, "description" => headline }
     }
   end
@@ -158,7 +157,7 @@ def seed_articles!(created_regions)
     puts "NewsAPI unavailable or returned no articles."
   end
 
-  remaining = [100 - created, 0].max
+  remaining = [300 - created, 0].max
   if remaining.positive?
     puts "Backfilling #{remaining} deterministic demo articles so the app is demo-ready..."
     fallback_articles(created_regions, count: remaining).each do |attrs|
@@ -193,32 +192,27 @@ def seed_articles!(created_regions)
 end
 
 def seed_narrative_arcs!
-  puts "Seeding Narrative Arcs for globe visualisation..."
-
-  arc_routes = [
-    { origin_country: "United States", origin_lat: 38.9072, origin_lng: -77.0369, target_country: "Ukraine", target_lat: 50.4501, target_lng: 30.5234, arc_color: "#ff2d55" },
-    { origin_country: "United States", origin_lat: 38.9072, origin_lng: -77.0369, target_country: "China", target_lat: 39.9042, target_lng: 116.4074, arc_color: "#ff9f0a" },
-    { origin_country: "United States", origin_lat: 38.9072, origin_lng: -77.0369, target_country: "Israel", target_lat: 31.7683, target_lng: 35.2137, arc_color: "#ff2d55" },
-    { origin_country: "Russia", origin_lat: 55.7558, origin_lng: 37.6173, target_country: "Ukraine", target_lat: 50.4501, target_lng: 30.5234, arc_color: "#ff2d55" },
-    { origin_country: "Russia", origin_lat: 55.7558, origin_lng: 37.6173, target_country: "Germany", target_lat: 52.52, target_lng: 13.4050, arc_color: "#ff9f0a" },
-    { origin_country: "China", origin_lat: 39.9042, origin_lng: 116.4074, target_country: "Taiwan", target_lat: 25.0330, target_lng: 121.5654, arc_color: "#ff2d55" },
-    { origin_country: "China", origin_lat: 39.9042, origin_lng: 116.4074, target_country: "India", target_lat: 28.6139, target_lng: 77.2090, arc_color: "#30d158" },
-    { origin_country: "Iran", origin_lat: 35.6892, origin_lng: 51.3890, target_country: "Israel", target_lat: 31.7683, target_lng: 35.2137, arc_color: "#ff2d55" },
-    { origin_country: "United Kingdom", origin_lat: 51.5074, origin_lng: -0.1278, target_country: "Germany", target_lat: 52.5200, target_lng: 13.4050, arc_color: "#30d158" },
-    { origin_country: "India", origin_lat: 28.6139, origin_lng: 77.2090, target_country: "United States", target_lat: 38.9072, target_lng: -77.0369, arc_color: "#30d158" }
-  ]
-
-  article_ids = Article.pluck(:id)
-  if article_ids.empty?
-    puts "No articles found — skipping NarrativeArc seeding."
-    return
+  # First, generate embeddings for ALL articles (real ARCWEAVER intelligence)
+  puts "\n==== ARCWEAVER 2.0 INITIALIZATION ===="
+  puts "Generating 1536-dimensional semantic embeddings for #{Article.count} articles..."
+  
+  embedding_service = EmbeddingService.new
+  success_count = 0
+  
+  Article.find_each do |article|
+    success = embedding_service.generate(article)
+    success_count += 1 if success
+    print "."
   end
-
-  arc_routes.each do |route|
-    NarrativeArc.create!(route.merge(article_id: article_ids.sample))
-  end
-
-  puts "Created #{NarrativeArc.count} narrative arcs."
+  puts "\nGenerated embeddings for #{success_count} articles."
+  
+  # Then, run the REAL Route Generator to connect them organically!
+  puts "\nGenerating Organic Narrative Tracks via Semantic Clustering..."
+  route_service = NarrativeRouteGeneratorService.new
+  # limit: nil = process all, force: true = process them even if already connected
+  routes_created = route_service.generate_routes(limit: nil, force: true)
+  
+  puts "Generated #{routes_created} real narrative routes."
 end
 
 create_perspective_filters!

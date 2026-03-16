@@ -241,8 +241,14 @@ export default class extends Controller {
     arcs.forEach((segment, index) => {
       // Create a small sphere
       const geometry = new window.THREE.SphereGeometry(0.08, 8, 8)
+      // Convert color array to a single string if needed (fallback simple arcs use array for gradient)
+      let packetColor = segment.color || '#00f0ff'
+      if (Array.isArray(packetColor)) {
+        packetColor = packetColor[0]
+      }
+
       const material = new window.THREE.MeshBasicMaterial({
-        color: segment.color || '#00f0ff',
+        color: packetColor,
         transparent: true,
         opacity: 0.9
       })
@@ -348,7 +354,11 @@ export default class extends Controller {
     if (this._lastHoveredArc && this._lastHoveredArc !== arc && this._packets) {
       this._packets.forEach(packet => {
         if (packet.segment === this._lastHoveredArc) {
-          packet.mesh.material.color.set(packet.segment.color || '#00f0ff')
+          let packetColor = packet.segment.color || '#00f0ff'
+          if (Array.isArray(packetColor)) {
+            packetColor = packetColor[0]
+          }
+          packet.mesh.material.color.set(packetColor)
           packet.mesh.scale.set(1, 1, 1)
         }
       })
