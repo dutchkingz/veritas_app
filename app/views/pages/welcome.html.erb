@@ -1,0 +1,86 @@
+<div class="veritas-welcome-wrapper" data-controller="globe-welcome">
+  <!-- Interactive Globe Background -->
+  <div class="welcome-globe-container"
+       id="welcome-globe"
+       data-globe-welcome-target="container">
+  </div>
+
+  <!-- Minimalist Overlay Layer -->
+  <div class="welcome-overlay">
+    <div class="welcome-background-glow"></div>
+    <div class="welcome-grid"></div>
+    <div class="scanlines"></div>
+  </div>
+
+  <!-- Centered Content Section -->
+  <main class="welcome-content">
+    <div class="welcome-brand fade-in">
+      <h1 class="welcome-logo">VERITAS</h1>
+      <p class="welcome-tagline">GLOBAL INTELLIGENCE SIGNALING LAYER</p>
+    </div>
+
+    <div class="welcome-auth-card glass-panel fade-in-delayed">
+      <div class="auth-header">
+        <div class="auth-status">
+          <span class="status-dot"></span>
+          <span class="status-label">TERMINAL_READY</span>
+        </div>
+      </div>
+
+      <div class="auth-body">
+        <%= form_for(@resource, as: @resource_name, url: session_path(@resource_name), html: { class: "welcome-login-form" }) do |f| %>
+          <div class="welcome-input-group">
+            <label for="user_email">IDENTIFIER</label>
+            <%= f.email_field :email, autofocus: true, autocomplete: "email", class: "welcome-input", placeholder: "ID@VERITAS.IO", required: true %>
+          </div>
+
+          <div class="welcome-input-group">
+            <label for="user_password">PASSPHRASE</label>
+            <%= f.password_field :password, autocomplete: "current-password", class: "welcome-input", placeholder: "••••••••••••", required: true %>
+          </div>
+
+          <div class="auth-actions">
+            <% if @devise_mapping.rememberable? %>
+              <div class="welcome-checkbox-group">
+                <%= f.check_box :remember_me, class: "welcome-checkbox" %>
+                <%= f.label :remember_me, "STAY_CONNECTED", class: "welcome-checkbox-label" %>
+              </div>
+            <% end %>
+
+            <button type="submit" class="welcome-submit-btn">
+              <span class="btn-text">AUTHENTICATE</span>
+              <span class="btn-glitch"></span>
+            </button>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="auth-footer">
+        <%= link_to "CORE_ACCESS_REQUEST", new_registration_path(@resource_name), class: "welcome-footer-link" %>
+        <span class="footer-separator">/</span>
+        <%= link_to "RECOVER_PASSPHRASE", new_password_path(@resource_name), class: "welcome-footer-link" %>
+      </div>
+    </div>
+
+    <div class="welcome-system-stats fade-in-delayed-more">
+      <div class="stat-item">
+        <span class="stat-label">LATENCY</span>
+        <span class="stat-value">24MS</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">NODES</span>
+        <span class="stat-value">1,024</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">ENCRYPTION</span>
+        <span class="stat-value">AES-256</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer Decorative Elements -->
+  <footer class="welcome-footer fade-in-delayed-more">
+    <div class="footer-legal">© 2026 VERITAS_SYSTEMS. ALL SIGNALS CLASSIFIED.</div>
+    <div class="footer-coords">37.7749° N, 122.4194° W – SAN_FRANCISCO_NODE</div>
+  </footer>
+</div>

@@ -1,0 +1,342 @@
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@400;700&family=Rajdhani:wght@400;600;700&display=swap');
+
+// --- COLORS ---
+$welcome-bg: #020617;
+$welcome-accent: #00f0ff;
+$welcome-accent-dim: rgba(0, 240, 255, 0.4);
+$welcome-text: #f8fafc;
+$welcome-text-dim: #94a3b8;
+$welcome-border: rgba(0, 240, 255, 0.15);
+$welcome-glass: rgba(15, 23, 42, 0.6);
+
+.veritas-welcome-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  background-color: $welcome-bg;
+  color: $welcome-text;
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  // --- BACKGROUND ELEMENTS ---
+  .welcome-globe-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 150vw;
+    height: 150vh;
+    z-index: 1;
+    opacity: 0.8;
+    filter: blur(0px); // Clearer
+    pointer-events: none;
+  }
+
+  .welcome-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+
+    .welcome-background-glow {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, transparent 0%, $welcome-bg 80%);
+    }
+
+    .welcome-grid {
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient($welcome-border 1px, transparent 1px),
+        linear-gradient(90deg, $welcome-border 1px, transparent 1px);
+      background-size: 60px 60px;
+      opacity: 0.1;
+      transform: perspective(500px) rotateX(60deg) translateY(-100px);
+    }
+
+    .scanlines {
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.1),
+        rgba(0, 0, 0, 0.1) 1px,
+        transparent 1px,
+        transparent 2px
+      );
+      opacity: 0.3;
+    }
+  }
+
+  // --- CONTENT ---
+  .welcome-content {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 480px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+  }
+
+  .welcome-brand {
+    text-align: center;
+
+    .welcome-logo {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 3.5rem;
+      letter-spacing: 0.5em;
+      margin-left: 0.5em; // Offset for centering with large letter-spacing
+      color: $welcome-accent;
+      text-shadow: 0 0 20px rgba($welcome-accent, 0.4);
+      margin-bottom: 0.5rem;
+    }
+
+    .welcome-tagline {
+      font-size: 0.7rem;
+      letter-spacing: 0.4em;
+      color: $welcome-text-dim;
+      text-transform: uppercase;
+    }
+  }
+
+  // --- AUTH CARD ---
+  .welcome-auth-card {
+    width: 100%;
+    background: $welcome-glass;
+    backdrop-filter: blur(12px);
+    border: 1px solid $welcome-border;
+    border-radius: 4px;
+    padding: 2.5rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+
+    .auth-header {
+      margin-bottom: 2rem;
+      
+      .auth-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        
+        .status-dot {
+          width: 6px;
+          height: 6px;
+          background-color: $welcome-accent;
+          border-radius: 50%;
+          box-shadow: 0 0 8px $welcome-accent;
+          animation: welcome-pulse 2s infinite;
+        }
+        
+        .status-label {
+          font-family: 'Share Tech Mono', monospace;
+          font-size: 0.65rem;
+          color: $welcome-accent-dim;
+          letter-spacing: 0.2em;
+        }
+      }
+    }
+
+    .welcome-input-group {
+      margin-bottom: 1.5rem;
+
+      label {
+        display: block;
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.65rem;
+        color: $welcome-accent-dim;
+        letter-spacing: 0.15em;
+        margin-bottom: 0.5rem;
+      }
+
+      .welcome-input {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid $welcome-border;
+        border-radius: 2px;
+        padding: 0.75rem 1rem;
+        color: $welcome-text;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+
+        &:focus {
+          outline: none;
+          background: rgba(255, 255, 255, 0.05);
+          border-color: $welcome-accent;
+          box-shadow: 0 0 15px rgba($welcome-accent, 0.1);
+        }
+
+        &::placeholder {
+          color: rgba(255, 255, 255, 0.1);
+        }
+      }
+    }
+
+    .auth-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+
+    .welcome-checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .welcome-checkbox {
+        appearance: none;
+        width: 14px;
+        height: 14px;
+        border: 1px solid $welcome-border;
+        border-radius: 2px;
+        background: transparent;
+        cursor: pointer;
+        position: relative;
+
+        &:checked {
+          background: $welcome-accent;
+          border-color: $welcome-accent;
+
+          &::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: $welcome-bg;
+            font-size: 10px;
+          }
+        }
+      }
+
+      .welcome-checkbox-label {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.65rem;
+        color: $welcome-text-dim;
+        letter-spacing: 0.1em;
+        cursor: pointer;
+      }
+    }
+
+    .welcome-submit-btn {
+      width: 100%;
+      background: transparent;
+      border: 1px solid $welcome-accent;
+      color: $welcome-accent;
+      padding: 1rem;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: 0.3em;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+
+      &:hover {
+        background: $welcome-accent;
+        color: $welcome-bg;
+        box-shadow: 0 0 30px rgba($welcome-accent, 0.3);
+      }
+    }
+
+    .auth-footer {
+      margin-top: 2rem;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+
+      .welcome-footer-link {
+        color: $welcome-text-dim;
+        text-decoration: none;
+        transition: color 0.2s;
+
+        &:hover {
+          color: $welcome-accent;
+        }
+      }
+
+      .footer-separator {
+        color: rgba(255, 255, 255, 0.1);
+      }
+    }
+  }
+
+  // --- STATS ---
+  .welcome-system-stats {
+    display: flex;
+    gap: 40px;
+
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+
+      .stat-label {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.55rem;
+        color: $welcome-text-dim;
+        letter-spacing: 0.15em;
+        margin-bottom: 4px;
+      }
+
+      .stat-value {
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.75rem;
+        color: $welcome-accent;
+      }
+    }
+  }
+
+  // --- FOOTER ---
+  .welcome-footer {
+    position: absolute;
+    bottom: 24px;
+    width: 100%;
+    padding: 0 40px;
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.15);
+    letter-spacing: 0.1em;
+    z-index: 10;
+  }
+}
+
+// --- ANIMATIONS ---
+@keyframes welcome-pulse {
+  0% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.fade-in {
+  animation: welcome-fade-in 1s ease-out forwards;
+}
+
+.fade-in-delayed {
+  opacity: 0;
+  animation: welcome-fade-in 1s ease-out 0.4s forwards;
+}
+
+.fade-in-delayed-more {
+  opacity: 0;
+  animation: welcome-fade-in 1s ease-out 0.8s forwards;
+}
+
+@keyframes welcome-fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

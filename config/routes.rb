@@ -4,7 +4,9 @@ Rails.application.routes.draw do
   # -------------------------------------------------------
   # Root & Search
   # -------------------------------------------------------
-  root to: "pages#home"
+  root to: "pages#welcome"
+  get "welcome", to: "pages#welcome"
+  get "dashboard", to: "pages#home"
   get "search", to: "pages#search"
   post "chat", to: "chats#create"
   

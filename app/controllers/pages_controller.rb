@@ -1,6 +1,15 @@
 class PagesController < ApplicationController
   DEFAULT_ARC_COLOR = "#00f0ff".freeze
-  skip_before_action :authenticate_user!, only: [:home, :globe_data, :search]
+  skip_before_action :authenticate_user!, only: [:welcome, :home, :globe_data, :search]
+
+  def welcome
+    redirect_to dashboard_path if user_signed_in?
+    # Landing page with login
+    # resource and resource_name are needed for Devise form
+    @resource = User.new
+    @resource_name = :user
+    @devise_mapping = Devise.mappings[:user]
+  end
 
   def home
     # Hot articles: highest threat level first, then trust score (lower = more suspicious)
