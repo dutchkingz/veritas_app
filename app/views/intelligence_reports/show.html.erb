@@ -2,21 +2,37 @@
   <div class="container">
     <div class="row justify-content-center">
       <div class="col-lg-10">
-        
-        <!-- Dossier Header -->
-        <div class="veritas-dossier-header mb-5">
-          <div class="d-flex justify-content-between align-items-end mb-3">
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- DOSSIER HEADER                                  -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div class="veritas-dossier-header mb-4">
+          <div class="d-flex justify-content-between align-items-start mb-3">
             <div>
               <nav aria-label="breadcrumb" class="mb-2">
                 <ol class="breadcrumb veritas-breadcrumb">
-                  <li class="breadcrumb-item"><%= link_to "HQ", root_path %></li>
+                  <li class="breadcrumb-item"><%= link_to "HQ", dashboard_path %></li>
                   <li class="breadcrumb-item active">INTEL_DOSSIER</li>
                 </ol>
               </nav>
-              <h1 class="veritas-glitch-text display-4 mb-0" data-text="<%= @report.region.name %>_BRIEFING">
+              <h1 class="veritas-glitch-text display-4 mb-0"
+                  data-text="<%= @report.region.name %>_BRIEFING">
                 <%= @report.region.name %>_BRIEFING
               </h1>
+
+              <% if @report.verdict.present? %>
+                <div class="mt-3">
+                  <span class="veritas-verdict-badge"
+                        style="color: <%= @report.verdict_color %>;
+                               border-color: <%= @report.verdict_color %>;
+                               box-shadow: 0 0 12px <%= @report.verdict_color %>60;">
+                    <span class="verdict-dot" style="background: <%= @report.verdict_color %>;"></span>
+                    THREAT ASSESSMENT: <%= @report.verdict %>
+                  </span>
+                </div>
+              <% end %>
             </div>
+
             <div class="text-end">
               <div class="dossier-meta-item">
                 <span class="label">CLASSIFICATION:</span>
@@ -30,32 +46,243 @@
                 <span class="label">SIGNALS:</span>
                 <span class="value"><%= @report.analyzed_article_ids.size %> ANALYZED</span>
               </div>
+              <% if @previous_report %>
+                <div class="dossier-meta-item mt-1">
+                  <span class="label">PREV REPORT:</span>
+                  <span class="value">
+                    <%= link_to time_ago_in_words(@previous_report.created_at) + " ago",
+                          intelligence_report_path(@previous_report),
+                          class: "veritas-prev-link" %>
+                  </span>
+                </div>
+              <% end %>
             </div>
           </div>
           <div class="veritas-cyan-divider"></div>
         </div>
 
-        <!-- Dossier Body -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- SIGNAL STATS BAR — Bloomberg-style metrics     -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <% if @report.signal_stats.present? %>
+          <div class="veritas-stats-bar mb-4">
+            <div class="stat-cell">
+              <div class="stat-value"><%= @report.stat("avg_trust") %><span class="stat-unit">/100</span></div>
+              <div class="stat-label">AVG TRUST</div>
+              <div class="stat-bar-track">
+                <div class="stat-bar-fill" style="width: <%= @report.stat("avg_trust", 0) %>%;
+                  background: <%= @report.stat("avg_trust", 0).to_f >= 70 ? "#22c55e" : (@report.stat("avg_trust", 0).to_f >= 50 ? "#facc15" : "#ef4444") %>;"></div>
+              </div>
+            </div>
+            <div class="stat-cell">
+              <div class="stat-value"><%= @report.stat("source_diversity") %></div>
+              <div class="stat-label">UNIQUE SOURCES</div>
+            </div>
+            <div class="stat-cell">
+              <div class="stat-value"><%= @report.stat("anomaly_pct") %><span class="stat-unit">%</span></div>
+              <div class="stat-label">ANOMALY RATE</div>
+              <div class="stat-bar-track">
+                <div class="stat-bar-fill" style="width: <%= [@report.stat("anomaly_pct", 0).to_f, 100].min %>%;
+                  background: <%= @report.stat("anomaly_pct", 0).to_f >= 40 ? "#ef4444" : (@report.stat("anomaly_pct", 0).to_f >= 20 ? "#f97316" : "#22c55e") %>;"></div>
+              </div>
+            </div>
+            <div class="stat-cell">
+              <div class="stat-value"><%= @report.stat("high_pct") %><span class="stat-unit">%</span></div>
+              <div class="stat-label">HIGH/CRIT SIGNALS</div>
+              <div class="stat-bar-track">
+                <div class="stat-bar-fill" style="width: <%= [@report.stat("high_pct", 0).to_f, 100].min %>%;
+                  background: #f97316;"></div>
+              </div>
+            </div>
+            <% if @report.top_sources.any? %>
+              <div class="stat-cell stat-cell--wide">
+                <div class="stat-label mb-1">TOP SOURCES</div>
+                <div class="top-sources-list">
+                  <% @report.top_sources.first(3).each do |src| %>
+                    <span class="source-chip"><%= src["name"].truncate(20) %> <span class="chip-count"><%= src["count"] %></span></span>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- HISTORICAL DELTA PANEL                         -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <% if @delta %>
+          <%
+            direction_label = case @delta[:direction]
+              when :escalating    then "▲ ESCALATING"
+              when :de_escalating then "▼ DE-ESCALATING"
+              else                     "→ STABLE PATTERN"
+            end
+            direction_color = case @delta[:direction]
+              when :escalating    then "#ef4444"
+              when :de_escalating then "#22c55e"
+              else                     "#64748b"
+            end
+          %>
+          <div class="veritas-delta-panel mb-4"
+               style="border-color: <%= direction_color %>40;">
+            <div class="delta-header">
+              <span class="delta-title">ΔELTA // SINCE PREVIOUS REPORT</span>
+              <span class="delta-direction" style="color: <%= direction_color %>;">
+                <%= direction_label %>
+              </span>
+              <span class="delta-age">
+                <%= time_ago_in_words(@delta[:previous_age]) %> ago
+              </span>
+            </div>
+
+            <div class="delta-grid">
+              <%# Verdict change %>
+              <div class="delta-cell">
+                <div class="delta-label">VERDICT</div>
+                <div class="delta-value">
+                  <span style="color: <%= IntelligenceReport::VERDICT_COLORS[@delta[:previous_verdict]] || "#64748b" %>;">
+                    <%= @delta[:previous_verdict] || "N/A" %>
+                  </span>
+                  <span class="delta-arrow" style="color: <%= direction_color %>;">→</span>
+                  <span style="color: <%= @report.verdict_color %>;">
+                    <%= @delta[:current_verdict] %>
+                  </span>
+                </div>
+              </div>
+
+              <%# Trust delta %>
+              <div class="delta-cell">
+                <div class="delta-label">AVG TRUST</div>
+                <div class="delta-value">
+                  <% td = @delta[:trust_delta] %>
+                  <span class="delta-number" style="color: <%= td >= 0 ? "#22c55e" : "#ef4444" %>;">
+                    <%= td >= 0 ? "+" : "" %><%= td %>
+                  </span>
+                  <span class="delta-indicator"><%= td >= 0 ? "▲" : "▼" %></span>
+                </div>
+              </div>
+
+              <%# Anomaly delta %>
+              <div class="delta-cell">
+                <div class="delta-label">ANOMALIES</div>
+                <div class="delta-value">
+                  <% ad = @delta[:anomaly_delta] %>
+                  <span class="delta-number" style="color: <%= ad > 0 ? "#ef4444" : "#22c55e" %>;">
+                    <%= ad > 0 ? "+" : "" %><%= ad %> signals
+                  </span>
+                  <span class="delta-indicator"><%= ad > 0 ? "▲" : (ad < 0 ? "▼" : "→") %></span>
+                </div>
+              </div>
+
+              <%# High/Critical delta %>
+              <div class="delta-cell">
+                <div class="delta-label">HIGH/CRIT</div>
+                <div class="delta-value">
+                  <% hd = @delta[:high_delta] %>
+                  <span class="delta-number" style="color: <%= hd > 0 ? "#f97316" : "#22c55e" %>;">
+                    <%= hd > 0 ? "+" : "" %><%= hd %> signals
+                  </span>
+                  <span class="delta-indicator"><%= hd > 0 ? "▲" : (hd < 0 ? "▼" : "→") %></span>
+                </div>
+              </div>
+
+              <%# Source diversity delta %>
+              <div class="delta-cell">
+                <div class="delta-label">SOURCES</div>
+                <div class="delta-value">
+                  <% sd = @delta[:source_delta] %>
+                  <span class="delta-number" style="color: <%= sd >= 0 ? "#38bdf8" : "#64748b" %>;">
+                    <%= sd >= 0 ? "+" : "" %><%= sd %> sources
+                  </span>
+                  <span class="delta-indicator"><%= sd > 0 ? "▲" : (sd < 0 ? "▼" : "→") %></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- TEMPORAL EVOLUTION CHART                       -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <% if @report.temporal_buckets.any? %>
+          <div class="veritas-temporal-panel mb-4">
+            <div class="temporal-header">
+              <span class="panel-icon">⟳</span>
+              <span class="temporal-title">TEMPORAL_EVOLUTION // 48H NARRATIVE TIMELINE</span>
+            </div>
+            <div class="temporal-grid">
+              <% @report.temporal_buckets.each_with_index do |bucket, idx| %>
+                <%
+                  intensity = bucket["count"].to_i
+                  max_count = @report.temporal_buckets.map { |b| b["count"].to_i }.max.to_f
+                  bar_pct   = max_count > 0 ? ((intensity / max_count) * 100).round : 0
+                  trust_val = bucket["avg_trust"]
+                  trust_color = trust_val ? (trust_val >= 70 ? "#22c55e" : (trust_val >= 50 ? "#facc15" : "#ef4444")) : "#64748b"
+                  is_latest = idx == @report.temporal_buckets.size - 1
+                %>
+                <div class="temporal-bucket <%= "temporal-bucket--latest" if is_latest %>">
+                  <div class="bucket-label"><%= bucket["label"] %></div>
+                  <div class="bucket-bar-track">
+                    <div class="bucket-bar-fill" style="height: <%= bar_pct %>%;"></div>
+                  </div>
+                  <div class="bucket-stats">
+                    <span class="bucket-count"><%= bucket["count"] %> sig</span>
+                    <% if trust_val %>
+                      <span class="bucket-trust" style="color: <%= trust_color %>;">
+                        <%= trust_val %>t
+                      </span>
+                    <% end %>
+                    <% if bucket["anomaly_count"].to_i > 0 %>
+                      <span class="bucket-anomaly">⚠ <%= bucket["anomaly_count"] %></span>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- DOSSIER BODY — LLM Analysis                    -->
+        <!-- ═══════════════════════════════════════════════ -->
         <div class="veritas-dossier-card">
-          <div class="dossier-content" id="markdown-content" data-content="<%= sanitized_report_summary(@report.summary) %>">
+          <div class="dossier-content"
+               id="markdown-content"
+               data-content="<%= sanitized_report_summary(@report.summary) %>">
             <div class="veritas-report-text">
               <%= formatted_report_html(@report.summary) %>
             </div>
           </div>
         </div>
 
-        <!-- Source Signals -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- ANALYSED SIGNALS GRID                          -->
+        <!-- ═══════════════════════════════════════════════ -->
         <div class="mt-5">
           <h3 class="veritas-panel-title mb-3">ANALYSED_SIGNALS</h3>
           <div class="row">
-            <% Article.where(id: @report.analyzed_article_ids).each do |article| %>
+            <% Article.where(id: @report.analyzed_article_ids)
+                      .includes(:ai_analysis, :country)
+                      .order(published_at: :desc).each do |article| %>
               <div class="col-md-6 mb-3">
                 <div class="veritas-signal-card">
-                  <div class="d-flex justify-content-between mb-1">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
                     <span class="source text-primary"><%= article.source_name %></span>
-                    <span class="time"><%= article.published_at.strftime("%H:%M") %></span>
+                    <div class="d-flex align-items-center gap-2">
+                      <% if article.ai_analysis %>
+                        <span class="signal-trust"
+                              style="color: <%= article.ai_analysis.trust_score.to_f >= 70 ? "#22c55e" : (article.ai_analysis.trust_score.to_f >= 50 ? "#facc15" : "#ef4444") %>;">
+                          T:<%= article.ai_analysis.trust_score&.round %>
+                        </span>
+                      <% end %>
+                      <span class="time"><%= article.published_at&.strftime("%H:%M") %></span>
+                    </div>
                   </div>
-                  <p class="headline mb-0"><%= truncate(article.headline, length: 80) %></p>
+                  <p class="headline mb-0"><%= truncate(article.headline, length: 90) %></p>
+                  <% if article.ai_analysis&.linguistic_anomaly_flag ||
+                        article.ai_analysis&.sentinel_response&.dig("linguistic_anomaly_flag") %>
+                    <span class="anomaly-flag">⚠ ANOMALY</span>
+                  <% end %>
                 </div>
               </div>
             <% end %>

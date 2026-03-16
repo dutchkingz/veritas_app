@@ -179,8 +179,9 @@
       <hr class="veritas-divider mt-4 mb-3">
 
       <%# ──────────────────────────────────────────────────────
-          REGIONAL ANALYSIS — Trigger Panel
-          Refactored: Uses Stimulus `run` action to avoid page reload.
+          REGIONAL ANALYSIS — Verdict Panel
+          Admins: trigger new analysis + see live progress.
+          All users: see latest verdict badge + open dossier.
       ─────────────────────────────────────────────────────── %>
       <div class="veritas-panel-header mb-2">
         <span class="panel-icon">&#9670;</span>
@@ -188,41 +189,65 @@
       </div>
 
       <% @regions.each do |region| %>
+        <% report = @latest_reports[region.id] %>
         <div class="veritas-analysis-block mb-3"
              data-controller="analysis-progress"
              data-analysis-progress-region-id-value="<%= region.id %>"
+             data-analysis-progress-report-id-value="<%= report&.id || 0 %>"
              data-analysis-progress-poll-interval-value="2500"
              id="region-analysis-<%= region.id %>">
 
           <div class="d-flex justify-content-between align-items-center mb-1">
             <span class="threat-region"><%= region.name %></span>
 
-            <% if current_user&.admin? %>
-              <button data-action="click->analysis-progress#run"
-                      data-analysis-progress-target="button"
-                      class="btn veritas-analysis-btn">
-                &#x25B6; RUN
-              </button>
-            <% else %>
-              <button data-analysis-progress-target="button"
-                      class="btn veritas-analysis-btn"
-                      disabled
-                      title="Regional analysis dossiers are currently restricted to admin users.">
-                LOCKED
-              </button>
-            <% end %>
+            <div class="d-flex align-items-center gap-2">
+              <%# Verdict badge — visible to all users when a report exists %>
+              <% if report %>
+                <span class="veritas-verdict-pill"
+                      style="color: <%= report.verdict_color %>; border-color: <%= report.verdict_color %>40;">
+                  <%= report.verdict %>
+                </span>
+              <% end %>
+
+              <%# Admins: always show RUN button %>
+              <% if current_user&.admin? %>
+                <button data-action="click->analysis-progress#run"
+                        data-analysis-progress-target="button"
+                        class="btn veritas-analysis-btn">
+                  &#x25B6; RUN
+                </button>
+              <% end %>
+            </div>
           </div>
 
+          <%# Progress bar: filled + verdict color if report exists, empty if not %>
           <div class="veritas-analysis-bar-track">
             <div data-analysis-progress-target="bar"
                  class="veritas-analysis-bar-fill"
-                 style="width: 0%;"></div>
+                 style="width: <%= report ? '100%' : '0%' %>;
+                        background: linear-gradient(90deg, <%= report ? report.verdict_color : 'var(--neon-blue)' %>, rgba(0,0,0,0));"></div>
           </div>
-          <p data-analysis-progress-target="label"
-             class="veritas-analysis-status"></p>
 
+          <%# Status label: last updated timestamp or empty %>
+          <p data-analysis-progress-target="label" class="veritas-analysis-status">
+            <% if report %>
+              <span class="veritas-glitch-text"
+                    data-text="Updated <%= time_ago_in_words(report.created_at) %> ago">
+                Updated <%= time_ago_in_words(report.created_at) %> ago
+              </span>
+            <% end %>
+          </p>
+
+          <%# Dossier link — pre-seeded if a report already exists %>
           <div data-analysis-progress-target="result"
-               class="veritas-analysis-result d-none"></div>
+               class="veritas-analysis-result <%= report ? '' : 'd-none' %>">
+            <% if report %>
+              <%= link_to intelligence_report_path(report),
+                    class: "btn veritas-dossier-btn w-100 mt-1" do %>
+                OPEN INTEL DOSSIER
+              <% end %>
+            <% end %>
+          </div>
         </div>
       <% end %>
 

@@ -11,6 +11,7 @@ class IntelligenceReportsController < ApplicationController
   before_action :authenticate_user!
   before_action :ensure_admin!, only: [:create]
   before_action :set_report, only: %i[show status]
+  before_action :ensure_report_accessible!, only: %i[show status]
 
   # POST /intelligence_reports
   def create
@@ -35,15 +36,16 @@ class IntelligenceReportsController < ApplicationController
 
   # GET /intelligence_reports/:id
   def show
-    # Only admins can view reports for now
-    ensure_admin!
+    @previous_report = IntelligenceReport
+      .where(region: @report.region, status: "completed")
+      .where.not(id: @report.id)
+      .order(created_at: :desc)
+      .first
+    @delta = @report.delta_from(@previous_report)
   end
 
   # GET /intelligence_reports/:id/status
   def status
-    # IDOR protection: only admins can see specific report statuses
-    return head :forbidden unless current_user.admin?
-
     render json: serialize_report(@report)
   end
 
@@ -51,10 +53,22 @@ class IntelligenceReportsController < ApplicationController
 
   def ensure_admin!
     return if current_user.admin?
-    
+
     respond_to do |format|
       format.html { redirect_to root_path, alert: "Access Denied." }
       format.json { render json: { error: "Admin access required" }, status: :forbidden }
+    end
+  end
+
+  # All logged-in users can read completed reports.
+  # Pending/processing/failed reports are admin-only (no spoilers for in-flight jobs).
+  def ensure_report_accessible!
+    return if current_user.admin?
+    return if @report.completed?
+
+    respond_to do |format|
+      format.html { redirect_to dashboard_path, alert: "This report is not yet available." }
+      format.json { render json: { error: "Report not available" }, status: :forbidden }
     end
   end
 
