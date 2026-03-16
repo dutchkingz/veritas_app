@@ -135,7 +135,7 @@ def fallback_articles(created_regions, count:)
       longitude:      geo[:region].longitude + rand(-2.0..2.0),
       country:        geo[:country],
       region:         geo[:region],
-      target_country: 1,
+      country: geo[:country],
       raw_data:       { "seed_mode" => "fallback_demo", "source" => source, "description" => headline }
     }
   end
@@ -168,7 +168,28 @@ def seed_articles!(created_regions)
     end
   end
 
-  puts "Seed complete! #{Article.count} articles created."
+  puts "Creating initial AI Analyses for demo articles..."
+  Article.find_each do |a|
+    threat = rand(1..3)
+    trust = rand(60..98)
+    label = ['Bullish', 'Bearish', 'Neutral'].sample
+    color = case label
+            when 'Bullish' then '#22c55e'
+            when 'Bearish' then '#ef4444'
+            else '#38bdf8'
+            end
+    
+    a.create_ai_analysis!(
+      threat_level: threat.to_s,
+      trust_score: trust.to_f,
+      sentiment_label: label,
+      sentiment_color: color,
+      analysis_status: 'complete',
+      summary: "AI generated summary for #{a.headline}"
+    )
+  end
+
+  puts "Seed complete! #{Article.count} articles and #{AiAnalysis.count} analyses created."
 end
 
 def seed_narrative_arcs!
