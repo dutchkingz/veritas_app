@@ -22,7 +22,13 @@ class FetchArticleContentJob < ApplicationJob
       if content.present?
         # Clean up content (remove excessive whitespace, limit size)
         cleaned_content = clean_content(content)
-        article.update!(content: cleaned_content)
+
+        images = []
+        if @last_html.present?
+          images = ArticleImageExtractor.new(@last_html, @last_base_url).extract
+        end
+
+        article.update!(content: cleaned_content, article_images: images)
         
         Rails.logger.info "[FetchArticleContentJob] ✅ Content saved for Article ##{article_id} (#{cleaned_content.length} chars)"
         
@@ -70,6 +76,8 @@ class FetchArticleContentJob < ApplicationJob
     if response.code == '200'
       # Extract text from HTML (very basic extraction)
       html = response.body
+      @last_html     = html
+      @last_base_url = url
       extract_text_from_html(html)
     else
       Rails.logger.warn "[FetchArticleContentJob] HTTP #{response.code} for #{url}"

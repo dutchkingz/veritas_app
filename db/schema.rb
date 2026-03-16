@@ -35,6 +35,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_16_151842) do
   end
 
   create_table "articles", force: :cascade do |t|
+    t.jsonb "article_images", default: [], null: false
     t.text "content"
     t.bigint "country_id", null: false
     t.datetime "created_at", null: false
