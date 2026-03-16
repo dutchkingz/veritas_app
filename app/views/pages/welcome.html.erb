@@ -1,4 +1,28 @@
 <div class="veritas-welcome-wrapper" data-controller="globe-welcome">
+  <!-- Top News Ticker (Below Banner) -->
+  <div class="welcome-ticker fade-in">
+    <div class="ticker-wrapper">
+      <div class="ticker-content">
+        <% @top_stories.each do |story| %>
+          <span class="ticker-item">
+            <span class="ticker-source">[<%= story.source_name.upcase %>]</span>
+            <span class="ticker-text"><%= story.headline.upcase %></span>
+            <span class="ticker-threat" style="color: <%= story.ai_analysis.threat_color %>">● THREAT_LVL_<%= story.ai_analysis.threat_level %></span>
+          </span>
+        <% end %>
+        <%# Duplicate for seamless loop %>
+        <% @top_stories.each do |story| %>
+          <span class="ticker-item">
+            <span class="ticker-source">[<%= story.source_name.upcase %>]</span>
+            <span class="ticker-text"><%= story.headline.upcase %></span>
+            <span class="ticker-threat" style="color: <%= story.ai_analysis.threat_color %>">● THREAT_LVL_<%= story.ai_analysis.threat_level %></span>
+          </span>
+        <% end %>
+      </div>
+    </div>
+    <div class="ticker-date"><%= Time.current.strftime("%d %^b %Y") %></div>
+  </div>
+
   <!-- Interactive Globe Background -->
   <div class="welcome-globe-container"
        id="welcome-globe"
@@ -19,7 +43,8 @@
       <p class="welcome-tagline">GLOBAL INTELLIGENCE SIGNALING LAYER</p>
     </div>
 
-    <div class="welcome-auth-card glass-panel fade-in-delayed">
+    <!-- Shrunk Auth Card -->
+    <div class="welcome-auth-card glass-panel fade-in-delayed shrunk-card">
       <div class="auth-header">
         <div class="auth-status">
           <span class="status-dot"></span>
@@ -36,17 +61,10 @@
 
           <div class="welcome-input-group">
             <label for="user_password">PASSPHRASE</label>
-            <%= f.password_field :password, autocomplete: "current-password", class: "welcome-input", placeholder: "••••••••••••", required: true %>
+            <%= f.password_field :password, autocomplete: "current-password", class: "welcome-input", placeholder: "••••••••", required: true %>
           </div>
 
           <div class="auth-actions">
-            <% if @devise_mapping.rememberable? %>
-              <div class="welcome-checkbox-group">
-                <%= f.check_box :remember_me, class: "welcome-checkbox" %>
-                <%= f.label :remember_me, "STAY_CONNECTED", class: "welcome-checkbox-label" %>
-              </div>
-            <% end %>
-
             <button type="submit" class="welcome-submit-btn">
               <span class="btn-text">AUTHENTICATE</span>
               <span class="btn-glitch"></span>
@@ -56,24 +74,9 @@
       </div>
 
       <div class="auth-footer">
-        <%= link_to "CORE_ACCESS_REQUEST", new_registration_path(@resource_name), class: "welcome-footer-link" %>
+        <%= link_to "CORE_ACCESS", new_registration_path(@resource_name), class: "welcome-footer-link" %>
         <span class="footer-separator">/</span>
-        <%= link_to "RECOVER_PASSPHRASE", new_password_path(@resource_name), class: "welcome-footer-link" %>
-      </div>
-    </div>
-
-    <div class="welcome-system-stats fade-in-delayed-more">
-      <div class="stat-item">
-        <span class="stat-label">LATENCY</span>
-        <span class="stat-value">24MS</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">NODES</span>
-        <span class="stat-value">1,024</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">ENCRYPTION</span>
-        <span class="stat-value">AES-256</span>
+        <%= link_to "RECOVER", new_password_path(@resource_name), class: "welcome-footer-link" %>
       </div>
     </div>
   </main>
