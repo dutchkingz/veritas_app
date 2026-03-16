@@ -1,0 +1,112 @@
+// ━━━ Article Image Strip ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+.article-image-strip {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.1);
+
+  &__label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: #38BDF8;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+
+    span { margin-right: 6px; }
+  }
+
+  &__scroll {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+
+    scrollbar-width: thin;
+    scrollbar-color: #00d4ff rgba(56, 189, 248, 0.08);
+
+    &::-webkit-scrollbar       { height: 4px; }
+    &::-webkit-scrollbar-track { background: rgba(56, 189, 248, 0.05); border-radius: 2px; }
+    &::-webkit-scrollbar-thumb { background: #00d4ff; border-radius: 2px; }
+  }
+}
+
+.article-image-thumb {
+  flex: 0 0 auto;
+  height: 160px;
+  cursor: pointer;
+  border: 1px solid rgba(56, 189, 248, 0.15);
+  border-radius: 4px;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:hover {
+    border-color: #00d4ff;
+    box-shadow: 0 0 12px rgba(0, 212, 255, 0.25);
+  }
+
+  img {
+    height: 100%;
+    width: auto;
+    max-width: 256px;
+    object-fit: cover;
+    display: block;
+  }
+}
+
+// ━━━ Lightbox ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+.lightbox-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.92);
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 40px;
+
+  &.lightbox--open {
+    display: flex;
+  }
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  background: none;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: #38BDF8;
+  font-size: 1.1rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 3px;
+  cursor: pointer;
+  line-height: 1;
+  transition: all 0.2s;
+
+  &:hover {
+    background: rgba(56, 189, 248, 0.1);
+    border-color: #00d4ff;
+  }
+}
+
+.lightbox-img {
+  max-width: 90vw;
+  max-height: 80vh;
+  object-fit: contain;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 4px;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+  cursor: zoom-out;
+}
+
+.lightbox-caption {
+  margin-top: 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: #64748b;
+  text-align: center;
+  max-width: 600px;
+}
