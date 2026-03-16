@@ -20,9 +20,9 @@ class NarrativeRoute < ApplicationRecord
       next_hop = hops[index + 1]
       next unless next_hop
       
-      # Calculate thickness based on manipulation score (0.3–3.0)
-      # More manipulation = thicker arc (more important to visualize)
-      thickness = [(manipulation_score || 0.5) * 3.0, 0.3].max.round(2)
+      # Calculate thickness based on manipulation score, but keep it thin (0.2–0.8)
+      # More manipulation = slightly thicker arc, but still aesthetically pleasing
+      thickness = [(manipulation_score || 0.5) * 0.8, 0.2].max.round(2)
       
       segments << {
         startLat: hop['lat'],

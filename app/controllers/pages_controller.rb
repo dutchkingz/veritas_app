@@ -80,7 +80,8 @@ class PagesController < ApplicationController
     end
 
     arcs = if view_mode == "segments"
-             build_route_segments(filtered_articles, perspective, to_time)
+             segments = build_route_segments(filtered_articles, perspective, to_time)
+             segments.any? ? segments : build_globe_arcs(filtered_articles, perspective, to_time)
            else
              build_globe_arcs(filtered_articles, perspective, to_time)
            end

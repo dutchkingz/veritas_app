@@ -19,8 +19,20 @@ production:
     queue: default
     schedule: every 30 minutes
 
+  generate_narrative_routes:
+    class: GenerateNarrativeRoutesJob
+    queue: default
+    args: [{ limit: 50 }]
+    schedule: every hour at minute 15
+
 development:
   fetch_articles:
     class: FetchArticlesJob
     queue: default
     schedule: every 30 minutes
+
+  generate_narrative_routes:
+    class: GenerateNarrativeRoutesJob
+    queue: default
+    args: [{ limit: 50 }]
+    schedule: every hour at minute 15
