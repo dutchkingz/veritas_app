@@ -58,6 +58,9 @@ Rails.application.routes.draw do
       member do
         patch :toggle_admin
       end
+      collection do
+        post :invite
+      end
     end
     
     # Narrative route generation endpoint

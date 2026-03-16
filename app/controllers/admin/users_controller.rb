@@ -48,6 +48,22 @@ class Admin::UsersController < ApplicationController
     redirect_to admin_users_path, notice: "User deleted successfully."
   end
 
+  def invite
+    authorize User, :index?
+    email = params[:email].to_s.strip
+    
+    if email.present? && email.match?(URI::MailTo::EMAIL_REGEXP)
+      success = Sendgrid::InvitationEmailService.call(email)
+      if success
+        redirect_to admin_users_path, notice: "Invitation sent to #{email} via SendGrid."
+      else
+        redirect_to admin_users_path, alert: "Failed to deliver invitation to #{email}. Check system logs."
+      end
+    else
+      redirect_to admin_users_path, alert: "Please provide a valid email address."
+    end
+  end
+
   private
 
   def set_user
