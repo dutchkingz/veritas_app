@@ -97,13 +97,3 @@ production:
   cable:
     <<: *default
     url: <%= ENV["DATABASE_URL"] %>
-
-  queue:
-    <<: *default
-    database: veritas_app_development
-  cache:
-    <<: *default
-    database: veritas_app_development
-  cable:
-    <<: *default
-    database: veritas_app_development

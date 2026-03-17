@@ -15,3 +15,6 @@ pin_all_from "app/javascript/channels", under: "channels"
 # Globe.gl — 3D globe visualisation for the war room
 pin "globe.gl", to: "https://cdn.jsdelivr.net/npm/globe.gl@2.41.2/+esm"
 pin "three", to: "https://ga.jspm.io/npm:three@0.160.0/build/three.module.js"
+
+# D3.js — Force-directed network graphs (Narrative DNA)
+pin "d3", to: "https://cdn.jsdelivr.net/npm/d3@7/+esm"

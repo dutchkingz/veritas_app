@@ -1,6 +1,6 @@
 class PagesController < ApplicationController
   DEFAULT_ARC_COLOR = "#00f0ff".freeze
-  skip_before_action :authenticate_user!, only: [:welcome, :home, :globe_data, :search]
+  skip_before_action :authenticate_user!, only: [:welcome, :home, :globe_data, :search, :narrative_dna, :tribunal, :article_preview]
 
   def welcome
     redirect_to dashboard_path if user_signed_in?
@@ -139,6 +139,48 @@ class PagesController < ApplicationController
     end
 
     render json: { points: points, arcs: arcs, regions: regions }
+  end
+
+  # GET /api/article_preview/:article_id — Lightweight article card for DNA node click
+  def article_preview
+    article = Article.includes(:ai_analysis, :country).find_by(id: params[:article_id])
+    return render json: { error: "Not found" }, status: :not_found unless article
+
+    snippet = if article.content.present?
+                ActionController::Base.helpers.strip_tags(article.content)
+                                      .gsub(/\s+/, " ").strip.first(280)
+              else
+                article.raw_data&.dig("description").to_s.first(280)
+              end
+
+    render json: {
+      id:              article.id,
+      headline:        article.headline,
+      source:          article.source_name,
+      country:         article.country&.name,
+      published_at:    article.published_at&.iso8601,
+      snippet:         snippet.presence || "No content available.",
+      threat_level:    article.ai_analysis&.threat_level,
+      sentiment_color: article.ai_analysis&.sentiment_color || "#6b7280"
+    }
+  end
+
+  # GET /api/tribunal/:article_id — Agent debate JSON for War Room Tribunal
+  def tribunal
+    article = Article.includes(:ai_analysis, :country).find_by(id: params[:article_id])
+    return render json: { error: "Not found" }, status: :not_found unless article
+
+    data = TribunalService.new(article).call
+    render json: data
+  end
+
+  # GET /api/narrative_dna/:article_id — Graph JSON for Narrative DNA panel
+  def narrative_dna
+    article = Article.find_by(id: params[:article_id])
+    return render json: { error: "Not found" }, status: :not_found unless article
+
+    data = NarrativeDnaService.new(article).call
+    render json: data
   end
 
   def search

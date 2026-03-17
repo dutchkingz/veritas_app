@@ -3,6 +3,48 @@
 > "We cannot stop people from lying on the internet.
 >  But with VERITAS, we can make sure they can never hide in the dark again."
 
+# VERITAS Product Roadmap
+
+## Mission
+
+VERITAS is not a news reader and not a dashboard toy.
+
+It is a production OSINT platform for narrative warfare analysis:
+
+- detect how narratives are shaped
+- trace how they spread
+- compare how they mutate across perspectives
+- surface contradictions and anomalies
+- help analysts understand what is true, what is coordinated, and what is being amplified
+
+This roadmap is written for AI-assisted implementation teams. It is intentionally concrete and execution-oriented.
+
+---
+
+## Product Standard
+
+The target is not “good enough for demo”.
+
+The target is:
+
+- trustworthy outputs
+- explainable intelligence
+- robust ingestion
+- usable analyst workflows
+- real-time operational behavior
+- cinematic but meaningful visualization
+
+Every feature should be judged against 5 production criteria:
+
+1. Is it accurate enough to trust?
+2. Is it explainable enough to defend?
+3. Is it stable enough to operate?
+4. Is it fast enough to use live?
+5. Does it improve analyst decisions?
+
+If a feature is only visually impressive but not operationally useful, it is secondary.
+
+
 ---
 
 ## 🧠 Agent Identity & Role

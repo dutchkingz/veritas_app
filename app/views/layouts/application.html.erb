@@ -18,7 +18,9 @@
     <%= javascript_importmap_tags %>
   </head>
 
-  <body class="veritas-body">
+  <body class="veritas-body"<% if user_signed_in? %> data-controller="breaking-alert"<% end %>>
+
+
     <!-- Top Navigation Bar -->
     <%= render "shared/banner" %>
 
