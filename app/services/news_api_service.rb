@@ -21,9 +21,6 @@ class NewsApiService
   def fetch_latest(query: "geopolitics", page_size: 20, page: 1)
     return [] if @api_key.blank?
 
-    regions = Region.all.to_a
-    return [] if regions.empty?
-
     raw = call_api(query: query, page_size: page_size, page: page)
     return [] if raw.empty?
 
@@ -31,24 +28,7 @@ class NewsApiService
 
     raw.filter_map do |item|
       next if item["url"].blank? || existing_urls.include?(item["url"])
-
-      region  = regions.sample
-      country = Country.where(region_id: region.id).first
-      next unless country
-
-      {
-        headline:       item["title"],
-        source_url:     item["url"],
-        source_name:    item.dig("source", "name") || "Unknown",
-        published_at:   item["publishedAt"],
-        fetched_at:     Time.now,
-        latitude:       region.latitude  + rand(-2.0..2.0),
-        longitude:      region.longitude + rand(-2.0..2.0),
-        country:        country,
-        region:         region,
-        target_country: 1,
-        raw_data:       item
-      }
+      build_article_attrs(item)
     end
   rescue => e
     Rails.logger.error "[NewsApiService] #{e.class}: #{e.message}"
@@ -57,9 +37,6 @@ class NewsApiService
 
   def fetch_demo_batch(limit: 200, queries: DEFAULT_DEMO_QUERIES, page_size: 100, max_pages_per_query: 3)
     return [] if @api_key.blank?
-
-    regions = Region.includes(:countries).to_a
-    return [] if regions.empty?
 
     existing_urls = Article.pluck(:source_url).to_set
     collected = []
@@ -77,25 +54,8 @@ class NewsApiService
           url = item["url"]
           next if url.blank? || existing_urls.include?(url)
 
-          region = regions.sample
-          country = region.countries.first
-          next unless country
-
           existing_urls << url
-
-          {
-            headline:       item["title"],
-            source_url:     url,
-            source_name:    item.dig("source", "name") || "Unknown",
-            published_at:   item["publishedAt"],
-            fetched_at:     Time.current,
-            latitude:       region.latitude + rand(-2.0..2.0),
-            longitude:      region.longitude + rand(-2.0..2.0),
-            country:        country,
-            region:         region,
-            target_country: 1,
-            raw_data:       item
-          }
+          build_article_attrs(item)
         end
 
         collected.concat(new_items)
@@ -109,7 +69,59 @@ class NewsApiService
     []
   end
 
+  # Fetches articles for an arbitrary user-supplied query string.
+  # Used by FreshIntelligenceJob during live search.
+  def fetch_by_query(query_string, max_results: 20)
+    return [] if @api_key.blank?
+    return [] if api_limit_reached?
+
+    raw = call_api(query: query_string, page_size: [max_results, 100].min, page: 1)
+    track_api_call!
+    return [] if raw.empty?
+
+    existing_urls = Article.where(source_url: raw.map { |a| a["url"] }).pluck(:source_url).to_set
+
+    raw.filter_map do |item|
+      next if item["url"].blank? || existing_urls.include?(item["url"])
+      build_article_attrs(item)
+    end
+  rescue => e
+    Rails.logger.error "[NewsApiService] fetch_by_query failed: #{e.class} #{e.message}"
+    []
+  end
+
   private
+
+  def build_article_attrs(item)
+    geo = GeolocatorService.call(item)
+
+    {
+      headline:       item["title"],
+      source_url:     item["url"],
+      source_name:    item.dig("source", "name") || "Unknown",
+      published_at:   item["publishedAt"],
+      fetched_at:     Time.current,
+      latitude:       geo[:latitude],
+      longitude:      geo[:longitude],
+      country:        geo[:country],
+      region:         geo[:region],
+      target_country: geo[:target_country_id],
+      geo_method:     geo[:geo_method],
+      raw_data:       item
+    }
+  end
+
+  def api_limit_reached?
+    calls_today >= 90
+  end
+
+  def calls_today
+    Rails.cache.read("newsapi_calls:#{Date.today}").to_i
+  end
+
+  def track_api_call!
+    Rails.cache.increment("newsapi_calls:#{Date.today}", 1, expires_in: 24.hours)
+  end
 
   def call_api(query:, page_size:, page: 1)
     uri       = URI(BASE_URL)

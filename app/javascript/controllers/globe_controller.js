@@ -21,12 +21,14 @@ export default class extends Controller {
     this._searchHandler         = (e) => this._onSearchEvent(e)
     this._searchClearHandler    = (e) => this._onSearchClearEvent(e)
     this._breakingAlertHandler  = (e) => this._onBreakingAlert(e)
+    this._viewModeHandler       = (e) => this._onViewModeChanged(e)
     window.addEventListener("veritas:flyTo",             this._flyToHandler)
     window.addEventListener("veritas:perspectiveChange", this._perspectiveHandler)
     window.addEventListener("veritas:timelineChange",    this._timelineHandler)
     window.addEventListener("veritas:search",            this._searchHandler)
     window.addEventListener("veritas:searchClear",       this._searchClearHandler)
     window.addEventListener("veritas:breakingAlert",     this._breakingAlertHandler)
+    window.addEventListener("veritas:view-mode-changed", this._viewModeHandler)
     this._initGlobe()
     this._subscription = consumer.subscriptions.create("GlobeChannel", {
       received:     (data) => this._onBroadcast(data),
@@ -47,6 +49,7 @@ export default class extends Controller {
     window.removeEventListener("veritas:search",            this._searchHandler)
     window.removeEventListener("veritas:searchClear",       this._searchClearHandler)
     window.removeEventListener("veritas:breakingAlert",     this._breakingAlertHandler)
+    window.removeEventListener("veritas:view-mode-changed", this._viewModeHandler)
     clearTimeout(this._rotateTimer)
     if (this._resizeObserver) this._resizeObserver.disconnect()
     if (this._globe) {
@@ -573,14 +576,27 @@ export default class extends Controller {
     }
   }
 
-  // Handle search event from search_controller.js
+  _onViewModeChanged(event) {
+    const { mode } = event.detail
+    if (mode === "all") {
+      this._loadData()
+    } else if (mode === "search" && this._currentSearchQuery) {
+      window.dispatchEvent(new CustomEvent("veritas:search", {
+        detail: { query: this._currentSearchQuery }
+      }))
+    }
+  }
+
+  // Handle search event from search_controller.js / search_intelligence_controller.js
   async _onSearchEvent(event) {
     const { query } = event.detail
-    
+
     if (!query) {
       this._loadData() // Reset to default
       return
     }
+
+    this._currentSearchQuery = query
     
     // Fetch filtered globe data based on search query
     try {
@@ -628,10 +644,8 @@ export default class extends Controller {
     }
   }
 
-  // Clear search filter and reset globe
   _onSearchClearEvent() {
     this._currentSearchQuery = null
-    this._loadData() // Reset to default data
-    console.log('[GlobeController] Search filter cleared')
+    this._loadData()
   }
 }

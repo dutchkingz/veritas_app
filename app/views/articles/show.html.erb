@@ -42,7 +42,7 @@
             <span><i class="fa fa-hashtag me-1" style="color: #38BDF8;"></i> RECORD_<%= @article.id %></span>
             <span><i class="fa fa-globe me-1" style="color: #38BDF8;"></i> <%= @article.source_name %></span>
             <span><i class="fa fa-clock me-1" style="color: #38BDF8;"></i> <%= @article.published_at.strftime("%b %d, %Y %H:%M") %> UTC</span>
-            <span><i class="fa fa-map-marker-alt me-1" style="color: #38BDF8;"></i> <%= @article.country.name %> / <%= @article.region.name %></span>
+            <span><i class="fa fa-map-marker-alt me-1" style="color: #38BDF8;"></i> <%= @article.country&.name || "Unknown" %> / <%= @article.region&.name || "Unknown" %></span>
           </div>
         </div>
 

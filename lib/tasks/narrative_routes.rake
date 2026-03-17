@@ -16,6 +16,19 @@ namespace :veritas do
       puts "✅ Route generation complete: #{routes_created} routes created"
     end
     
+    desc "Delete all routes/arcs and regenerate with current article coordinates"
+    task regenerate: :environment do
+      arc_count   = NarrativeArc.count
+      route_count = NarrativeRoute.count
+      puts "Deleting #{route_count} routes and #{arc_count} arcs..."
+      NarrativeRoute.delete_all
+      NarrativeArc.delete_all
+      puts "Regenerating routes for all articles with coordinates..."
+      service = NarrativeRouteGeneratorService.new
+      routes_created = service.generate_routes(limit: nil, force: true)
+      puts "Done! #{routes_created} routes created."
+    end
+
     desc "Show narrative route statistics"
     task stats: :environment do
       puts "\n🦞 VERITAS Narrative Route Statistics\n"

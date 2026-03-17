@@ -1,6 +1,7 @@
 require "securerandom"
 
 puts "Cleaning up database..."
+BreakingAlert.destroy_all
 Briefing.destroy_all
 PerspectiveFilter.destroy_all
 NarrativeConvergence.destroy_all

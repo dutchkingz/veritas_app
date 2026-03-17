@@ -217,17 +217,24 @@ class PagesController < ApplicationController
   private
 
   def build_route_segments(filtered_articles, perspective, to_time)
-    # Fetch narrative routes with their hops, filtered by time and perspective
-    scope = NarrativeRoute.joins(narrative_arc: :article)
-                          .includes(narrative_arc: { article: :ai_analysis })
-                          .where.not(hops: nil)
-                          .order("narrative_routes.created_at DESC")
-    
+    filtered_ids = filtered_articles.map(&:id)
+
+    # Resolve arc IDs first — avoids JOIN ambiguity from combines includes+joins
+    arc_ids = NarrativeArc.where(article_id: filtered_ids).pluck(:id)
+
+    # Fetch narrative routes restricted to the filtered arc set
+    scope = NarrativeRoute
+      .where(narrative_arc_id: arc_ids)
+      .joins(narrative_arc: :article)
+      .includes(narrative_arc: { article: :ai_analysis })
+      .where.not(hops: nil)
+      .order("narrative_routes.created_at DESC")
+
     # Filter by timestamp if provided
     if to_time
       scope = scope.where("articles.published_at <= ?", to_time)
     end
-    
+
     # Filter by perspective if provided
     if perspective
       scope = scope.select do |route|
@@ -276,11 +283,14 @@ class PagesController < ApplicationController
   end
 
   def build_globe_arcs(filtered_articles, perspective, to_time)
+    filtered_ids = filtered_articles.map(&:id)
+
     # 1. Flow arcs (auto-generated from article sequence)
     flow_arcs = build_article_flow_arcs(filtered_articles, perspective)
 
-    # 2. Database arcs (seeded NarrativeArcs)
+    # 2. Database arcs (seeded NarrativeArcs) — restricted to filtered article set
     scope = NarrativeArc.includes(article: :ai_analysis).order(:id)
+    scope = scope.where(article_id: filtered_ids) if filtered_ids.any?
     scope = scope.joins(:article).where("articles.published_at <= ?", to_time) if to_time
 
     db_arcs = if perspective

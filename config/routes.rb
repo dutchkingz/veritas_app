@@ -17,6 +17,7 @@ Rails.application.routes.draw do
   get  "api/article_preview/:article_id",   to: "pages#article_preview",  as: :article_preview
   get  "api/trending_topics",               to: "api/trending_topics#index"
   get  "api/search_suggestions",            to: "api/search_suggestions#index"
+  post "api/search",                        to: "api/search#create"
   post "api/surge_check",                   to: "api/surge_checks#create"
 
   # -------------------------------------------------------

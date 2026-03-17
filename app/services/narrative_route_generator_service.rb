@@ -7,6 +7,21 @@ class NarrativeRouteGeneratorService
     @logger = logger
   end
   
+  # Targeted route generation for a single article against its nearest neighbors.
+  # Used by FreshIntelligenceJob — O(1) per article, not O(n²).
+  def generate_routes_for_article(article)
+    return 0 unless article.embedding.present?
+
+    similar = find_similar_articles(article)
+    return 0 if similar.empty?
+
+    route = create_route_for_article(article, similar)
+    route ? 1 : 0
+  rescue StandardError => e
+    @logger.error "[NarrativeRouteGenerator] generate_routes_for_article failed ##{article.id}: #{e.message}"
+    0
+  end
+
   # Main entry point: find articles without routes and try to connect them
   def generate_routes(limit: nil, force: false)
     @logger.info "[NarrativeRouteGenerator] Starting route generation..."
