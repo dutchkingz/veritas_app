@@ -1,6 +1,6 @@
 <!-- VERITAS War Room -->
 <div class="veritas-war-room"
-     data-controller="narrative-dna tribunal">
+     data-controller="narrative-dna tribunal entity-nexus">
 
 <!-- Perspective Selector Bar -->
 <div class="veritas-perspective-bar"
@@ -101,6 +101,9 @@
               <button class="tribunal-trigger-btn"
                       data-action="click->feed-card#openTribunal"
                       title="Open Intelligence Tribunal">⬟ TRIBUNAL</button>
+              <button class="nexus-trigger-btn"
+                      onclick="window.dispatchEvent(new CustomEvent('veritas:openEntityNexus', {detail:{articleId:<%= article.id %>}}))"
+                      title="View Entity Nexus for this signal">⬡ NEXUS</button>
             </div>
           </div>
         </div>

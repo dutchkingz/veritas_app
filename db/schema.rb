@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_17_110529) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_17_150939) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -94,6 +94,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_17_110529) do
     t.bigint "region_id", null: false
     t.datetime "updated_at", null: false
     t.index ["region_id"], name: "index_countries_on_region_id"
+  end
+
+  create_table "entities", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "entity_type", null: false
+    t.datetime "first_seen_at"
+    t.integer "mentions_count", default: 0, null: false
+    t.string "name", null: false
+    t.string "normalized_name", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_type"], name: "index_entities_on_entity_type"
+    t.index ["mentions_count"], name: "index_entities_on_mentions_count"
+    t.index ["normalized_name", "entity_type"], name: "index_entities_on_normalized_name_and_entity_type", unique: true
+  end
+
+  create_table "entity_mentions", force: :cascade do |t|
+    t.bigint "article_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "entity_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["article_id"], name: "index_entity_mentions_on_article_id"
+    t.index ["entity_id", "article_id"], name: "index_entity_mentions_on_entity_id_and_article_id", unique: true
+    t.index ["entity_id"], name: "index_entity_mentions_on_entity_id"
   end
 
   create_table "intelligence_reports", force: :cascade do |t|
@@ -371,6 +394,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_17_110529) do
   add_foreign_key "breaking_alerts", "users", column: "triggered_by_id"
   add_foreign_key "briefings", "users"
   add_foreign_key "countries", "regions"
+  add_foreign_key "entity_mentions", "articles"
+  add_foreign_key "entity_mentions", "entities"
   add_foreign_key "intelligence_reports", "regions"
   add_foreign_key "narrative_arcs", "articles"
   add_foreign_key "narrative_routes", "narrative_arcs"

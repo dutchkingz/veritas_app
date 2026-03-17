@@ -8,6 +8,8 @@ class Article < ApplicationRecord
   has_one :ai_analysis, dependent: :destroy
   has_many :narrative_arcs, dependent: :destroy
   has_many :saved_articles, dependent: :destroy
+  has_many :entity_mentions, dependent: :destroy
+  has_many :entities, through: :entity_mentions
 
   after_create_commit :broadcast_to_globe
 

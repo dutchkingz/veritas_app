@@ -1,0 +1,758 @@
+// -------------------------------------------------------
+// VERITAS — Entity Nexus Panel
+// Intelligence web: force-directed entity relationship graph
+// -------------------------------------------------------
+
+@keyframes nexus-slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes nexus-slide-out {
+  from { transform: translateX(0);    opacity: 1; }
+  to   { transform: translateX(100%); opacity: 0; }
+}
+
+@keyframes nexus-spinner {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes nexus-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
+@keyframes nexus-edge-pulse {
+  0%, 100% { stroke-opacity: 0.6; }
+  50%       { stroke-opacity: 1.0; }
+}
+
+@keyframes nexus-power-glow {
+  0%, 100% { filter: drop-shadow(0 0 4px currentColor); }
+  50%       { filter: drop-shadow(0 0 10px currentColor); }
+}
+
+// ---- Panel Container ----
+
+.nexus-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 520px;
+  height: 100vh;
+  z-index: 8000;
+  display: flex;
+  flex-direction: column;
+  background: rgba(6, 7, 12, 0.98);
+  border-left: 1px solid rgba(167, 139, 250, 0.2);
+  backdrop-filter: blur(14px);
+  box-shadow:
+    -8px 0 80px rgba(0, 0, 0, 0.8),
+    -1px 0 0 rgba(167, 139, 250, 0.06);
+  animation: nexus-slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 24px;
+    height: 24px;
+    border-top: 2px solid #a78bfa;
+    border-left: 2px solid #a78bfa;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  &.nexus-panel--closing {
+    animation: nexus-slide-out 0.28s cubic-bezier(0.4, 0, 1, 1) forwards;
+  }
+}
+
+// ---- Header ----
+
+.nexus-header {
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid $veritas-border;
+  flex-shrink: 0;
+}
+
+.nexus-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.nexus-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: #a78bfa;
+  text-transform: uppercase;
+}
+
+.nexus-close {
+  background: none;
+  border: 1px solid $veritas-border;
+  color: $veritas-text-dim;
+  font-size: 0.7rem;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: all 0.15s ease;
+
+  &:hover {
+    color: #a78bfa;
+    border-color: rgba(167, 139, 250, 0.5);
+    background: rgba(167, 139, 250, 0.08);
+  }
+}
+
+// ---- Stats Row ----
+
+.nexus-stats-row {
+  display: flex;
+  gap: 0;
+  border: 1px solid $veritas-border;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.nexus-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 7px 4px;
+  border-right: 1px solid $veritas-border;
+  background: rgba(255, 255, 255, 0.01);
+
+  &:last-child { border-right: none; }
+}
+
+.nexus-stat-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: $veritas-white;
+  line-height: 1;
+}
+
+.nexus-stat-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.48rem;
+  color: $veritas-text-dim;
+  letter-spacing: 0.1em;
+  margin-top: 3px;
+  text-transform: uppercase;
+}
+
+// ---- Type Legend ----
+
+.nexus-legend {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.nexus-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.5rem;
+  color: $veritas-text-dim;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.nexus-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+// ---- Top Actors Strip ----
+
+.nexus-top-actors {
+  flex-shrink: 0;
+  padding: 10px 16px;
+  border-bottom: 1px solid $veritas-border;
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.nexus-top-actors-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.48rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: $veritas-text-dim;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.nexus-actors-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.nexus-actor-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid transparent;
+  border-left: 2px solid var(--actor-color, #a78bfa);
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.06);
+    border-left-color: var(--actor-color, #a78bfa);
+  }
+}
+
+.nexus-actor-rank {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.52rem;
+  color: $veritas-text-dim;
+  width: 14px;
+  flex-shrink: 0;
+}
+
+.nexus-actor-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: $veritas-white;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nexus-actor-type {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.48rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border: 1px solid currentColor;
+  border-radius: 1px;
+  flex-shrink: 0;
+}
+
+.nexus-actor-power {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  min-width: 26px;
+  text-align: right;
+}
+
+.nexus-actor-sparkline {
+  flex-shrink: 0;
+  width: 42px;
+  height: 18px;
+  display: block;
+}
+
+// ---- Graph Canvas ----
+
+.nexus-graph-canvas {
+  flex: 1;
+  min-height: 100px;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(ellipse at center, rgba(167, 139, 250, 0.025) 0%, transparent 70%);
+
+  svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+}
+
+// ---- D3 Elements ----
+
+.nexus-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 7px;
+  fill: $veritas-text-dim;
+  pointer-events: none;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.nexus-power-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 6px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+// ---- Tooltip ----
+
+.nexus-tooltip {
+  position: absolute;
+  background: rgba(6, 7, 12, 0.98);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  padding: 10px 14px;
+  pointer-events: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  color: $veritas-text;
+  min-width: 160px;
+  max-width: 230px;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.7),
+    0 0 12px rgba(167, 139, 250, 0.06);
+  z-index: 10;
+  transition: opacity 0.1s ease;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    width: 10px;
+    height: 10px;
+    border-top: 1px solid #a78bfa;
+    border-left: 1px solid #a78bfa;
+  }
+}
+
+.nexus-tt-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: $veritas-white;
+  margin-bottom: 2px;
+}
+
+.nexus-tt-type {
+  font-size: 0.52rem;
+  color: $veritas-text-dim;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid $veritas-border;
+}
+
+.nexus-tt-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 0.6rem;
+}
+
+.nexus-tt-label {
+  color: $veritas-text-dim;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+// ---- Entity Detail Panel ----
+
+.nexus-entity-detail {
+  flex-shrink: 0;
+  max-height: 0;
+  overflow: hidden;
+  border-top: 1px solid transparent;
+  transition:
+    max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.3s ease;
+
+  &.nexus-entity-detail--visible {
+    max-height: 320px;
+    border-top-color: $veritas-border;
+    overflow-y: auto;
+
+    &::-webkit-scrollbar       { width: 3px; }
+    &::-webkit-scrollbar-track { background: transparent; }
+    &::-webkit-scrollbar-thumb { background: rgba(167, 139, 250, 0.3); }
+  }
+}
+
+.nexus-detail-inner {
+  padding: 14px 18px 16px;
+}
+
+.nexus-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.nexus-detail-name {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: $veritas-white;
+  line-height: 1.2;
+}
+
+.nexus-detail-type {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border: 1px solid currentColor;
+  border-radius: 1px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  margin-left: 8px;
+}
+
+.nexus-detail-close {
+  background: none;
+  border: 1px solid $veritas-border;
+  color: $veritas-text-dim;
+  font-size: 0.65rem;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+
+  &:hover {
+    color: #a78bfa;
+    border-color: rgba(167, 139, 250, 0.4);
+    background: rgba(167, 139, 250, 0.06);
+  }
+}
+
+.nexus-detail-power-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.nexus-detail-power-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.5rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: $veritas-text-dim;
+}
+
+.nexus-detail-power-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.nexus-detail-power-bar-track {
+  flex: 1;
+  height: 3px;
+  background: $veritas-border;
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.nexus-detail-power-bar {
+  height: 100%;
+  border-radius: 1px;
+  transition: width 0.6s ease;
+}
+
+.nexus-detail-section-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.48rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: $veritas-text-dim;
+  margin-bottom: 6px;
+  margin-top: 10px;
+}
+
+.nexus-detail-sentiment {
+  display: flex;
+  gap: 4px;
+  align-items: stretch;
+  height: 6px;
+  border-radius: 1px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.nexus-detail-sentiment-bar {
+  transition: width 0.5s ease;
+}
+
+.nexus-detail-sentiment-labels {
+  display: flex;
+  gap: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.5rem;
+  color: $veritas-text-dim;
+}
+
+.nexus-connected-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.nexus-connected-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.12s ease;
+
+  &:hover {
+    background: rgba(167, 139, 250, 0.06);
+    border-color: rgba(167, 139, 250, 0.15);
+  }
+}
+
+.nexus-connected-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.nexus-connected-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.62rem;
+  color: $veritas-text;
+  flex: 1;
+}
+
+.nexus-connected-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.52rem;
+  color: $veritas-text-dim;
+}
+
+.nexus-article-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nexus-article-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border-left: 2px solid;
+  background: rgba(255, 255, 255, 0.015);
+  cursor: pointer;
+  transition: background 0.12s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.03);
+  }
+}
+
+.nexus-article-headline {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: $veritas-white;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.nexus-article-meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.54rem;
+  color: $veritas-text-dim;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.nexus-globe-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  color: #a78bfa;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  cursor: pointer;
+  margin-top: 12px;
+  width: 100%;
+  justify-content: center;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: rgba(167, 139, 250, 0.1);
+    border-color: rgba(167, 139, 250, 0.7);
+  }
+}
+
+// ---- Loading / Error ----
+
+.nexus-loading {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.nexus-spinner {
+  width: 36px;
+  height: 36px;
+  border: 2px solid $veritas-border;
+  border-top-color: #a78bfa;
+  border-radius: 50%;
+  animation: nexus-spinner 0.9s linear infinite;
+}
+
+.nexus-loading-text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.2em;
+  color: $veritas-text-dim;
+  text-transform: uppercase;
+  animation: nexus-pulse 1.5s ease-in-out infinite;
+}
+
+.nexus-error {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 32px 24px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: $veritas-text-dim;
+}
+
+.nexus-error-icon {
+  font-size: 2rem;
+  color: #a78bfa;
+  margin-bottom: 6px;
+}
+
+.nexus-error-sub {
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+// ---- Navbar Trigger Button ----
+
+.nexus-navbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: 1px solid rgba(167, 139, 250, 0.25);
+  color: #a78bfa;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: rgba(167, 139, 250, 0.08);
+    border-color: rgba(167, 139, 250, 0.5);
+  }
+}
+
+// ---- Feed Card Trigger Button ----
+
+.nexus-trigger-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 1px solid rgba(167, 139, 250, 0.25);
+  color: #a78bfa;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.52rem;
+  letter-spacing: 0.12em;
+  padding: 3px 7px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.15s ease;
+  line-height: 1;
+  flex-shrink: 0;
+
+  &:hover {
+    background: rgba(167, 139, 250, 0.08);
+    border-color: rgba(167, 139, 250, 0.5);
+  }
+}
+
+// ---- Responsive ----
+
+@media (max-width: 768px) {
+  .nexus-panel {
+    width: 100vw;
+    height: 80vh;
+    top: auto;
+    bottom: 0;
+    border-left: none;
+    border-top: 1px solid rgba(167, 139, 250, 0.2);
+
+    @keyframes nexus-slide-in-mobile {
+      from { transform: translateY(100%); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    @keyframes nexus-slide-out-mobile {
+      from { transform: translateY(0);    opacity: 1; }
+      to   { transform: translateY(100%); opacity: 0; }
+    }
+
+    animation: nexus-slide-in-mobile 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+
+    &.nexus-panel--closing {
+      animation: nexus-slide-out-mobile 0.28s cubic-bezier(0.4, 0, 1, 1) forwards;
+    }
+  }
+}

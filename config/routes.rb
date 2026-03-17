@@ -15,6 +15,8 @@ Rails.application.routes.draw do
   get  "api/narrative_dna/:article_id",     to: "pages#narrative_dna",    as: :narrative_dna
   get  "api/tribunal/:article_id",          to: "pages#tribunal",         as: :tribunal
   get  "api/article_preview/:article_id",   to: "pages#article_preview",  as: :article_preview
+  get  "api/entity_nexus",                  to: "pages#entity_nexus"
+  get  "api/entity_nexus/:entity_id",       to: "pages#entity_nexus_detail", as: :entity_nexus_detail
   get  "api/trending_topics",               to: "api/trending_topics#index"
   get  "api/search_suggestions",            to: "api/search_suggestions#index"
   post "api/search",                        to: "api/search#create"

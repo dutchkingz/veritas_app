@@ -100,11 +100,11 @@
           <div class="d-flex flex-wrap gap-4 mb-4 pb-3" style="border-bottom: 1px solid rgba(56,189,248,0.1);">
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #64748b;">
               <i class="fa fa-map-marker-alt me-1" style="color: #38BDF8;"></i>
-              <%= @article.region.name %> / <%= @article.country.name %> [<%= @article.country.iso_code %>]
+              <%= @article.region&.name || "Unknown Region" %> / <%= @article.country&.name || "Unknown" %><% if @article.country&.iso_code %> [<%= @article.country.iso_code %>]<% end %>
             </span>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #64748b;">
               <i class="fa fa-crosshairs me-1" style="color: #38BDF8;"></i>
-              <%= @article.latitude.round(4) %>°, <%= @article.longitude.round(4) %>°
+              <%= @article.latitude&.round(4) || "?" %>°, <%= @article.longitude&.round(4) || "?" %>°
             </span>
           </div>
 

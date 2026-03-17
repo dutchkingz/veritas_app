@@ -86,6 +86,14 @@
   <div class="d-flex align-items-center gap-4">
     <% unless controller_name == "pages" && action_name == "welcome" %>
       <!-- Briefings & Convergences (Hidden on Welcome) -->
+      <!-- Entity Nexus Trigger -->
+      <button class="nexus-navbar-btn d-none d-lg-flex"
+              onclick="window.dispatchEvent(new CustomEvent('veritas:openEntityNexus'))"
+              title="Open Entity Nexus — Intelligence Relationship Web">
+        <i class="fa fa-share-nodes"></i>
+        NEXUS
+      </button>
+
       <%= link_to briefings_path,
             class: "d-none d-lg-flex align-items-center gap-2",
             style: "text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #94a3b8; letter-spacing: 1px; transition: color 0.2s;",

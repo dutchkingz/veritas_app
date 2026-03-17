@@ -1,6 +1,6 @@
 class PagesController < ApplicationController
   DEFAULT_ARC_COLOR = "#00f0ff".freeze
-  skip_before_action :authenticate_user!, only: [:welcome, :home, :globe_data, :search, :narrative_dna, :tribunal, :article_preview]
+  skip_before_action :authenticate_user!, only: [:welcome, :home, :globe_data, :search, :narrative_dna, :tribunal, :article_preview, :entity_nexus, :entity_nexus_detail]
 
   def welcome
     redirect_to dashboard_path if user_signed_in?
@@ -219,6 +219,74 @@ class PagesController < ApplicationController
     render json: data
   end
 
+  # GET /api/entity_nexus — Force-directed graph JSON for Entity Nexus panel
+  def entity_nexus
+    service = EntityNexusService.new(
+      min_mentions: (params[:min_mentions] || 1).to_i,
+      entity_type:  params[:entity_type].presence,
+      article_id:   params[:article_id].presence
+    )
+    render json: service.call
+  end
+
+  # GET /api/entity_nexus/:entity_id — Detail JSON for a single entity node
+  def entity_nexus_detail
+    entity = Entity.find_by(id: params[:entity_id])
+    return render json: { error: "Not found" }, status: :not_found unless entity
+
+    articles = entity.articles
+      .includes(:ai_analysis, :country)
+      .order(published_at: :desc)
+      .limit(8)
+
+    # Top connected entities via raw SQL — avoids COUNT(*) pluck issues
+    article_ids = entity.article_ids.first(50)
+    connected = if article_ids.any?
+      rows = ActiveRecord::Base.connection.execute(<<~SQL)
+        SELECT e.id, e.name, e.entity_type, COUNT(*) AS shared_count
+        FROM entity_mentions em
+        JOIN entities e ON e.id = em.entity_id
+        WHERE em.article_id IN (#{article_ids.map(&:to_i).join(',')})
+          AND em.entity_id != #{entity.id.to_i}
+        GROUP BY e.id, e.name, e.entity_type
+        ORDER BY shared_count DESC
+        LIMIT 5
+      SQL
+      rows.map { |r| { id: r["id"].to_i, name: r["name"], entity_type: r["entity_type"], shared_articles: r["shared_count"].to_i } }
+    else
+      []
+    end
+
+    sentiment_breakdown = compute_sentiment_breakdown(entity)
+    max_mentions = Entity.maximum(:mentions_count).to_f
+    vol_score    = max_mentions > 0 ? (entity.mentions_count.to_f / max_mentions) : 0
+    power_index  = (vol_score * 60).round  # simplified — full calc needs region/threat data
+
+    render json: {
+      id:                 entity.id,
+      name:               entity.name,
+      entity_type:        entity.entity_type,
+      color:              entity.color,
+      mentions_count:     entity.mentions_count,
+      power_index:        power_index,
+      first_seen_at:      entity.first_seen_at&.iso8601,
+      connected_entities: connected,
+      articles: articles.map { |a| {
+        id:              a.id,
+        headline:        a.headline,
+        source_name:     a.source_name,
+        published_at:    a.published_at&.iso8601,
+        country:         a.country&.name,
+        threat_level:    a.ai_analysis&.threat_level,
+        sentiment_color: a.ai_analysis&.sentiment_color || "#6b7280"
+      }},
+      sentiment: sentiment_breakdown
+    }
+  rescue StandardError => e
+    Rails.logger.error "[EntityNexusDetail] ##{params[:entity_id]}: #{e.class} #{e.message}"
+    render json: { error: "Internal error" }, status: :internal_server_error
+  end
+
   # GET /api/narrative_dna/:article_id — Graph JSON for Narrative DNA panel
   def narrative_dna
     article = Article.find_by(id: params[:article_id])
@@ -260,6 +328,27 @@ class PagesController < ApplicationController
   end
 
   private
+
+  def compute_sentiment_breakdown(entity)
+    labels = entity.articles
+      .joins(:ai_analysis)
+      .where.not(ai_analyses: { sentiment_label: nil })
+      .pluck("ai_analyses.sentiment_label")
+      .map { |l| l.to_s.downcase }
+
+    total = labels.size.to_f
+    return { positive: 0, neutral: 0, negative: 0 } if total.zero?
+
+    positive = labels.count { |l| l.include?("positive") || l.include?("bullish") }
+    negative = labels.count { |l| l.include?("negative") || l.include?("bearish") || l.include?("hostile") }
+    neutral  = labels.size - positive - negative
+
+    {
+      positive: (positive / total * 100).round,
+      neutral:  (neutral  / total * 100).round,
+      negative: (negative / total * 100).round
+    }
+  end
 
   def build_route_segments(filtered_articles, perspective, to_time)
     filtered_ids = filtered_articles.map(&:id)

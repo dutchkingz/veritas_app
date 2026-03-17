@@ -56,6 +56,13 @@ class AnalysisPipeline
       # ━━━ PHASE 4: Semantic Intelligence (Vector Embedding) ━━━
       EmbeddingService.new.generate(article)
 
+      # ━━━ PHASE 5: Entity Extraction (non-blocking) ━━━
+      begin
+        EntityExtractionService.new.extract(article)
+      rescue StandardError => e
+        Rails.logger.warn "[VERITAS TRIAD] Entity extraction skipped for Article ##{article.id}: #{e.message}"
+      end
+
       analysis
     rescue StandardError => e
       Rails.logger.error "[VERITAS TRIAD] ❌ Pipeline FAILED for Article ##{article.id}: #{e.message}"
