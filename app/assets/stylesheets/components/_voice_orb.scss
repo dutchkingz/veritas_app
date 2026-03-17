@@ -1,0 +1,217 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// VOICE ORB — JARVIS-Style Push-to-Talk Intelligence Interface
+// Canvas 2D particle orb, fixed bottom-center
+// ─────────────────────────────────────────────────────────────────────────────
+
+.voice-orb-container {
+  position: fixed;
+  bottom: 5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  pointer-events: none; // container is passthrough; children handle events
+}
+
+// ── The Orb canvas ────────────────────────────────────────────────────────────
+.voice-orb-canvas {
+  cursor: pointer;
+  pointer-events: auto;
+  border-radius: 50%;
+  transition: filter 0.3s ease;
+  display: block;
+
+  // Outer glow — CSS amplifies the canvas glow
+  &[data-state="idle"] {
+    filter: drop-shadow(0 0 8px rgba(0, 212, 255, 0.3));
+  }
+
+  &[data-state="listening"] {
+    filter: drop-shadow(0 0 18px rgba(0, 212, 255, 0.7)) drop-shadow(0 0 32px rgba(0, 212, 255, 0.3));
+    animation: orb-listening-ring 1.2s ease-in-out infinite;
+  }
+
+  &[data-state="processing"] {
+    filter: drop-shadow(0 0 14px rgba(255, 196, 7, 0.6)) drop-shadow(0 0 24px rgba(255, 196, 7, 0.2));
+  }
+
+  &[data-state="speaking"] {
+    filter: drop-shadow(0 0 16px rgba(0, 255, 135, 0.6)) drop-shadow(0 0 28px rgba(0, 255, 135, 0.2));
+  }
+}
+
+@keyframes orb-listening-ring {
+  0%, 100% { filter: drop-shadow(0 0 14px rgba(0, 212, 255, 0.6)) drop-shadow(0 0 28px rgba(0, 212, 255, 0.2)); }
+  50%       { filter: drop-shadow(0 0 24px rgba(0, 212, 255, 0.9)) drop-shadow(0 0 40px rgba(0, 212, 255, 0.4)); }
+}
+
+// ── Label ─────────────────────────────────────────────────────────────────────
+.voice-orb-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 2px;
+  color: rgba(0, 212, 255, 0.4);
+  pointer-events: none;
+  transition: color 0.3s, opacity 0.3s;
+  opacity: 0;
+
+  .voice-orb-container:hover & {
+    opacity: 1;
+    color: rgba(0, 212, 255, 0.7);
+  }
+
+  &[data-state="listening"] {
+    opacity: 1;
+    color: rgba(0, 212, 255, 0.9);
+    animation: label-pulse 1s ease-in-out infinite;
+  }
+
+  &[data-state="processing"] {
+    opacity: 1;
+    color: rgba(255, 196, 7, 0.8);
+  }
+
+  &[data-state="speaking"] {
+    opacity: 1;
+    color: rgba(0, 255, 135, 0.8);
+  }
+}
+
+@keyframes label-pulse {
+  0%, 100% { opacity: 0.7; }
+  50%       { opacity: 1; }
+}
+
+// ── Briefing overlay card ─────────────────────────────────────────────────────
+.voice-briefing-overlay {
+  position: fixed;
+  bottom: 10.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1500;
+  width: 360px;
+  max-width: 90vw;
+  background: rgba(9, 9, 15, 0.92);
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  border-radius: 10px;
+  box-shadow: 0 0 24px rgba(0, 212, 255, 0.1), 0 16px 40px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(12px);
+  padding: 1rem 1.25rem;
+  animation: briefing-appear 0.3s ease-out;
+  pointer-events: auto;
+
+  &.d-none { display: none !important; }
+}
+
+@keyframes briefing-appear {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.voice-briefing-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+
+.voice-briefing-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 2px;
+  color: #00d4ff;
+}
+
+.voice-briefing-close {
+  background: transparent;
+  border: none;
+  color: #475569;
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0 4px;
+  transition: color 0.2s;
+
+  &:hover { color: #94a3b8; }
+}
+
+.voice-briefing-query {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  color: #64748b;
+  margin-bottom: 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.voice-briefing-text {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.82rem;
+  color: #cbd5e1;
+  line-height: 1.55;
+}
+
+.voice-briefing-confidence {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.58rem;
+  letter-spacing: 1px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  margin-top: 0.6rem;
+
+  &.confidence-high   { background: rgba(0, 255, 135, 0.1); color: #00ff87; border: 1px solid rgba(0, 255, 135, 0.3); }
+  &.confidence-medium { background: rgba(255, 196, 7, 0.1);  color: #ffc107; border: 1px solid rgba(255, 196, 7, 0.3);  }
+  &.confidence-low    { background: rgba(255, 58, 94, 0.1);  color: #ff3a5e; border: 1px solid rgba(255, 58, 94, 0.3);  }
+}
+
+// ── Fallback text input (Firefox / no SpeechRecognition) ──────────────────────
+.voice-fallback-input-wrap {
+  position: fixed;
+  bottom: 10.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1500;
+  display: flex;
+  gap: 0.5rem;
+  width: 360px;
+  max-width: 90vw;
+  pointer-events: auto;
+
+  &.d-none { display: none !important; }
+}
+
+.voice-fallback-input {
+  flex: 1;
+  background: rgba(9, 9, 15, 0.92);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  padding: 8px 14px;
+  backdrop-filter: blur(8px);
+
+  &:focus {
+    outline: none;
+    border-color: rgba(0, 212, 255, 0.7);
+    box-shadow: 0 0 12px rgba(0, 212, 255, 0.15);
+  }
+  &::placeholder { color: #334155; }
+}
+
+.voice-fallback-submit {
+  background: rgba(0, 212, 255, 0.1);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  border-radius: 8px;
+  color: #00d4ff;
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 8px 12px;
+  transition: background 0.2s;
+
+  &:hover { background: rgba(0, 212, 255, 0.2); }
+}

@@ -5,26 +5,31 @@ class OpenRouterClient
   API_URL = "https://openrouter.ai/api/v1/chat/completions".freeze
   CREDIT_LIMIT_ERROR_PATTERN = /requires more credits|fewer max_tokens|can only afford/i.freeze
 
-  MODELS = {
-    analyst: "google/gemini-2.0-flash-001",
+  DEFAULT_MODELS = {
+    analyst:  "google/gemini-2.0-flash-001",
     sentinel: "openai/gpt-4o-mini",
-    arbiter: "anthropic/claude-3.5-haiku"
+    arbiter:  "anthropic/claude-3.5-haiku",
+    briefing: "anthropic/claude-3.5-haiku",
+    voice:    "anthropic/claude-3.5-haiku"
   }.freeze
 
   MAX_TOKENS = {
-    analyst: 700,
+    analyst:  700,
     sentinel: 700,
-    arbiter: 900
+    arbiter:  900,
+    briefing: 600,
+    voice:    200
   }.freeze
 
-  def initialize
-    @api_key = ENV.fetch('OPENROUTER_API_KEY')
+  def initialize(user: nil)
+    @api_key      = ENV.fetch('OPENROUTER_API_KEY')
+    @model_config = user&.model_config
   end
 
   # Send a prompt to a specific agent model and return parsed JSON
   def chat(agent_role, system_prompt, user_prompt, expect_json: true)
-    model = MODELS.fetch(agent_role) { agent_role.to_s }
-    max_tokens = MAX_TOKENS.fetch(agent_role, 700)
+    model      = resolve_model(agent_role)
+    max_tokens = MAX_TOKENS.fetch(agent_role.to_sym, 700)
 
     response = request_chat(
       model: model,
@@ -76,6 +81,24 @@ class OpenRouterClient
 
   private
 
+  def resolve_model(agent_role)
+    role = agent_role.to_sym
+    if @model_config
+      configured = @model_config.model_for(role)
+      return DEFAULT_MODELS.fetch(role, agent_role.to_s) if configured == "custom"
+      return configured if configured.present?
+    end
+    DEFAULT_MODELS.fetch(role, agent_role.to_s)
+  end
+
+  def effective_api_key
+    @model_config&.effective_api_key || @api_key
+  end
+
+  def effective_api_url
+    @model_config&.effective_endpoint&.then { |ep| "#{ep.chomp('/')}/chat/completions" } || API_URL
+  end
+
   def request_chat(model:, system_prompt:, user_prompt:, expect_json:, max_tokens:)
     body = {
       model: model,
@@ -88,13 +111,13 @@ class OpenRouterClient
     }
     body[:response_format] = { type: "json_object" } if expect_json
 
-    uri = URI(API_URL)
+    uri = URI(effective_api_url)
     http = Net::HTTP.new(uri.host, uri.port)
-    http.use_ssl = true
+    http.use_ssl = uri.scheme == "https"
     http.read_timeout = 60
 
     request = Net::HTTP::Post.new(uri)
-    request["Authorization"] = "Bearer #{@api_key}"
+    request["Authorization"] = "Bearer #{effective_api_key}"
     request["Content-Type"]  = "application/json"
     request["HTTP-Referer"]  = "https://veritas-app-314a53c53525.herokuapp.com/"
     request["X-Title"]       = "VERITAS Intelligence Platform"

@@ -1,0 +1,48 @@
+<!-- VERITAS VOICE ORB — Push-to-Talk Intelligence Interface -->
+<div class="voice-orb-container"
+     data-controller="voice-orb"
+     data-voice-orb-chat-url-value="<%= chat_path %>">
+
+  <!-- Briefing Overlay (populated by JS after response) -->
+  <div class="voice-briefing-overlay d-none"
+       data-voice-orb-target="briefingOverlay">
+    <div class="voice-briefing-header">
+      <span class="voice-briefing-title">VERITAS // BRIEFING</span>
+      <button class="voice-briefing-close"
+              data-action="click->voice-orb#dismissBriefing">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+    <p class="voice-briefing-query" data-voice-orb-target="briefingQuery"></p>
+    <p class="voice-briefing-text"  data-voice-orb-target="briefingText"></p>
+    <span class="voice-briefing-confidence" data-voice-orb-target="briefingConfidence"></span>
+  </div>
+
+  <!-- Fallback text input (Firefox / no Web Speech API) -->
+  <div class="voice-fallback-input-wrap d-none"
+       data-voice-orb-target="fallbackWrap">
+    <input type="text"
+           class="voice-fallback-input"
+           placeholder="Type your query..."
+           data-voice-orb-target="fallbackInput"
+           data-action="keydown.enter->voice-orb#submitFallback">
+    <button class="voice-fallback-submit"
+            data-action="click->voice-orb#submitFallback">
+      <i class="fa fa-arrow-right"></i>
+    </button>
+  </div>
+
+  <!-- The Orb Canvas -->
+  <canvas class="voice-orb-canvas"
+          width="80" height="80"
+          data-voice-orb-target="canvas"
+          data-state="idle"
+          data-action="click->voice-orb#toggle"
+          title="Click to activate VERITAS Voice">
+  </canvas>
+
+  <!-- State Label -->
+  <span class="voice-orb-label" data-voice-orb-target="label" data-state="idle">
+    VERITAS VOICE
+  </span>
+</div>
