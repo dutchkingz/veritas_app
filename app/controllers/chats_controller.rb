@@ -10,7 +10,13 @@ class ChatsController < ApplicationController
     history = session[:rag_history] || []
 
     begin
-      result = RagAgent.new.ask(@query, history: history, perspective_id: params[:perspective_id])
+      voice_mode = params[:format_mode] == "voice_briefing"
+      result = RagAgent.new(user: current_user).ask(
+        @query,
+        history: history,
+        perspective_id: params[:perspective_id],
+        voice_briefing: voice_mode
+      )
 
       history << { role: "user",      content: @query.truncate(500) }
       history << { role: "assistant", content: result[:response].truncate(500) }

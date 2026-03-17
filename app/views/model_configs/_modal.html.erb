@@ -1,0 +1,110 @@
+<!-- MODEL SETTINGS MODAL -->
+<div id="model-settings-modal"
+     class="model-settings-overlay d-none"
+     data-controller="model-settings"
+     data-action="click->model-settings#closeOnBackdrop">
+
+  <div class="model-settings-panel" data-model-settings-target="panel">
+
+    <!-- Header -->
+    <div class="model-settings-header">
+      <div class="d-flex align-items-center gap-3">
+        <i class="fa fa-microchip" style="color: var(--neon-blue); font-size: 1.1rem;"></i>
+        <span class="model-settings-title">AI_MODEL_CONFIGURATION</span>
+      </div>
+      <button class="model-settings-close" data-action="click->model-settings#close">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+
+    <div class="model-settings-body">
+
+      <p class="model-settings-subtitle">
+        Select the language model powering each VERITAS intelligence agent.
+      </p>
+
+      <%= form_with model: @config || UserModelConfig.new,
+                    url: model_config_path,
+                    method: :patch,
+                    data: { turbo: false },
+                    class: "model-settings-form" do |f| %>
+
+        <% UserModelConfig::ROLE_LABELS.each do |role, label| %>
+          <div class="model-settings-row">
+            <label class="model-settings-role-label" for="<%= "user_model_config_#{role}_model" %>">
+              <span class="role-icon">
+                <% role_icons = { analyst: "fa-brain", sentinel: "fa-shield-halved", arbiter: "fa-scale-balanced", briefing: "fa-scroll", voice: "fa-microphone" } %>
+                <i class="fa <%= role_icons[role] %>"></i>
+              </span>
+              <span><%= label %></span>
+            </label>
+            <%= f.select "#{role}_model",
+                  options_for_select(
+                    UserModelConfig::AVAILABLE_MODELS[role],
+                    @config&.send("#{role}_model") || UserModelConfig.default_model(role)
+                  ),
+                  {},
+                  class: "model-settings-select",
+                  id: "user_model_config_#{role}_model" %>
+          </div>
+        <% end %>
+
+        <!-- Custom Endpoint Section -->
+        <div class="model-settings-divider"></div>
+
+        <div class="model-settings-custom-section">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <div class="d-flex align-items-center gap-2">
+              <i class="fa fa-server" style="color: #94a3b8; font-size: 0.85rem;"></i>
+              <span class="model-settings-section-title">LOCAL_ENDPOINT</span>
+            </div>
+            <label class="model-settings-toggle" title="Use custom Ollama/LM Studio endpoint">
+              <%= f.check_box :use_custom_endpoint,
+                    class: "model-settings-toggle-input",
+                    data: { action: "change->model-settings#toggleCustomEndpoint" } %>
+              <span class="model-settings-toggle-track">
+                <span class="model-settings-toggle-thumb"></span>
+              </span>
+            </label>
+          </div>
+
+          <div id="custom-endpoint-fields"
+               class="<%= @config&.use_custom_endpoint? ? '' : 'd-none' %>"
+               data-model-settings-target="customFields">
+            <div class="mb-3">
+              <%= f.label :custom_endpoint_url, "Endpoint URL", class: "model-settings-field-label" %>
+              <%= f.text_field :custom_endpoint_url,
+                    placeholder: "http://localhost:11434/v1",
+                    class: "model-settings-input",
+                    autocomplete: "off" %>
+            </div>
+            <div class="mb-3">
+              <%= f.label :custom_api_key_encrypted, "API Key (optional)", class: "model-settings-field-label" %>
+              <%= f.password_field :custom_api_key_encrypted,
+                    placeholder: "sk-... (leave blank to use system key)",
+                    class: "model-settings-input",
+                    autocomplete: "new-password" %>
+            </div>
+          </div>
+
+          <p class="model-settings-privacy-note">
+            <i class="fa fa-lock me-1"></i>
+            Connect a local Ollama or LM Studio endpoint for complete data sovereignty.
+            All queries will route through your local model instead of cloud APIs.
+          </p>
+        </div>
+
+        <!-- Footer -->
+        <div class="model-settings-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm model-settings-cancel-btn"
+                  data-action="click->model-settings#close">
+            CANCEL
+          </button>
+          <%= f.submit "APPLY & RESTART AGENTS",
+                class: "btn btn-sm model-settings-apply-btn" %>
+        </div>
+
+      <% end %>
+    </div>
+  </div>
+</div>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_16_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_17_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -334,6 +334,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_16_160000) do
     t.index ["key"], name: "index_solid_queue_semaphores_on_key", unique: true
   end
 
+  create_table "user_model_configs", force: :cascade do |t|
+    t.string "analyst_model", default: "google/gemini-2.0-flash-001", null: false
+    t.string "arbiter_model", default: "anthropic/claude-3.5-haiku", null: false
+    t.string "briefing_model", default: "anthropic/claude-3.5-haiku", null: false
+    t.datetime "created_at", null: false
+    t.string "custom_api_key_encrypted"
+    t.string "custom_endpoint_url"
+    t.string "sentinel_model", default: "openai/gpt-4o-mini", null: false
+    t.datetime "updated_at", null: false
+    t.boolean "use_custom_endpoint", default: false, null: false
+    t.bigint "user_id", null: false
+    t.string "voice_model", default: "anthropic/claude-3.5-haiku", null: false
+    t.index ["user_id"], name: "index_user_model_configs_on_user_id", unique: true
+  end
+
   create_table "users", force: :cascade do |t|
     t.boolean "admin"
     t.datetime "created_at", null: false
@@ -366,4 +381,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_16_160000) do
   add_foreign_key "solid_queue_ready_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_recurring_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "user_model_configs", "users"
 end

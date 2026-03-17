@@ -47,6 +47,7 @@ Rails.application.routes.draw do
   end
 
   resources :briefings, only: [:index, :show, :create]
+  resource  :model_config, only: [:show, :update]
 
   resources :intelligence_reports, only: %i[create show] do
     member do
