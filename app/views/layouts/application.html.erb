@@ -18,7 +18,9 @@
     <%= javascript_importmap_tags %>
   </head>
 
-  <body class="veritas-body">
+  <body class="veritas-body"<% if user_signed_in? %> data-controller="breaking-alert"<% end %>>
+
+
     <!-- Top Navigation Bar -->
     <%= render "shared/banner" %>
 
@@ -35,5 +37,15 @@
 
     <!-- Global RAG Chat Widget -->
     <%= render "shared/chat_interface" %>
+
+    <!-- Model Settings Modal (signed-in users only) -->
+    <% if user_signed_in? %>
+      <%= render "model_configs/modal" %>
+    <% end %>
+
+    <!-- Voice Orb (dashboard only) -->
+    <% if controller_name == "pages" && action_name == "home" %>
+      <%= render "shared/voice_orb" %>
+    <% end %>
   </body>
 </html>

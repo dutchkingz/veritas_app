@@ -1,0 +1,377 @@
+// -------------------------------------------------------
+// VERITAS — Glass Mode
+// Activated by body.glass-mode toggle in the perspective bar.
+// -------------------------------------------------------
+
+// ---- Toggle Button (always visible, both modes) ----
+
+.vt-glass-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  flex-shrink: 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.52rem;
+  letter-spacing: 0.14em;
+  padding: 4px 12px 4px 9px;
+  border: 1px solid $veritas-border;
+  background: transparent;
+  color: $veritas-text-dim;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.25s ease;
+  border-radius: 20px;   // always pill-shaped
+
+  .vt-glass-toggle-icon {
+    font-size: 0.72rem;
+    line-height: 1;
+    transition: all 0.25s ease;
+  }
+
+  &:hover {
+    color: $veritas-cyan;
+    border-color: rgba($veritas-cyan, 0.4);
+    background: rgba($veritas-cyan, 0.05);
+  }
+
+  &.is-active {
+    color: $veritas-cyan;
+    border-color: rgba($veritas-cyan, 0.55);
+    background: rgba($veritas-cyan, 0.08);
+    box-shadow:
+      0 0 14px rgba($veritas-cyan, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+
+    .vt-glass-toggle-icon {
+      text-shadow: 0 0 10px rgba($veritas-cyan, 0.9);
+    }
+  }
+}
+
+// -------------------------------------------------------
+// Glass Mode — everything below only active when
+// body.glass-mode is set by the Stimulus controller
+// -------------------------------------------------------
+
+body.glass-mode {
+
+  // Design tokens — adjust here to tune globally
+  --glass-blur:        24px;
+  --glass-blur-heavy:  40px;
+  --glass-bg:          rgba(9, 9, 15, 0.22);      // much more transparent
+  --glass-bg-card:     rgba(255, 255, 255, 0.012); // almost invisible fill
+  --glass-border:      rgba(255, 255, 255, 0.07);
+  --glass-border-cyan: rgba(0, 212, 255, 0.20);
+  --glass-rim:         rgba(255, 255, 255, 0.13);  // top-edge highlight
+  --glass-glow-cyan:   rgba(0, 212, 255, 0.14);
+  --glass-r-card:      12px;
+  --glass-r-block:     10px;
+  --glass-r-panel:     16px;
+
+  // ---- Navbar ----
+
+  .veritas-navbar {
+    background: rgba(9, 9, 15, 0.35) !important;
+    backdrop-filter: blur(var(--glass-blur-heavy)) saturate(1.8);
+    -webkit-backdrop-filter: blur(var(--glass-blur-heavy)) saturate(1.8);
+    border-bottom: 1px solid var(--glass-border-cyan) !important;
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.05),
+      0 8px 40px rgba(0, 0, 0, 0.35);
+  }
+
+  // ---- Perspective Bar ----
+
+  .veritas-perspective-bar {
+    background: rgba(9, 9, 15, 0.28) !important;
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
+    border-bottom: 1px solid var(--glass-border) !important;
+  }
+
+  // Pills become full-pill shaped in glass mode
+  .veritas-perspective-pill {
+    border-radius: 20px !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 4px 13px;
+
+    &.is-active {
+      background: color-mix(in srgb, var(--pill-color) 14%, rgba(0, 0, 0, 0.15)) !important;
+      backdrop-filter: blur(14px);
+      box-shadow:
+        0 0 12px color-mix(in srgb, var(--pill-color) 20%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+  }
+
+  // ---- Left Sidebar ----
+
+  .veritas-feed-sidebar {
+    background: var(--glass-bg) !important;
+    backdrop-filter: blur(var(--glass-blur-heavy)) saturate(1.4);
+    -webkit-backdrop-filter: blur(var(--glass-blur-heavy)) saturate(1.4);
+    border-right: 1px solid var(--glass-border) !important;
+  }
+
+  // Give the feed list a little horizontal padding
+  // so cards visually "float" with rounded corners visible
+  .veritas-feed-list {
+    padding: 10px !important;
+  }
+
+  // ---- Right Sidebar ----
+
+  .veritas-status-sidebar {
+    background: var(--glass-bg) !important;
+    backdrop-filter: blur(var(--glass-blur-heavy)) saturate(1.4);
+    -webkit-backdrop-filter: blur(var(--glass-blur-heavy)) saturate(1.4);
+    border-left: 1px solid var(--glass-border) !important;
+  }
+
+  // ---- Panel Headers ----
+
+  .veritas-panel-header {
+    background: linear-gradient(
+      135deg,
+      rgba(0, 212, 255, 0.08) 0%,
+      rgba(0, 212, 255, 0.02) 100%
+    ) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--glass-border-cyan) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      inset 0 -1px 0 rgba(0, 212, 255, 0.05);
+  }
+
+  // ---- Feed Cards ----
+
+  .veritas-feed-card {
+    border-radius: var(--glass-r-card) !important;
+    background: var(--glass-bg-card) !important;
+    backdrop-filter: blur(18px) saturate(1.3);
+    -webkit-backdrop-filter: blur(18px) saturate(1.3);
+    border: 1px solid var(--glass-border) !important;
+    box-shadow:
+      0 4px 24px rgba(0, 0, 0, 0.28),
+      inset 0 1px 0 var(--glass-rim),     // top glass rim
+      inset 0 -1px 0 rgba(0, 0, 0, 0.15); // bottom shadow
+
+    // Remove the sharp left accent bar in glass mode —
+    // the inset rim + glow does the job
+    &::before {
+      border-radius: var(--glass-r-card) 0 0 var(--glass-r-card);
+      width: 3px;
+      background: linear-gradient(
+        to bottom,
+        rgba(0, 212, 255, 0.0),
+        rgba(0, 212, 255, 0.0)
+      );
+      opacity: 0;
+    }
+
+    // Glass rim streak (top edge highlight)
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 12%;
+      right: 12%;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        var(--glass-rim),
+        transparent
+      );
+      border-radius: var(--glass-r-card) var(--glass-r-card) 0 0;
+      pointer-events: none;
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.022) !important;
+      border: 1px solid var(--glass-border-cyan) !important;
+      transform: translateX(0) translateY(-1px); // subtle lift instead of X-slide
+      box-shadow:
+        0 0 28px var(--glass-glow-cyan),
+        0 8px 28px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+
+      &::before { opacity: 0; }
+    }
+
+    &.is-active {
+      background: rgba(0, 212, 255, 0.07) !important;
+      border: 1px solid rgba(0, 212, 255, 0.4) !important;
+      transform: translateX(0) translateY(-1px);
+      box-shadow:
+        0 0 36px rgba(0, 212, 255, 0.2),
+        0 8px 28px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(0, 212, 255, 0.15) !important;
+
+      &::before { opacity: 0; }
+    }
+  }
+
+  // ---- Threat Rows ----
+
+  .veritas-threat-row {
+    padding: 7px 10px !important;
+    margin-bottom: 6px !important;
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--glass-r-block) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.028);
+      border-color: rgba(255, 255, 255, 0.12);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+  }
+
+  // ---- System Status Rows ----
+
+  .veritas-sys-row {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+    padding: 6px 4px;
+  }
+
+  // ---- Analysis Block ----
+
+  .veritas-analysis-block {
+    padding: 9px 11px !important;
+    margin-bottom: 6px !important;
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--glass-r-block) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: border-color 0.2s ease;
+
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+  }
+
+  // ---- Verdict pill ----
+
+  .veritas-verdict-pill {
+    border-radius: 20px !important;
+    padding: 2px 10px !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  // ---- Dividers ----
+
+  .veritas-divider {
+    border-color: var(--glass-border) !important;
+  }
+
+  // ---- Globe Timeline Bar ----
+
+  .globe-timeline-bar {
+    background: linear-gradient(
+      to top,
+      rgba(9, 9, 15, 0.6) 0%,
+      rgba(9, 9, 15, 0.08) 100%
+    ) !important;
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
+    border-top: 1px solid var(--glass-border-cyan) !important;
+  }
+
+  // ---- Narrative DNA Panel ----
+
+  .ndna-panel {
+    background: rgba(9, 9, 15, 0.55) !important;
+    backdrop-filter: blur(var(--glass-blur-heavy)) saturate(1.6);
+    -webkit-backdrop-filter: blur(var(--glass-blur-heavy)) saturate(1.6);
+    border-left: 1px solid var(--glass-border-cyan) !important;
+    border-radius: 14px 0 0 14px !important;
+    box-shadow:
+      -8px 0 60px rgba(0, 0, 0, 0.4),
+      -1px 0 0 rgba(0, 212, 255, 0.14),
+      inset 1px 0 0 rgba(255, 255, 255, 0.04);
+  }
+
+  .ndna-header {
+    background: linear-gradient(
+      135deg,
+      rgba(0, 212, 255, 0.06) 0%,
+      rgba(0, 212, 255, 0.01) 100%
+    );
+    border-radius: 14px 0 0 0;
+  }
+
+  .ndna-node-preview {
+    border-radius: 0 0 0 14px;
+  }
+
+  // ---- Tribunal Panel ----
+
+  .tribunal-panel {
+    background: rgba(9, 9, 15, 0.6) !important;
+    backdrop-filter: blur(var(--glass-blur-heavy)) saturate(1.6);
+    -webkit-backdrop-filter: blur(var(--glass-blur-heavy)) saturate(1.6);
+    border: 1px solid var(--glass-border-cyan) !important;
+    border-radius: var(--glass-r-panel) !important;
+    box-shadow:
+      0 32px 80px rgba(0, 0, 0, 0.5),
+      0 0 0 1px rgba(255, 255, 255, 0.03),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  .tribunal-header {
+    border-radius: var(--glass-r-panel) var(--glass-r-panel) 0 0 !important;
+  }
+
+  // ---- Tribunal backdrop ----
+
+  .tribunal-backdrop {
+    background: rgba(0, 0, 0, 0.5) !important;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+
+  // ---- Hop Timeline Container ----
+
+  .hop-timeline-container {
+    background: rgba(255, 255, 255, 0.012);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--glass-r-block) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 8px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  // ---- Breaking Alert ----
+
+  .breaking-alert-overlay {
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    background: rgba(0, 0, 0, 0.55) !important;
+  }
+
+  .breaking-alert-panel {
+    backdrop-filter: blur(var(--glass-blur-heavy)) saturate(1.6);
+    -webkit-backdrop-filter: blur(var(--glass-blur-heavy)) saturate(1.6);
+    background: rgba(9, 9, 15, 0.62) !important;
+    border: 1px solid rgba(239, 68, 68, 0.28) !important;
+    border-radius: var(--glass-r-panel) !important;
+    box-shadow:
+      0 0 60px rgba(239, 68, 68, 0.18),
+      0 32px 80px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+  }
+}

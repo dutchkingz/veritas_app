@@ -1,0 +1,307 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// MODEL SETTINGS — AI Endpoint Configuration Modal
+// Glass-morphism dark panel, VERITAS neon theme
+// ─────────────────────────────────────────────────────────────────────────────
+
+.model-settings-gear-btn {
+  background: transparent;
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  border-radius: 6px;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 5px 8px;
+  transition: color 0.2s, border-color 0.2s, box-shadow 0.2s;
+
+  &:hover {
+    color: #00d4ff;
+    border-color: rgba(0, 212, 255, 0.6);
+    box-shadow: 0 0 8px rgba(0, 212, 255, 0.2);
+  }
+}
+
+// ── Overlay backdrop ──────────────────────────────────────────────────────────
+.model-settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+
+  &.d-none {
+    display: none !important;
+  }
+}
+
+// ── Panel ─────────────────────────────────────────────────────────────────────
+.model-settings-panel {
+  background: rgba(13, 17, 23, 0.96);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 12px;
+  box-shadow:
+    0 0 40px rgba(0, 212, 255, 0.08),
+    0 24px 64px rgba(0, 0, 0, 0.6);
+  width: 560px;
+  max-width: 95vw;
+  max-height: 85vh;
+  overflow-y: auto;
+  animation: model-settings-appear 0.2s ease-out;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(0, 212, 255, 0.2);
+    border-radius: 2px;
+  }
+}
+
+@keyframes model-settings-appear {
+  from { opacity: 0; transform: scale(0.97) translateY(-8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+// ── Header ────────────────────────────────────────────────────────────────────
+.model-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem 1rem;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+}
+
+.model-settings-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #00d4ff;
+}
+
+.model-settings-close {
+  background: transparent;
+  border: none;
+  color: #475569;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.2s;
+
+  &:hover { color: #94a3b8; }
+}
+
+// ── Body ──────────────────────────────────────────────────────────────────────
+.model-settings-body {
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+
+.model-settings-subtitle {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-bottom: 1.5rem;
+}
+
+// ── Agent row ────────────────────────────────────────────────────────────────
+.model-settings-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+
+  &:last-of-type { border-bottom: none; }
+}
+
+.model-settings-role-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+  margin-bottom: 0;
+
+  .role-icon {
+    color: #00d4ff;
+    width: 16px;
+    text-align: center;
+    font-size: 0.75rem;
+  }
+}
+
+.model-settings-select {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  padding: 6px 10px;
+  width: 100%;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  appearance: auto;
+
+  &:focus {
+    outline: none;
+    border-color: rgba(0, 212, 255, 0.6);
+    box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.1);
+  }
+
+  option {
+    background: #0d1117;
+    color: #e2e8f0;
+  }
+}
+
+// ── Divider ───────────────────────────────────────────────────────────────────
+.model-settings-divider {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin: 1.25rem 0;
+}
+
+// ── Custom endpoint section ───────────────────────────────────────────────────
+.model-settings-custom-section {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 0.5rem;
+}
+
+.model-settings-section-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 1px;
+  color: #64748b;
+}
+
+.model-settings-field-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  color: #64748b;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.35rem;
+  display: block;
+}
+
+.model-settings-input {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  padding: 7px 12px;
+  width: 100%;
+  transition: border-color 0.2s;
+
+  &:focus {
+    outline: none;
+    border-color: rgba(0, 212, 255, 0.5);
+    box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.08);
+    background: rgba(0, 212, 255, 0.03);
+  }
+
+  &::placeholder { color: #334155; }
+}
+
+// ── Toggle switch ─────────────────────────────────────────────────────────────
+.model-settings-toggle {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+
+  .model-settings-toggle-input {
+    display: none;
+  }
+
+  .model-settings-toggle-track {
+    width: 36px;
+    height: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    display: block;
+    position: relative;
+    transition: background 0.2s, border-color 0.2s;
+  }
+
+  .model-settings-toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    background: #475569;
+    border-radius: 50%;
+    transition: transform 0.2s, background 0.2s;
+  }
+
+  input:checked + .model-settings-toggle-track {
+    background: rgba(0, 212, 255, 0.2);
+    border-color: rgba(0, 212, 255, 0.5);
+
+    .model-settings-toggle-thumb {
+      transform: translateX(16px);
+      background: #00d4ff;
+    }
+  }
+}
+
+// ── Privacy note ──────────────────────────────────────────────────────────────
+.model-settings-privacy-note {
+  font-size: 0.68rem;
+  color: #475569;
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1.5;
+  margin: 0.75rem 0 0;
+}
+
+// ── Footer ────────────────────────────────────────────────────────────────────
+.model-settings-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin-top: 1.25rem;
+}
+
+.model-settings-cancel-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 1px;
+}
+
+.model-settings-apply-btn {
+  background: rgba(0, 212, 255, 0.1);
+  border: 1px solid rgba(0, 212, 255, 0.4);
+  border-radius: 6px;
+  color: #00d4ff;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  padding: 7px 18px;
+  transition: background 0.2s, box-shadow 0.2s;
+
+  &:hover {
+    background: rgba(0, 212, 255, 0.2);
+    box-shadow: 0 0 12px rgba(0, 212, 255, 0.2);
+    color: #00d4ff;
+  }
+}

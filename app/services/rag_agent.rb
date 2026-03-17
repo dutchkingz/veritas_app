@@ -3,11 +3,14 @@ class RagAgent
   MMR_LAMBDA = 0.7
   MMR_K      = 5   # final articles fed to the LLM
 
-  def initialize
-    @client = OpenRouterClient.new
+  def initialize(user: nil)
+    @client = OpenRouterClient.new(user: user)
+    @voice_mode = false
   end
 
-  def ask(user_query, history: [], perspective_id: nil)
+  # voice_briefing: true returns a short 2-sentence spoken summary (no citations)
+  def ask(user_query, history: [], perspective_id: nil, voice_briefing: false)
+    @voice_mode = voice_briefing
     # Load perspective lens — boosts matching sources in MMR relevance scoring
     @perspective = perspective_id.present? ? PerspectiveFilter.find_by(id: perspective_id) : nil
 
@@ -216,6 +219,8 @@ class RagAgent
   end
 
   def build_system_prompt
+    return build_voice_system_prompt if @voice_mode
+
     perspective_note = @perspective ? "\nACTIVE PERSPECTIVE LENS: #{@perspective.name.upcase} — sources from this perspective have been prioritised in the context. Frame your synthesis from this viewpoint while noting where other perspectives diverge." : ""
     <<~PROMPT
       You are the VERITAS RAG Assistant, an elite AI intelligence analyst.
@@ -232,6 +237,15 @@ class RagAgent
            CONFIDENCE: MEDIUM  (2-3 sources partially address the question)
            CONFIDENCE: LOW     (sources are tangential or database coverage is thin)
          Then one blank line, then your response.
+    PROMPT
+  end
+
+  def build_voice_system_prompt
+    <<~PROMPT
+      You are VERITAS, an AI intelligence system delivering a spoken briefing.
+      Answer the query in exactly 2 sentences. No citations. No confidence prefix.
+      Be direct, authoritative, and informative. Military-intelligence tone.
+      Use only information from the provided context. If context is insufficient, say so in one sentence.
     PROMPT
   end
 

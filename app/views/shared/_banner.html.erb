@@ -84,6 +84,18 @@
     <div class="d-flex align-items-center gap-3">
       <% if user_signed_in? %>
         <% if current_user.admin? %>
+          <div onclick="document.dispatchEvent(new CustomEvent('veritas:trigger-surge'))" class="veritas-status" style="cursor:pointer;" title="">
+            <span class="status-dot" style="background:#ff3a5e; animation: pulse 1.5s infinite;"></span>
+            <span class="status-label" style="color:#ff3a5e;">SURGE_MONITOR</span>
+          </div>
+        <% end %>
+        <!-- Model Settings Gear -->
+        <button class="model-settings-gear-btn"
+                onclick="document.getElementById('model-settings-modal').classList.remove('d-none')"
+                title="AI Model Configuration">
+          <i class="fa fa-gear"></i>
+        </button>
+        <% if current_user.admin? %>
           <%= link_to "ADMIN PANEL", admin_users_path, class: "btn btn-outline-warning btn-sm veritas-btn-outline me-2" %>
         <% end %>
         <%= link_to "SAVED ARTICLES", saved_articles_path, class: "btn btn-outline-info btn-sm veritas-btn-outline me-2", style: "font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;" %>
