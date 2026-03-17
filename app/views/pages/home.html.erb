@@ -24,6 +24,14 @@
       <%= filter.name.upcase.tr(' ', '_') %>
     </button>
   <% end %>
+
+  <button class="vt-glass-toggle"
+          data-controller="view-mode"
+          data-action="click->view-mode#toggle"
+          title="Toggle glassmorphism view">
+    <span class="vt-glass-toggle-icon">◫</span>
+    <span data-view-mode-target="label">SOLID</span>
+  </button>
 </div>
 
 <!-- VERITAS Main Dashboard -->
