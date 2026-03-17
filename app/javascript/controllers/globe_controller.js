@@ -15,6 +15,12 @@ export default class extends Controller {
     this._currentTimestamp   = null
     this._pointHovered       = false
     this._arcHovered         = false
+    this._heatmapActive      = false
+    this._heatmapBaseData    = []
+    this._heatmapClusters    = []
+    this._heatmapPulseId     = null
+    this._heatmapTooltipEl   = null
+    this._lastHoveredCluster = null
     this._flyToHandler          = (e) => this._onFlyToEvent(e)
     this._perspectiveHandler    = (e) => this._onPerspectiveChange(e)
     this._timelineHandler       = (e) => this._onTimelineChange(e)
@@ -22,6 +28,8 @@ export default class extends Controller {
     this._searchClearHandler    = (e) => this._onSearchClearEvent(e)
     this._breakingAlertHandler  = (e) => this._onBreakingAlert(e)
     this._viewModeHandler       = (e) => this._onViewModeChanged(e)
+    this._heatmapToggleHandler  = (e) => this._onHeatmapToggle(e)
+    this._dayNightToggleHandler = (e) => this._onDayNightToggle(e)
     window.addEventListener("veritas:flyTo",             this._flyToHandler)
     window.addEventListener("veritas:perspectiveChange", this._perspectiveHandler)
     window.addEventListener("veritas:timelineChange",    this._timelineHandler)
@@ -29,12 +37,14 @@ export default class extends Controller {
     window.addEventListener("veritas:searchClear",       this._searchClearHandler)
     window.addEventListener("veritas:breakingAlert",     this._breakingAlertHandler)
     window.addEventListener("veritas:view-mode-changed", this._viewModeHandler)
+    window.addEventListener("veritas:heatmapToggle",     this._heatmapToggleHandler)
+    window.addEventListener("veritas:dayNightToggle",    this._dayNightToggleHandler)
     this._initGlobe()
     this._subscription = consumer.subscriptions.create("GlobeChannel", {
       received:     (data) => this._onBroadcast(data),
       rejected:     ()     => console.error("[VERITAS Globe] WebSocket subscription rejected")
     })
-    
+
     // Packet animation state
     this._packetGroup = null
     this._packets = []
@@ -50,7 +60,13 @@ export default class extends Controller {
     window.removeEventListener("veritas:searchClear",       this._searchClearHandler)
     window.removeEventListener("veritas:breakingAlert",     this._breakingAlertHandler)
     window.removeEventListener("veritas:view-mode-changed", this._viewModeHandler)
+    window.removeEventListener("veritas:heatmapToggle",     this._heatmapToggleHandler)
+    window.removeEventListener("veritas:dayNightToggle",    this._dayNightToggleHandler)
     clearTimeout(this._rotateTimer)
+    if (this._heatmapPulseId) clearInterval(this._heatmapPulseId)
+    if (this._heatmapTooltipEl) this._heatmapTooltipEl.remove()
+    if (this._onMouseMove) this.element.removeEventListener('mousemove', this._onMouseMove)
+    if (this._onMouseLeave) this.element.removeEventListener('mouseleave', this._onMouseLeave)
     if (this._resizeObserver) this._resizeObserver.disconnect()
     if (this._globe) {
       cancelAnimationFrame(this._animFrame)
@@ -75,7 +91,7 @@ export default class extends Controller {
     const container = this.element
 
     this._globe = Globe()
-      .globeImageUrl("//unpkg.com/three-globe/example/img/earth-night.jpg")
+      .globeImageUrl("//unpkg.com/three-globe/example/img/earth-blue-marble.jpg")
       .bumpImageUrl("//unpkg.com/three-globe/example/img/earth-topology.png")
       .backgroundImageUrl("//unpkg.com/three-globe/example/img/night-sky.png")
       .width(container.clientWidth)
@@ -150,6 +166,26 @@ export default class extends Controller {
           ${d.publishedAt ? `<div style="color:#6b7280;font-size:8px;margin-top:2px;">${new Date(d.publishedAt).toLocaleString()}</div>` : ''}
         </div>
       `})
+      // Heatmap layer (threat thermal overlay)
+      // heatmapsData = [ pointsArray ] — each dataset IS the points array (identity accessor)
+      .heatmapsData([])
+      .heatmapPointLat('lat')
+      .heatmapPointLng('lng')
+      .heatmapPointWeight('weight')
+      .heatmapTopAltitude(0.12)
+      .heatmapBandwidth(3.2)
+      // accessorFn treats functions as per-datum accessors, so we wrap
+      // the color fn in an outer function that returns the actual color fn
+      .heatmapColorFn(() => t => {
+        // Predator-vision thermal: transparent → indigo → red → orange → white-hot
+        if (t < 0.05) return 'rgba(0,0,0,0)'
+        const a = Math.min(1, t * 1.8)
+        if (t < 0.2) return `rgba(40,0,${Math.round(120 + t * 400)},${a})`
+        if (t < 0.45) return `rgba(${Math.round((t - 0.2) * 1020)},0,${Math.round(200 - (t - 0.2) * 600)},${a})`
+        if (t < 0.7) return `rgba(255,${Math.round((t - 0.45) * 440)},0,${Math.min(1, a + 0.1)})`
+        return `rgba(255,${Math.round(110 + (t - 0.7) * 483)},${Math.round((t - 0.7) * 400)},1)`
+      })
+      .heatmapsTransitionDuration(800)
       // Threat rings layer (pulsing radar rings per region)
       .ringsData([])
       .ringLat("lat")
@@ -167,6 +203,10 @@ export default class extends Controller {
       .ringRepeatPeriod("repeatPeriod")
       (container)
 
+    // Add scene lighting — sunlight on the visible hemisphere
+    this._isDay = true
+    this._setupLighting()
+
     const controls = this._globe.controls()
     controls.autoRotate = true
     controls.autoRotateSpeed = 0.4
@@ -182,9 +222,115 @@ export default class extends Controller {
       this._globe.width(container.clientWidth).height(container.clientHeight)
     })
     this._resizeObserver.observe(container)
+
+    // Mousemove → heatmap tooltip (raycasts globe surface for lat/lng)
+    this._onMouseMove = (e) => this._handleHeatmapHover(e, container)
+    this._onMouseLeave = () => this._hideHeatmapTooltip()
+    container.addEventListener('mousemove', this._onMouseMove)
+    container.addEventListener('mouseleave', this._onMouseLeave)
   }
 
-  async _loadData() {
+  async _setupLighting() {
+    const scene = this._globe?.scene()
+    if (!scene) return
+
+    try {
+      const THREE = await import("three")
+
+      // Remove default lights for full control
+      const toRemove = []
+      scene.traverse(obj => { if (obj.isLight) toRemove.push(obj) })
+      toRemove.forEach(l => scene.remove(l))
+
+      // Strong ambient — ensures no pitch-black areas
+      scene.add(new THREE.AmbientLight(0xffffff, 2.0))
+
+      // Primary sun — warm white from upper-right
+      const sun = new THREE.DirectionalLight(0xffffff, 1.8)
+      sun.position.set(1, 1, 1).normalize()
+      scene.add(sun)
+
+      // Fill light from opposite side — prevents harsh shadows
+      const fill = new THREE.DirectionalLight(0xffffff, 1.2)
+      fill.position.set(-1, -1, 1).normalize()
+      scene.add(fill)
+
+      // Boost mesh materials so the texture pops
+      scene.traverse(obj => {
+        if (obj.isMesh && obj.material) {
+          obj.material.lightMapIntensity = 2
+          obj.material.needsUpdate = true
+        }
+      })
+    } catch (e) {
+      console.warn("[VERITAS Globe] Could not set up lighting:", e)
+    }
+  }
+
+  _onDayNightToggle() {
+    this._isDay = !this._isDay
+
+    if (this._globe) {
+      const texture = this._isDay
+        ? "//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+        : "//unpkg.com/three-globe/example/img/earth-night.jpg"
+      this._globe.globeImageUrl(texture)
+      this._applyLighting()
+    }
+
+    window.dispatchEvent(new CustomEvent("veritas:dayNightState", {
+      detail: { isDay: this._isDay }
+    }))
+  }
+
+  async _applyLighting() {
+    const scene = this._globe?.scene()
+    if (!scene) return
+
+    try {
+      const THREE = await import("three")
+
+      // Remove all existing lights
+      const toRemove = []
+      scene.traverse(obj => { if (obj.isLight) toRemove.push(obj) })
+      toRemove.forEach(l => scene.remove(l))
+
+      if (this._isDay) {
+        // Bright daytime lighting
+        scene.add(new THREE.AmbientLight(0xffffff, 2.0))
+        const sun = new THREE.DirectionalLight(0xffffff, 1.8)
+        sun.position.set(1, 1, 1).normalize()
+        scene.add(sun)
+        const fill = new THREE.DirectionalLight(0xffffff, 1.2)
+        fill.position.set(-1, -1, 1).normalize()
+        scene.add(fill)
+      } else {
+        // Night mode — the earth-night.jpg texture has bright city lights on
+        // a dark surface. We need strong ambient so those lights show through,
+        // but no harsh directional so the overall feel stays dark/moody.
+        scene.add(new THREE.AmbientLight(0xffffff, 1.6))
+        const soft = new THREE.DirectionalLight(0x8899bb, 0.4)
+        soft.position.set(0, 1, 1).normalize()
+        scene.add(soft)
+      }
+
+      // Update materials
+      scene.traverse(obj => {
+        if (obj.isMesh && obj.material) {
+          obj.material.lightMapIntensity = this._isDay ? 2 : 1.5
+          obj.material.needsUpdate = true
+        }
+      })
+    } catch (e) {
+      console.warn("[VERITAS Globe] Could not apply day/night lighting:", e)
+    }
+  }
+
+  _loadData() {
+    return this._fetchAndRender()
+  }
+
+  async _fetchAndRender() {
     try {
       const params = new URLSearchParams()
       if (this._currentPerspective && this._currentPerspective !== "all") {
@@ -206,14 +352,22 @@ export default class extends Controller {
         ...(THREAT_RING[parseInt(r.threat, 10)] || THREAT_RING[1])
       }))
 
-      this._globe
-        .pointsData(data.points)
-        .arcsData(data.arcs)
-        .ringsData(rings)
+      // Store heatmap base data + cluster summaries for thermal layer
+      this._heatmapBaseData  = data.heatmap || []
+      this._heatmapClusters  = data.heatmapClusters || []
 
-      // Update packet animation with new arcs
-      if (this._globe) {
-        this._updatePackets()
+      if (this._heatmapActive) {
+        this._globe.heatmapsData([this._heatmapBaseData])
+      } else {
+        this._globe
+          .pointsData(data.points)
+          .arcsData(data.arcs)
+          .ringsData(rings)
+
+        // Update packet animation with new arcs
+        if (this._globe) {
+          this._updatePackets()
+        }
       }
     } catch (err) {
       console.error("[VERITAS Globe] Failed to load globe data:", err)
@@ -562,12 +716,160 @@ export default class extends Controller {
     `
   }
 
+  // -------------------------------------------------------
+  // Heatmap (Threat Thermal Layer)
+  // -------------------------------------------------------
+
+  _onHeatmapToggle() {
+    this._heatmapActive = !this._heatmapActive
+
+    if (this._heatmapActive) {
+      // Hide normal layers + packets
+      this._globe.arcsData([]).pointsData([]).ringsData([])
+      if (this._packetGroup) this._packetGroup.visible = false
+
+      // Render heatmap (reload data so heatmap branch is taken)
+      this._loadData().then(() => {
+        // Start breathing pulse after data is loaded
+        this._heatmapPulseId = setInterval(() => this._pulseHeatmap(), 2500)
+      })
+    } else {
+      // Stop pulse
+      if (this._heatmapPulseId) {
+        clearInterval(this._heatmapPulseId)
+        this._heatmapPulseId = null
+      }
+
+      // Clear heatmap, restore normal layers
+      this._globe.heatmapsData([])
+      this._hideHeatmapTooltip()
+      if (this._packetGroup) this._packetGroup.visible = true
+      this._loadData()
+    }
+
+    // Dispatch state for the toggle button UI
+    window.dispatchEvent(new CustomEvent("veritas:heatmapState", {
+      detail: { active: this._heatmapActive }
+    }))
+  }
+
+  _pulseHeatmap() {
+    if (!this._globe || !this._heatmapActive || !this._heatmapBaseData.length) return
+
+    const pulsed = this._heatmapBaseData.map(p => ({
+      lat:    p.lat,
+      lng:    p.lng,
+      weight: Math.min(1, p.weight * (0.92 + Math.random() * 0.16))
+    }))
+
+    this._globe.heatmapsData([pulsed])
+  }
+
+  _handleHeatmapHover(event, container) {
+    if (!this._heatmapActive || !this._globe || !this._heatmapClusters.length) return
+
+    const rect = container.getBoundingClientRect()
+    const mx = event.clientX - rect.left
+    const my = event.clientY - rect.top
+
+    // Compare mouse position against each cluster's screen position
+    let nearest = null
+    let nearestDist = Infinity
+    for (const cluster of this._heatmapClusters) {
+      const screenPos = this._globe.getScreenCoords(cluster.lat, cluster.lng)
+      if (!screenPos) continue
+
+      const dx = screenPos.x - mx
+      const dy = screenPos.y - my
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      if (dist < nearestDist) {
+        nearestDist = dist
+        nearest = cluster
+      }
+    }
+
+    // 80px radius — close enough to a cluster centroid to show tooltip
+    if (!nearest || nearestDist > 80) {
+      this._hideHeatmapTooltip()
+      return
+    }
+
+    if (this._lastHoveredCluster === nearest) return
+    this._lastHoveredCluster = nearest
+    this._showHeatmapTooltip(nearest)
+  }
+
+  _showHeatmapTooltip(cluster) {
+    if (!this._heatmapTooltipEl) {
+      this._heatmapTooltipEl = document.createElement('div')
+      this._heatmapTooltipEl.className = 'vt-heatmap-tooltip'
+      document.querySelector('.veritas-globe-section')?.appendChild(this._heatmapTooltipEl)
+    }
+
+    const threatColor = cluster.avgThreat >= 7 ? '#ff3a5e'
+      : cluster.avgThreat >= 4 ? '#ffc107'
+      : cluster.avgThreat >= 1 ? '#00ff87' : '#64748b'
+
+    const headlines = (cluster.topHeadlines || []).map(h =>
+      `<div style="margin-bottom:4px;">
+        <span style="color:${threatColor};font-size:8px;">■</span>
+        <span style="color:#8b95a5;font-size:8px;margin-right:4px;">${h.source}</span>
+        <span style="font-size:10px;">${h.headline}</span>
+      </div>`
+    ).join('')
+
+    this._heatmapTooltipEl.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="color:#00f0ff;font-size:9px;letter-spacing:0.12em;">${cluster.name} [${cluster.iso}]</span>
+        <span style="color:${threatColor};font-size:9px;font-weight:700;">THREAT ${cluster.avgThreat}</span>
+      </div>
+      <div style="display:flex;gap:14px;margin-bottom:8px;">
+        <div>
+          <div style="color:#8b95a5;font-size:8px;letter-spacing:0.08em;">SIGNALS</div>
+          <div style="font-size:16px;font-weight:700;color:#e0e6ed;">${cluster.articleCount}</div>
+        </div>
+        <div>
+          <div style="color:#8b95a5;font-size:8px;letter-spacing:0.08em;">AVG THREAT</div>
+          <div style="font-size:16px;font-weight:700;color:${threatColor};">${cluster.avgThreat}</div>
+        </div>
+      </div>
+      ${headlines ? `<div style="border-top:1px solid rgba(0,240,255,0.15);padding-top:6px;">${headlines}</div>` : ''}
+    `
+
+    this._heatmapTooltipEl.classList.add('is-visible')
+  }
+
+  _hideHeatmapTooltip() {
+    if (this._heatmapTooltipEl) {
+      this._heatmapTooltipEl.classList.remove('is-visible')
+    }
+    this._lastHoveredCluster = null
+  }
+
+  _flareHeatmapAt(lat, lng) {
+    if (!this._heatmapActive) return
+
+    const flare = { lat, lng, weight: 1.0 }
+    this._heatmapBaseData.push(flare)
+    this._globe.heatmapsData([[...this._heatmapBaseData]])
+
+    setTimeout(() => {
+      const idx = this._heatmapBaseData.indexOf(flare)
+      if (idx !== -1) this._heatmapBaseData.splice(idx, 1)
+    }, 2000)
+  }
+
  _onBroadcast(data) {
     if (!this._globe) return
 
     if (data.type === "new_point") {
       const current = this._globe.pointsData()
       this._globe.pointsData([...current, data.point])
+
+      // Flare heatmap at new article location
+      if (data.point.lat && data.point.lng) {
+        this._flareHeatmapAt(data.point.lat, data.point.lng)
+      }
     } else if (data.type === "update_point") {
       const current = this._globe.pointsData()
       this._globe.pointsData(
@@ -613,20 +915,28 @@ export default class extends Controller {
       const response = await fetch(url)
       const data = await response.json()
       
-      // Update globe with filtered data
-      const rings = (data.regions || []).map(r => ({
-        ...r,
-        ...(THREAT_RING[parseInt(r.threat, 10)] || THREAT_RING[1])
-      }))
-      
-      this._globe
-        .pointsData(data.points || [])
-        .arcsData(data.arcs || [])
-        .ringsData(rings)
-      
-      // Update packet animation with new arcs
-      if (this._globe) {
-        this._updatePackets()
+      // Store heatmap base data + clusters
+      this._heatmapBaseData = data.heatmap || []
+      this._heatmapClusters = data.heatmapClusters || []
+
+      if (this._heatmapActive) {
+        this._globe.heatmapsData([this._heatmapBaseData])
+      } else {
+        // Update globe with filtered data
+        const rings = (data.regions || []).map(r => ({
+          ...r,
+          ...(THREAT_RING[parseInt(r.threat, 10)] || THREAT_RING[1])
+        }))
+
+        this._globe
+          .pointsData(data.points || [])
+          .arcsData(data.arcs || [])
+          .ringsData(rings)
+
+        // Update packet animation with new arcs
+        if (this._globe) {
+          this._updatePackets()
+        }
       }
       
       // Fly to first result if available

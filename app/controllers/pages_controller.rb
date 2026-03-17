@@ -127,7 +127,7 @@ class PagesController < ApplicationController
       article_count = c.attributes['article_count'].to_i
       threat = [article_count, 10].min
       coords = country_coordinates[c.iso_code] || [0.0, 0.0]
-      
+
       {
         lat:    coords[0],
         lng:    coords[1],
@@ -138,7 +138,52 @@ class PagesController < ApplicationController
       }
     end
 
-    render json: { points: points, arcs: arcs, regions: regions }
+    # Heatmap cluster summaries — per-country intel for thermal tooltip
+    heatmap_clusters = countries_with_articles.first(15).map do |c|
+      coords = country_coordinates[c.iso_code] || [0.0, 0.0]
+      country_articles = filtered_articles.select { |a| a.country_id == c.id }
+      avg_threat = if country_articles.any?
+                     threats = country_articles.filter_map { |a| a.ai_analysis&.threat_level&.to_i }
+                     threats.any? ? (threats.sum.to_f / threats.size).round(1) : 0
+                   else
+                     0
+                   end
+      top_headlines = country_articles
+        .sort_by { |a| -(a.ai_analysis&.threat_level.to_i) }
+        .first(3)
+        .map { |a| { headline: a.headline.truncate(80), source: a.source_name } }
+
+      {
+        lat:          coords[0],
+        lng:          coords[1],
+        name:         c.name,
+        iso:          c.iso_code,
+        articleCount: c.attributes['article_count'].to_i,
+        avgThreat:    avg_threat,
+        topHeadlines: top_headlines
+      }
+    end
+
+    # Heatmap data: one entry per geolocated article, weight = threat intensity
+    # Base weight 0.4 ensures even unevaluated articles show up on the thermal layer.
+    heatmap = filtered_articles.first(200).filter_map do |a|
+      next if a.latitude.blank? || a.longitude.blank?
+
+      threat = a.ai_analysis&.threat_level.to_f   # 0–10 (nil → 0)
+      trust  = a.ai_analysis&.trust_score.to_f    # 0–100 (nil → 0, treated as unknown)
+
+      # Articles without AI analysis get a base heat of 0.4 (visible but not alarming).
+      # Articles with analysis: high threat + low trust → hot.
+      if a.ai_analysis.nil?
+        weight = 0.4
+      else
+        weight = ((threat / 10.0) * 0.65 + ((100.0 - trust) / 100.0) * 0.35).clamp(0.2, 1.0)
+      end
+
+      { lat: a.latitude, lng: a.longitude, weight: weight }
+    end
+
+    render json: { points: points, arcs: arcs, regions: regions, heatmap: heatmap, heatmapClusters: heatmap_clusters }
   end
 
   # GET /api/article_preview/:article_id — Lightweight article card for DNA node click

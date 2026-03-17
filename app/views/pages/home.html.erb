@@ -130,6 +130,25 @@
       </div>
     </div>
 
+    <!-- Globe control toggles -->
+    <div class="vt-globe-toggles">
+      <button class="vt-heatmap-toggle"
+              data-controller="heatmap-toggle"
+              data-heatmap-toggle-target="btn"
+              data-action="click->heatmap-toggle#toggle"
+              title="Toggle threat heatmap thermal layer">
+        <span class="vt-heatmap-toggle-icon">&#9608;</span>
+        <span data-heatmap-toggle-target="label">THERMAL</span>
+      </button>
+      <button class="vt-daynight-toggle"
+              data-controller="daynight-toggle"
+              data-action="click->daynight-toggle#toggle"
+              title="Toggle day/night globe view">
+        <span class="vt-daynight-icon">&#9788;</span>
+        <span class="vt-daynight-label" data-daynight-toggle-target="label">DAY</span>
+      </button>
+    </div>
+
     <div class="veritas-crosshair top"></div>
     <div class="veritas-crosshair bottom"></div>
     <div class="veritas-crosshair left"></div>
