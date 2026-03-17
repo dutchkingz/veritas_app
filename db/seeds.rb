@@ -43,7 +43,7 @@ def create_users!
   )
 
   puts "Creating Developer Users..."
-  %w[vince@vince.au oli@oli.com selim@selim.com].each do |email|
+  %w[vince.mohanna@gmail.com olivertilke@me.com smazliah15@gmail.com].each do |email|
     User.create!(
       email: email,
       password: email,
@@ -177,10 +177,10 @@ def seed_articles!(created_regions)
             when 'Bearish' then '#ef4444'
             else '#38bdf8'
             end
-    
+
     analyst_trust = [[trust + rand(-5..5), 100].min, 1].max
     sentinel_trust = [[trust + rand(-8..8), 100].min, 1].max
-    
+
     a.create_ai_analysis!(
       threat_level: threat.to_s,
       trust_score: trust.to_f,
@@ -203,9 +203,12 @@ def seed_articles!(created_regions)
         "reasoning" => "Initial automated forensic scan complete."
       },
       arbiter_response: {
-        "agreement_level" => "HIGH_CONSENSUS",
+        "agreement_level" => ["FULL_CONSENSUS", "PARTIAL_AGREEMENT", "SIGNIFICANT_DISAGREEMENT"].sample,
         "final_trust_score" => trust,
-        "arbitration_notes" => "Mock data generated for fast initialization."
+        "final_threat_level" => threat.to_s,
+        "final_summary" => "Cross-verified intelligence assessment for #{a.source_name}. Consensus reached on threat posture and narrative framing.",
+        "linguistic_anomaly_flag" => [true, false].sample,
+        "arbitration_notes" => "Both agents evaluated independently. Weighted judgment applied based on source credibility and bias indicators."
       }
     )
   end
@@ -217,23 +220,23 @@ def seed_narrative_arcs!
   # First, generate embeddings for ALL articles (real ARCWEAVER intelligence)
   puts "\n==== ARCWEAVER 2.0 INITIALIZATION ===="
   puts "Generating 1536-dimensional semantic embeddings for #{Article.count} articles..."
-  
+
   embedding_service = EmbeddingService.new
   success_count = 0
-  
+
   Article.find_each do |article|
     success = embedding_service.generate(article)
     success_count += 1 if success
     print "."
   end
   puts "\nGenerated embeddings for #{success_count} articles."
-  
+
   # Then, run the REAL Route Generator to connect them organically!
   puts "\nGenerating Organic Narrative Tracks via Semantic Clustering..."
   route_service = NarrativeRouteGeneratorService.new
   # limit: nil = process all, force: true = process them even if already connected
   routes_created = route_service.generate_routes(limit: nil, force: true)
-  
+
   puts "Generated #{routes_created} real narrative routes."
 end
 
