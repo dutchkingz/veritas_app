@@ -420,7 +420,8 @@ class PagesController < ApplicationController
     filtered_ids = filtered_articles.map(&:id)
 
     # 1. Flow arcs (auto-generated from article sequence)
-    flow_arcs = build_article_flow_arcs(filtered_articles, perspective)
+    # DISABLED: These create confusion with real narrative paths.
+    # flow_arcs = build_article_flow_arcs(filtered_articles, perspective)
 
     # 2. Database arcs (seeded NarrativeArcs) — restricted to filtered article set
     scope = NarrativeArc.includes(article: :ai_analysis).order(:id)
@@ -429,16 +430,18 @@ class PagesController < ApplicationController
 
     db_arcs = if perspective
                 scope.joins(:article).select { |arc| perspective.matches_source?(arc.article.source_name) }
-                     .map { |arc| serialize_arc(arc, perspective.color) }
+                     .map { |arc| serialize_arc(arc, perspective.color).merge(isNarrative: true) }
               else
-                scope.limit(50).map { |arc| serialize_arc(arc) }
+                scope.limit(50).map { |arc| serialize_arc(arc).merge(isNarrative: true) }
               end
 
-    # Combine both, prioritizing DB arcs
-    (db_arcs + flow_arcs).first(100)
+    # Return only real narrative arcs to keep the intelligence layer focused.
+    db_arcs.first(100)
   end
 
   def build_article_flow_arcs(filtered_articles, perspective)
+    # This method is now unused by default to avoid visual 'clutter'
+    # that users misinterpret as broken narrative links.
     candidates = filtered_articles
       .select { |article| article.country.present? && article.latitude.present? && article.longitude.present? }
       .sort_by { |article| article.published_at || Time.at(0) }

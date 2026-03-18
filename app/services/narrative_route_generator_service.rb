@@ -147,14 +147,14 @@ class NarrativeRouteGeneratorService
     
     # Create or find narrative arc
     arc = NarrativeArc.find_or_create_by(
-      article_id: origin_article.id,
-      origin_country: hops.first['source_country'] || 'Unknown',
-      origin_lat: hops.first['lat'],
-      origin_lng: hops.first['lng'],
+      article_id:     origin_article.id,
+      origin_country: origin_article.country&.name || 'Unknown',
+      origin_lat:     origin_article.latitude,
+      origin_lng:     origin_article.longitude,
       target_country: hops.last['source_country'] || 'Unknown',
-      target_lat: hops.last['lat'],
-      target_lng: hops.last['lng'],
-      arc_color: determine_arc_color(hops)
+      target_lat:     hops.last['lat'],
+      target_lng:     hops.last['lng'],
+      arc_color:      determine_arc_color(hops)
     )
     
     # Create narrative route
