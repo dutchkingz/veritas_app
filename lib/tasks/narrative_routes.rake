@@ -29,6 +29,25 @@ namespace :veritas do
       puts "Done! #{routes_created} routes created."
     end
 
+    desc "Delete narrative routes where hops are in reverse chronological order (first_hop_at > last_hop_at)"
+    task cleanup_temporal: :environment do
+      puts "Scanning for temporally reversed routes..."
+
+      bad_ids = NarrativeRoute
+        .where.not(first_hop_at: nil)
+        .where.not(last_hop_at: nil)
+        .where("first_hop_at > last_hop_at")
+        .pluck(:id)
+
+      if bad_ids.empty?
+        puts "✅ No reversed routes found."
+      else
+        puts "Found #{bad_ids.size} reversed routes — deleting..."
+        NarrativeRoute.where(id: bad_ids).destroy_all
+        puts "✅ Deleted #{bad_ids.size} temporally reversed routes."
+      end
+    end
+
     desc "Show narrative route statistics"
     task stats: :environment do
       puts "\n🦞 VERITAS Narrative Route Statistics\n"

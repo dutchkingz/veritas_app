@@ -1,6 +1,8 @@
 class NarrativeRouteGeneratorService
-  # Similarity threshold for considering articles as part of the same narrative
-  SIMILARITY_THRESHOLD = 0.45  # VERY LOW threshold to generate many routes
+  # Similarity threshold for considering articles as part of the same narrative.
+  # cosine_distance = 1 - cosine_similarity, so max_distance = 1 - SIMILARITY_THRESHOLD.
+  # 0.65 → only connect articles with ≥65% semantic similarity (was 0.45 — far too loose).
+  SIMILARITY_THRESHOLD = 0.65
   MAX_HOPS_PER_ROUTE = 8
   
   def initialize(logger: Rails.logger)
@@ -65,7 +67,7 @@ class NarrativeRouteGeneratorService
   end
   
   # Find articles similar to the given one using pgvector
-  def find_similar_articles(article, max_results: 20)
+  def find_similar_articles(article, max_results: 5)
     return [] unless article.embedding
     
     # Use pgvector's cosine distance
@@ -109,9 +111,11 @@ class NarrativeRouteGeneratorService
   
   # Create a narrative route from an article chain
   def create_route_for_article(origin_article, similar_articles)
-    # Build a chain of hops ordered by publication time
+    # Build a chain of hops ordered by publication time.
+    # Guard against nil published_at — treat it as epoch so it sorts first and
+    # the chain remains deterministic rather than crashing.
     all_articles = [origin_article] + similar_articles
-    sorted_articles = all_articles.sort_by(&:published_at).uniq
+    sorted_articles = all_articles.compact.sort_by { |a| a.published_at || Time.at(0) }.uniq
     
     return nil if sorted_articles.length < 2
     
@@ -147,14 +151,14 @@ class NarrativeRouteGeneratorService
     
     # Create or find narrative arc
     arc = NarrativeArc.find_or_create_by(
-      article_id: origin_article.id,
-      origin_country: hops.first['source_country'] || 'Unknown',
-      origin_lat: hops.first['lat'],
-      origin_lng: hops.first['lng'],
+      article_id:     origin_article.id,
+      origin_country: origin_article.country&.name || 'Unknown',
+      origin_lat:     origin_article.latitude,
+      origin_lng:     origin_article.longitude,
       target_country: hops.last['source_country'] || 'Unknown',
-      target_lat: hops.last['lat'],
-      target_lng: hops.last['lng'],
-      arc_color: determine_arc_color(hops)
+      target_lat:     hops.last['lat'],
+      target_lng:     hops.last['lng'],
+      arc_color:      determine_arc_color(hops)
     )
     
     # Create narrative route

@@ -26,6 +26,13 @@ class IntelligenceReport < ApplicationRecord
   scope :processing, -> { where(status: "processing") }
   scope :completed,  -> { where(status: "completed") }
   scope :failed,     -> { where(status: "failed") }
+
+  # Dashboard Filtering Scopes
+  scope :in_time_range, ->(start_time, end_time) { where(created_at: start_time..end_time) }
+  scope :by_coordinates, ->(min_lat, max_lat, min_lng, max_lng) {
+    joins(:region).where(regions: { latitude: min_lat..max_lat, longitude: min_lng..max_lng })
+  }
+
   scope :latest_for_region, ->(region_id) {
     where(region_id: region_id, status: "completed").order(created_at: :desc).first
   }

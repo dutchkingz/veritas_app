@@ -2,6 +2,18 @@ class NarrativeArc < ApplicationRecord
   belongs_to :article
   has_many :narrative_routes, dependent: :destroy
   
+  before_save :sync_with_article
+  
+  private
+  
+  def sync_with_article
+    return unless article
+    
+    # Force origin coordinates to match the article's location
+    self.origin_lat = article.latitude
+    self.origin_lng = article.longitude
+  end
+  
   # Backward compatibility: simple arc visualization
   def as_globe_data
     {

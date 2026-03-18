@@ -15,6 +15,7 @@ export default class extends Controller {
     this._currentTimestamp   = null
     this._pointHovered       = false
     this._arcHovered         = false
+    this._abortController    = null
     this._heatmapActive      = false
     this._heatmapBaseData    = []
     this._heatmapClusters    = []
@@ -106,11 +107,21 @@ export default class extends Controller {
       .onPointHover(point => this._onPointHover(point))
       .onPointClick(point => this._onPointClicked(point))
       // Arcs layer (narrative arcs)
-      .arcColor("color")
-      .arcDashLength(0)  // Solid lines instead of dashed
-      .arcDashGap(0)
-      .arcDashAnimateTime(0)
-      .arcStroke(d => d.thickness || 0.5)
+      // tier 1 (top 5 by strength): thick, animated dash, full opacity
+      // tier 2 (next 10): thin, solid, 35% opacity
+      // no tier (legacy fallback arcs): use thickness field
+      .arcColor(d => {
+        const c = d.color || '#00f0ff'
+        return d.tier === 2 ? this._hexToRgba(c, 0.35) : c
+      })
+      .arcDashLength(d => d.tier === 1 ? 0.5 : 0)
+      .arcDashGap(d => d.tier === 1 ? 0.15 : 0)
+      .arcDashAnimateTime(d => d.tier === 1 ? 2500 : 0)
+      .arcStroke(d => {
+        if (d.tier === 1) return 2.5
+        if (d.tier === 2) return 0.8
+        return d.thickness || 0.5
+      })
       .onArcHover(arc => this._onArcHover(arc))
       .onArcClick(arc => this._onArcClicked(arc))
       // Tooltips
@@ -164,6 +175,11 @@ export default class extends Controller {
           <div style="margin-top:4px;font-weight:600;">${d.headline || 'Linked intelligence signal'}</div>
           <div style="color:#6b7280;font-size:9px;margin-top:4px;">${d.source || 'UNKNOWN SOURCE'}</div>
           ${d.publishedAt ? `<div style="color:#6b7280;font-size:8px;margin-top:2px;">${new Date(d.publishedAt).toLocaleString()}</div>` : ''}
+          ${d.strength != null ? `
+          <div style="margin-top:6px;padding-top:4px;border-top:1px solid rgba(0,240,255,0.2);display:flex;justify-content:space-between;align-items:center;">
+            <span style="color:#22c55e;font-size:8px;letter-spacing:0.08em;">SEMANTIC MATCH</span>
+            <span style="color:#22c55e;font-size:10px;font-weight:700;">${Math.round(d.strength * 100)}%</span>
+          </div>` : ''}
         </div>
       `})
       // Heatmap layer (threat thermal overlay)
@@ -331,6 +347,11 @@ export default class extends Controller {
   }
 
   async _fetchAndRender() {
+    // Cancel any in-flight request before starting a new one
+    this._abortController?.abort()
+    this._abortController = new AbortController()
+    const signal = this._abortController.signal
+
     try {
       const params = new URLSearchParams()
       if (this._currentPerspective && this._currentPerspective !== "all") {
@@ -341,10 +362,10 @@ export default class extends Controller {
       }
       // ARCWEAVER 2.0: Load multi‑segment routes instead of simple arcs
       params.set("view", "segments")
-      
+
       const query = params.toString()
       const url   = query ? `${this.dataUrlValue}?${query}` : this.dataUrlValue
-      const response = await fetch(url)
+      const response = await fetch(url, { signal })
       const data     = await response.json()
 
       const rings = (data.regions || []).map(r => ({
@@ -364,12 +385,10 @@ export default class extends Controller {
           .arcsData(data.arcs)
           .ringsData(rings)
 
-        // Update packet animation with new arcs
-        if (this._globe) {
-          this._updatePackets()
-        }
+        if (this._globe) this._updatePackets()
       }
     } catch (err) {
+      if (err.name === 'AbortError') return  // stale request superseded by newer one
       console.error("[VERITAS Globe] Failed to load globe data:", err)
     }
   }
@@ -894,27 +913,37 @@ export default class extends Controller {
     const { query } = event.detail
 
     if (!query) {
-      this._loadData() // Reset to default
+      this._loadData()
       return
     }
 
     this._currentSearchQuery = query
-    
-    // Fetch filtered globe data based on search query
+
+    // Purge the globe immediately so the user never sees stale arcs while loading
+    if (this._globe) {
+      this._globe.arcsData([]).pointsData([]).ringsData([])
+      if (this._packetGroup) this._packetGroup.visible = false
+    }
+
+    // Cancel any in-flight request (initial load, timeline change, or previous search)
+    this._abortController?.abort()
+    this._abortController = new AbortController()
+    const signal = this._abortController.signal
+
     try {
       const params = new URLSearchParams({
         search_query: query,
         view: 'segments'
       })
-      
+
       if (this._currentPerspective && this._currentPerspective !== "all") {
         params.set("perspective_id", this._currentPerspective)
       }
-      
+
       const url = `${this.dataUrlValue}?${params.toString()}`
-      const response = await fetch(url)
+      const response = await fetch(url, { signal })
       const data = await response.json()
-      
+
       // Store heatmap base data + clusters
       this._heatmapBaseData = data.heatmap || []
       this._heatmapClusters = data.heatmapClusters || []
@@ -922,7 +951,6 @@ export default class extends Controller {
       if (this._heatmapActive) {
         this._globe.heatmapsData([this._heatmapBaseData])
       } else {
-        // Update globe with filtered data
         const rings = (data.regions || []).map(r => ({
           ...r,
           ...(THREAT_RING[parseInt(r.threat, 10)] || THREAT_RING[1])
@@ -933,29 +961,43 @@ export default class extends Controller {
           .arcsData(data.arcs || [])
           .ringsData(rings)
 
-        // Update packet animation with new arcs
-        if (this._globe) {
-          this._updatePackets()
-        }
+        if (this._packetGroup) this._packetGroup.visible = true
+        if (this._globe) this._updatePackets()
       }
-      
-      // Fly to first result if available
-      if (data.arcs && data.arcs.length > 0) {
-        const firstArc = data.arcs[0]
-        const midLat = (firstArc.startLat + firstArc.endLat) / 2
-        const midLng = (firstArc.startLng + firstArc.endLng) / 2
+
+      // Fly to the centroid of the first primary arc
+      const primaryArc = (data.arcs || []).find(a => a.tier === 1) || data.arcs?.[0]
+      if (primaryArc) {
+        const midLat = (primaryArc.startLat + primaryArc.endLat) / 2
+        const midLng = (primaryArc.startLng + primaryArc.endLng) / 2
         this._flyTo(midLat, midLng, 2.0)
       }
-      
-      console.log(`[GlobeController] Search filter applied: "${query}" — ${data.arcs?.length || 0} arcs loaded`)
+
+      console.log(`[GlobeController] Search: "${query}" — ${data.arcs?.length || 0} arcs (${(data.arcs || []).filter(a => a.tier === 1).length} primary)`)
     } catch (err) {
+      if (err.name === 'AbortError') return  // superseded by a newer search, ignore
       console.error('[GlobeController] Search filter failed:', err)
-      this._loadData() // Fallback to default
+      this._loadData()
     }
   }
 
   _onSearchClearEvent() {
     this._currentSearchQuery = null
     this._loadData()
+  }
+
+  // -------------------------------------------------------
+  // Utilities
+  // -------------------------------------------------------
+
+  // Convert a 6-digit hex color to rgba with the given opacity (0–1).
+  // Used to dim secondary arcs without losing their framing-shift color identity.
+  _hexToRgba(hex, alpha) {
+    const h = hex.replace('#', '')
+    if (h.length !== 6) return hex
+    const r = parseInt(h.slice(0, 2), 16)
+    const g = parseInt(h.slice(2, 4), 16)
+    const b = parseInt(h.slice(4, 6), 16)
+    return `rgba(${r},${g},${b},${alpha})`
   }
 }

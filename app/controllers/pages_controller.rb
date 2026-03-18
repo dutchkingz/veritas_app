@@ -469,49 +469,67 @@ class PagesController < ApplicationController
       scope = scope.limit(100)
     end
 
-    segments = []
-    
-    scope.each do |route|
+    # Score each route by avg hop confidence (our best proxy for semantic strength),
+    # rank them, and assign visual tiers: top 5 = primary, next 10 = secondary, rest dropped.
+    # This eliminates spaghetti: max 15 routes × max 8 hops = 120 segments absolute ceiling.
+    scored_routes = scope.filter_map do |route|
       route_data = route.as_globe_data
       next unless route_data[:segments] && route_data[:segments].any?
-      
-      article = route.narrative_arc.article
+
+      confidences = route.hops.filter_map { |h| h['confidence_score']&.to_f }
+      strength    = confidences.any? ? (confidences.sum / confidences.size.to_f) : 0.5
+
+      { route_data: route_data, strength: strength, route: route,
+        article: route.narrative_arc.article }
+    end
+
+    scored_routes.sort_by! { |r| -r[:strength] }
+
+    segments = []
+
+    scored_routes.first(15).each_with_index do |r, index|
+      tier     = index < 5 ? 1 : 2
+      strength = r[:strength].round(3)
+      route    = r[:route]
+      article  = r[:article]
+
       route_metadata = {
-        routeId: route.id,
-        routeName: route.name,
-        arcId: route.narrative_arc_id,
+        routeId:           route.id,
+        routeName:         route.name,
+        arcId:             route.narrative_arc_id,
         manipulationScore: route.manipulation_score,
         amplificationScore: route.amplification_score,
-        totalHops: route.total_hops,
-        isComplete: route.is_complete,
-        articleId: article&.id,
-        headline: article&.headline,
-        source: article&.source_name,
-        originCountry: route.narrative_arc.origin_country,
-        targetCountry: route.narrative_arc.target_country
+        totalHops:         route.total_hops,
+        isComplete:        route.is_complete,
+        articleId:         article&.id,
+        headline:          article&.headline,
+        source:            article&.source_name,
+        originCountry:     route.narrative_arc.origin_country,
+        targetCountry:     route.narrative_arc.target_country,
+        strength:          strength,
+        tier:              tier
       }
-      
-      route_data[:segments].each do |segment|
-        # Add route metadata to each segment for hover/click events
+
+      r[:route_data][:segments].each do |segment|
         segments << segment.merge(route_metadata).merge(
-          # Ensure required fields for globe rendering
-          color: segment[:color] || '#00f0ff',
+          color:    segment[:color] || '#00f0ff',
           startLat: segment[:startLat],
           startLng: segment[:startLng],
-          endLat: segment[:endLat],
-          endLng: segment[:endLng]
+          endLat:   segment[:endLat],
+          endLng:   segment[:endLng]
         )
       end
     end
-    
-    segments.first(200) # Limit total segments for performance
+
+    segments
   end
 
   def build_globe_arcs(filtered_articles, perspective, to_time)
     filtered_ids = filtered_articles.map(&:id)
 
     # 1. Flow arcs (auto-generated from article sequence)
-    flow_arcs = build_article_flow_arcs(filtered_articles, perspective)
+    # DISABLED: These create confusion with real narrative paths.
+    # flow_arcs = build_article_flow_arcs(filtered_articles, perspective)
 
     # 2. Database arcs (seeded NarrativeArcs) — restricted to filtered article set
     scope = NarrativeArc.includes(article: :ai_analysis).order(:id)
@@ -520,16 +538,18 @@ class PagesController < ApplicationController
 
     db_arcs = if perspective
                 scope.joins(:article).select { |arc| perspective.matches_source?(arc.article.source_name) }
-                     .map { |arc| serialize_arc(arc, perspective.color) }
+                     .map { |arc| serialize_arc(arc, perspective.color).merge(isNarrative: true) }
               else
-                scope.limit(50).map { |arc| serialize_arc(arc) }
+                scope.limit(50).map { |arc| serialize_arc(arc).merge(isNarrative: true) }
               end
 
-    # Combine both, prioritizing DB arcs
-    (db_arcs + flow_arcs).first(100)
+    # Return only real narrative arcs to keep the intelligence layer focused.
+    db_arcs.first(100)
   end
 
   def build_article_flow_arcs(filtered_articles, perspective)
+    # This method is now unused by default to avoid visual 'clutter'
+    # that users misinterpret as broken narrative links.
     candidates = filtered_articles
       .select { |article| article.country.present? && article.latitude.present? && article.longitude.present? }
       .sort_by { |article| article.published_at || Time.at(0) }

@@ -1,5 +1,7 @@
 module Api
   class SearchController < ApplicationController
+    skip_before_action :authenticate_user!, only: [:create]
+
     # POST /api/search
     # Accepts { query: "..." }, returns cached results immediately and enqueues
     # a background job for fresh NewsAPI data if needed.

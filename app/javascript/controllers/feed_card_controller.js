@@ -26,4 +26,11 @@ export default class extends Controller {
       detail: { articleId: this.articleIdValue }
     }))
   }
+
+  openNexus(event) {
+    event.stopPropagation()
+    window.dispatchEvent(new CustomEvent("veritas:openEntityNexus", {
+      detail: { articleId: this.articleIdValue }
+    }))
+  }
 }

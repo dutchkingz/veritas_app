@@ -944,3 +944,21 @@
         min-width: 88px;
     }
 }
+
+// --- Live Animations ---
+@keyframes cyan-glow-fade {
+    0% {
+        box-shadow: 0 0 20px rgba(0, 240, 255, 0.8), inset 0 0 20px rgba(0, 240, 255, 0.2);
+        border-color: rgba(0, 240, 255, 1);
+        background: rgba(0, 240, 255, 0.1);
+    }
+    100% {
+        box-shadow: none;
+        border-color: $veritas-border;
+        background: rgba($veritas-bg, 0.7);
+    }
+}
+
+.new-entry {
+    animation: cyan-glow-fade 1.5s ease-out forwards;
+}
