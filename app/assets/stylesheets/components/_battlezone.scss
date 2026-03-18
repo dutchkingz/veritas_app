@@ -1,0 +1,66 @@
+// -------------------------------------------------------
+// VERITAS Battlezone — Easter Egg Overlay
+// -------------------------------------------------------
+
+.battlezone-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.92);
+  animation: battlezone-in 0.25s ease-out;
+
+  &--closing {
+    animation: battlezone-out 0.25s ease-in forwards;
+  }
+}
+
+.battlezone-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.battlezone-canvas {
+  display: block;
+  border-radius: 4px;
+  box-shadow: 0 0 40px rgba($veritas-cyan, 0.12), 0 0 80px rgba($veritas-cyan, 0.05);
+  image-rendering: auto;
+}
+
+.battlezone-close {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba($veritas-cyan, 0.3);
+  background: $veritas-bg;
+  color: $veritas-cyan;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    border-color: $veritas-cyan;
+    box-shadow: 0 0 12px rgba($veritas-cyan, 0.3);
+  }
+}
+
+@keyframes battlezone-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes battlezone-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}

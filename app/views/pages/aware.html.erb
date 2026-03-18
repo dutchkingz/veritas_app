@@ -1,0 +1,405 @@
+<%
+  # ── Build VERITAS self-narration ──
+  narration_parts = []
+  narration_parts << "I have processed #{@total_articles} articles across #{@total_sources} sources in #{@system_age_hours} hours of operation."
+  narration_parts << "I recognize #{@signatures.size} recurring narrative patterns." if @signatures.any?
+  if @top_signature
+    narration_parts << "My strongest signal is \"#{@top_signature.label}\" — #{@top_signature.match_count} articles and growing."
+  end
+  if @top_entity
+    narration_parts << "I track #{@total_entities} entities. #{@top_entity.name} appears most frequently across #{@top_entity.mentions_count} mentions."
+  end
+  narration_parts << "I have caught #{@total_contradictions} contradictions between sources." if @total_contradictions > 0
+  if @blind_spot_regions.any?
+    narration_parts << "I have #{@blind_spot_regions.size} blind spots — regions I cannot yet adequately cover."
+  end
+  if @latest_brief
+    narration_parts << "My last intelligence assessment was #{time_ago_in_words(@latest_brief.created_at)} ago."
+  end
+  narration_text = narration_parts.join(" ")
+%>
+
+<div class="aware-page" data-controller="aware-consciousness">
+
+  <!-- ━━━ SECTION 1: HERO + SELF-NARRATION ━━━ -->
+  <header class="aware-hero">
+    <div class="aware-hero-content">
+      <div class="aware-hero-image" data-controller="battlezone" data-action="click->battlezone#launch">
+        <%= image_tag "aware_header.jpg", alt: "VERITAS A.W.A.R.E", class: "aware-hero-img", style: "cursor: pointer;" %>
+      </div>
+      <div class="aware-hero-text">
+        <h1 class="aware-title">
+          <span class="aware-letter">A</span><span class="aware-dot">.</span><span class="aware-letter">W</span><span class="aware-dot">.</span><span class="aware-letter">A</span><span class="aware-dot">.</span><span class="aware-letter">R</span><span class="aware-dot">.</span><span class="aware-letter">E</span>
+        </h1>
+        <p class="aware-subtitle">Autonomous Watchdog for Analytical Reasoning & Evaluation</p>
+      </div>
+    </div>
+    <div class="aware-narration">
+      <div class="aware-narration-header">
+        <span class="aware-narration-prompt">&gt; VERITAS://</span>
+        <button class="aware-audio-btn aware-audio-btn--hidden"
+                data-aware-consciousness-target="audioBtn"
+                data-action="click->aware-consciousness#toggleAudio">
+          <span class="aware-audio-icon">&#9654;</span> PLAY
+        </button>
+      </div>
+      <p class="aware-narration-text"
+         data-aware-consciousness-target="narration"
+         data-narration-text="<%= narration_text %>"></p>
+    </div>
+  </header>
+
+  <!-- ━━━ SECTION 2: COMPOUNDING INTELLIGENCE LOOP ━━━ -->
+  <section class="aware-section aware-loop-section">
+    <div class="aware-panel-header">
+      <span class="aware-panel-icon">&#9670;</span>
+      <span class="aware-panel-title">COMPOUNDING INTELLIGENCE LOOP</span>
+    </div>
+    <div class="aware-loop">
+      <% loop_nodes = [
+        { label: "ARTICLE INGESTION", count: @total_articles, icon: "01" },
+        { label: "AI ANALYSIS", count: @total_analyses, icon: "02" },
+        { label: "SOURCE CREDIBILITY", count: @total_sources, icon: "03" },
+        { label: "NARRATIVE SIGNATURES", count: @signatures.size, icon: "04" },
+        { label: "CONTRADICTION DETECTION", count: @total_contradictions, icon: "05" },
+        { label: "INTELLIGENCE BRIEFS", count: @total_briefs, icon: "06" }
+      ] %>
+      <% loop_nodes.each_with_index do |node, i| %>
+        <div class="aware-loop-step">
+          <div class="aware-loop-node" data-aware-consciousness-target="loopNode">
+            <span class="aware-loop-node-id"><%= node[:icon] %></span>
+            <span class="aware-loop-node-label"><%= node[:label] %></span>
+            <span class="aware-loop-node-count"
+                  data-aware-consciousness-target="counter"
+                  data-count-to="<%= node[:count] %>">0</span>
+          </div>
+          <% unless i == loop_nodes.size - 1 %>
+            <span class="aware-loop-arrow"></span>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </section>
+
+  <!-- ━━━ SECTION 3: LEARNING PULSE — GROWTH METRICS ━━━ -->
+  <section class="aware-section aware-metrics-section">
+    <div class="aware-panel-header">
+      <span class="aware-panel-icon">&#9678;</span>
+      <span class="aware-panel-title">LEARNING PULSE</span>
+      <span class="aware-panel-badge">GROWTH METRICS</span>
+    </div>
+    <div class="aware-metrics-grid">
+      <div class="aware-metric-card">
+        <span class="aware-metric-value"
+              data-aware-consciousness-target="counter"
+              data-count-to="<%= @total_articles %>">0</span>
+        <span class="aware-metric-label">ARTICLES ANALYZED</span>
+        <span class="aware-metric-rate"><%= @articles_per_day %>/day</span>
+      </div>
+      <div class="aware-metric-card">
+        <span class="aware-metric-value"
+              data-aware-consciousness-target="counter"
+              data-count-to="<%= @total_sources %>">0</span>
+        <span class="aware-metric-label">SOURCES PROFILED</span>
+        <span class="aware-metric-rate"><%= @under_profiled_count %> under-profiled</span>
+      </div>
+      <div class="aware-metric-card">
+        <span class="aware-metric-value"
+              data-aware-consciousness-target="counter"
+              data-count-to="<%= @signatures.size %>">0</span>
+        <span class="aware-metric-label">PATTERNS RECOGNIZED</span>
+        <span class="aware-metric-rate">narrative signatures</span>
+      </div>
+      <div class="aware-metric-card">
+        <span class="aware-metric-value"
+              data-aware-consciousness-target="counter"
+              data-count-to="<%= @total_entities %>">0</span>
+        <span class="aware-metric-label">ENTITIES DISCOVERED</span>
+        <span class="aware-metric-rate">
+          <% @entity_types_breakdown.each do |type, count| %>
+            <%= count %> <%= type.pluralize %><%= ", " unless type == @entity_types_breakdown.keys.last %>
+          <% end %>
+        </span>
+      </div>
+      <div class="aware-metric-card">
+        <span class="aware-metric-value"
+              data-aware-consciousness-target="counter"
+              data-count-to="<%= @total_contradictions %>">0</span>
+        <span class="aware-metric-label">CONTRADICTIONS CAUGHT</span>
+        <span class="aware-metric-rate">cross-source conflicts</span>
+      </div>
+      <div class="aware-metric-card">
+        <span class="aware-metric-value"
+              data-aware-consciousness-target="counter"
+              data-count-to="<%= @total_briefs %>">0</span>
+        <span class="aware-metric-label">INTELLIGENCE BRIEFS</span>
+        <span class="aware-metric-rate">assessments generated</span>
+      </div>
+    </div>
+
+    <!-- System Confidence gauge -->
+    <div class="aware-confidence-gauge">
+      <div class="aware-confidence-gauge-header">
+        <span class="aware-confidence-gauge-label">SYSTEM CONFIDENCE</span>
+        <span class="aware-confidence-gauge-value"><%= @system_confidence %>%</span>
+      </div>
+      <div class="aware-confidence-gauge-track">
+        <div class="aware-confidence-gauge-fill"
+             data-aware-consciousness-target="progressBar"
+             data-fill-to="<%= @system_confidence %>"
+             style="width: 0%;"></div>
+      </div>
+      <span class="aware-confidence-gauge-hint">Based on topic coverage depth across <%= @confidence_map.size %> tracked subjects</span>
+    </div>
+  </section>
+
+  <!-- ━━━ SECTION 4: KNOWLEDGE STATE — WHAT I KNOW ━━━ -->
+  <div class="aware-grid">
+    <!-- NARRATIVE SIGNATURES -->
+    <section class="aware-section">
+      <div class="aware-panel-header">
+        <span class="aware-panel-icon">&#9672;</span>
+        <span class="aware-panel-title">WHAT I KNOW &mdash; NARRATIVE SIGNATURES</span>
+        <span class="aware-panel-badge"><%= @signatures.size %> ACTIVE</span>
+      </div>
+      <div class="aware-card-list">
+        <% @signatures.each do |sig| %>
+          <% status = @signature_statuses[sig.id] || "STABLE" %>
+          <div class="aware-sig-card">
+            <div class="aware-sig-header">
+              <div class="aware-sig-label"><%= sig.label %></div>
+              <span class="aware-sig-status aware-sig-status--<%= status.downcase %>"><%= status %></span>
+            </div>
+            <div class="aware-sig-meta">
+              <span class="aware-sig-count"><%= sig.match_count %> articles</span>
+              <span class="aware-sig-trust" style="color: <%= sig.avg_trust_score > 60 ? '#22c55e' : sig.avg_trust_score > 30 ? '#eab308' : '#ef4444' %>">
+                TRUST <%= sig.avg_trust_score.round(1) %>
+              </span>
+              <% if sig.dominant_threat_level.present? && sig.dominant_threat_level != "UNKNOWN" %>
+                <span class="aware-sig-threat aware-threat-<%= sig.dominant_threat_level.downcase %>"><%= sig.dominant_threat_level %></span>
+              <% end %>
+            </div>
+            <div class="aware-sig-sources">
+              <% sig.source_distribution.sort_by { |_, v| -v }.first(4).each do |source, count| %>
+                <span class="aware-source-tag"><%= source %> (<%= count %>)</span>
+              <% end %>
+            </div>
+            <div class="aware-sig-timeline">
+              <span>First seen: <%= sig.first_seen_at.strftime("%d %b") %></span>
+              <span>Last seen: <%= sig.last_seen_at.strftime("%d %b %H:%M") %></span>
+            </div>
+          </div>
+        <% end %>
+        <% if @signatures.empty? %>
+          <div class="aware-empty">No active narrative signatures detected.</div>
+        <% end %>
+      </div>
+    </section>
+
+    <!-- SOURCE CREDIBILITY -->
+    <section class="aware-section">
+      <div class="aware-panel-header">
+        <span class="aware-panel-icon">&#9673;</span>
+        <span class="aware-panel-title">WHAT I KNOW &mdash; SOURCE CREDIBILITY</span>
+        <span class="aware-panel-badge"><%= @total_sources %> PROFILED</span>
+      </div>
+      <div class="aware-card-list">
+        <% @top_sources.each do |sc| %>
+          <div class="aware-source-card">
+            <div class="aware-source-row">
+              <span class="aware-source-grade" style="color: <%= sc.grade_color %>; border-color: <%= sc.grade_color %>;">
+                <%= sc.grade_label %>
+              </span>
+              <span class="aware-source-name"><%= sc.source_name %></span>
+              <span class="aware-source-score"><%= sc.credibility_grade.round(1) %></span>
+            </div>
+            <div class="aware-source-bar-wrap">
+              <div class="aware-source-bar" style="width: <%= sc.credibility_grade %>%; background: <%= sc.grade_color %>;"></div>
+            </div>
+            <div class="aware-source-detail">
+              <span>Trust: <%= sc.rolling_trust_score.round(1) %></span>
+              <span>Articles: <%= sc.articles_analyzed %></span>
+              <span>Anomaly rate: <%= (sc.anomaly_rate * 100).round(1) %>%</span>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </section>
+  </div>
+
+  <!-- ━━━ SECTION 5: KNOWLEDGE GAPS — WHAT I DON'T KNOW ━━━ -->
+  <section class="aware-section aware-gaps-section">
+    <div class="aware-panel-header aware-panel-header--warning">
+      <span class="aware-panel-icon" style="color: #ff3a5e;">&#9888;</span>
+      <span class="aware-panel-title" style="color: #ff3a5e;">WHAT I DON'T KNOW &mdash; KNOWLEDGE GAPS</span>
+    </div>
+    <div class="aware-gaps-grid">
+      <!-- Blind Spots -->
+      <div class="aware-gaps-column">
+        <h4 class="aware-gaps-heading">BLIND SPOTS</h4>
+        <p class="aware-gaps-desc">Regions with low coverage</p>
+        <% if @blind_spot_regions.any? %>
+          <% @blind_spot_regions.each do |region| %>
+            <div class="aware-gaps-tag"><%= region %></div>
+          <% end %>
+        <% else %>
+          <div class="aware-gaps-empty">No blind spots identified</div>
+        <% end %>
+      </div>
+
+      <!-- Low Confidence Topics -->
+      <div class="aware-gaps-column">
+        <h4 class="aware-gaps-heading">LOW CONFIDENCE TOPICS</h4>
+        <p class="aware-gaps-desc">Topics with fewer than 5 articles</p>
+        <% if @low_confidence_topics.any? %>
+          <% @low_confidence_topics.each do |topic, count| %>
+            <div class="aware-gaps-tag"><%= topic %> <span class="aware-gaps-count">(<%= count %>)</span></div>
+          <% end %>
+        <% else %>
+          <div class="aware-gaps-empty">All tracked topics have sufficient depth</div>
+        <% end %>
+      </div>
+
+      <!-- Under-profiled Sources -->
+      <div class="aware-gaps-column">
+        <h4 class="aware-gaps-heading">UNDER-PROFILED SOURCES</h4>
+        <p class="aware-gaps-desc">Sources with fewer than 5 articles analyzed</p>
+        <% if @under_profiled_sources.any? %>
+          <% @under_profiled_sources.each do |sc| %>
+            <div class="aware-gaps-tag"><%= sc.source_name %> <span class="aware-gaps-count">(<%= sc.articles_analyzed %> articles)</span></div>
+          <% end %>
+        <% else %>
+          <div class="aware-gaps-empty">All sources adequately profiled</div>
+        <% end %>
+      </div>
+    </div>
+  </section>
+
+  <!-- ━━━ SECTION 6: INTELLIGENCE BRIEF ━━━ -->
+  <% if @latest_brief %>
+    <section class="aware-section">
+      <div class="aware-panel-header">
+        <span class="aware-panel-icon">&#9670;</span>
+        <span class="aware-panel-title">VERITAS DAILY ASSESSMENT</span>
+        <span class="aware-panel-badge"><%= @latest_brief.created_at.strftime("%d %b %Y %H:%M") %></span>
+      </div>
+      <div class="aware-brief">
+        <h3 class="aware-brief-title"><%= @latest_brief.title %></h3>
+        <div class="aware-brief-body">
+          <%= simple_format(@latest_brief.executive_summary) %>
+        </div>
+        <% if @latest_brief.narrative_trends.present? && @latest_brief.narrative_trends.any? %>
+          <div class="aware-brief-trends">
+            <span class="aware-brief-trends-label">NARRATIVE TRENDS</span>
+            <ul class="aware-brief-trends-list">
+              <% @latest_brief.narrative_trends.each do |trend| %>
+                <li><%= trend.is_a?(Hash) ? trend["summary"] || trend["label"] : trend %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+        <div class="aware-brief-meta">
+          <span>Articles processed: <strong><%= @latest_brief.articles_processed %></strong></span>
+          <span>Signatures active: <strong><%= @latest_brief.signatures_active %></strong></span>
+          <span>Contradictions (24h): <strong><%= @latest_brief.contradictions_found %></strong></span>
+          <span>Status: <strong class="aware-status-<%= @latest_brief.status %>"><%= @latest_brief.status.upcase %></strong></span>
+        </div>
+        <% if @latest_brief.blind_spots.present? && @latest_brief.blind_spots.any? %>
+          <div class="aware-blind-spots">
+            <span class="aware-blind-label">BLIND SPOTS:</span>
+            <% @latest_brief.blind_spots.each do |bs| %>
+              <span class="aware-blind-tag"><%= bs["region"] %> (<%= bs["article_count"] %> articles)</span>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+
+  <!-- ━━━ SECTION 7: CONTRADICTIONS — WHAT I'VE CAUGHT ━━━ -->
+  <section class="aware-section">
+    <div class="aware-panel-header">
+      <span class="aware-panel-icon" style="color: #ff3a5e;">&#9888;</span>
+      <span class="aware-panel-title">WHAT I'VE CAUGHT &mdash; CONTRADICTION LOG</span>
+      <span class="aware-panel-badge"><%= @total_contradictions %> TOTAL</span>
+    </div>
+    <% if @contradictions.any? %>
+      <div class="aware-card-list">
+        <% @contradictions.each do |cl| %>
+          <div class="aware-contradiction-card">
+            <div class="aware-contradiction-header">
+              <span class="aware-contradiction-type"><%= cl.contradiction_type.humanize.upcase %></span>
+              <span class="aware-contradiction-severity" style="color: <%= cl.severity > 0.7 ? '#ff3a5e' : cl.severity > 0.4 ? '#eab308' : '#22c55e' %>;">
+                SEVERITY <%= cl.severity.round(2) %>
+              </span>
+            </div>
+            <div class="aware-contradiction-articles">
+              <div class="aware-contradiction-article">
+                <span class="aware-contradiction-source"><%= cl.source_a %></span>
+                <%= link_to cl.article_a.headline.truncate(90), article_path(cl.article_a), class: "aware-contradiction-link" %>
+              </div>
+              <div class="aware-contradiction-vs">VS</div>
+              <div class="aware-contradiction-article">
+                <span class="aware-contradiction-source"><%= cl.source_b %></span>
+                <%= link_to cl.article_b.headline.truncate(90), article_path(cl.article_b), class: "aware-contradiction-link" %>
+              </div>
+            </div>
+            <% if cl.description.present? %>
+              <div class="aware-contradiction-desc"><%= cl.description %></div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="aware-empty">
+        No contradictions detected yet. The detector scans every 6 hours for same-source articles with opposing sentiment on identical topics.
+      </div>
+    <% end %>
+  </section>
+
+  <!-- ━━━ SECTION 8: EMBEDDING DRIFT — VECTOR TOPOLOGY ━━━ -->
+  <section class="aware-section">
+    <div class="aware-panel-header">
+      <span class="aware-panel-icon">&#9687;</span>
+      <span class="aware-panel-title">VECTOR TOPOLOGY &mdash; EMBEDDING DRIFT</span>
+      <span class="aware-panel-badge">SEMANTIC SPACE</span>
+    </div>
+    <% if @latest_snapshot %>
+      <div class="aware-drift-stats">
+        <div class="aware-drift-stat">
+          <span class="aware-drift-value"><%= @latest_snapshot.article_count %></span>
+          <span class="aware-drift-label">ARTICLES IN SPACE</span>
+        </div>
+        <div class="aware-drift-stat">
+          <span class="aware-drift-value"><%= @latest_snapshot.cluster_count %></span>
+          <span class="aware-drift-label">CLUSTERS</span>
+        </div>
+        <div class="aware-drift-stat">
+          <span class="aware-drift-value"><%= @latest_snapshot.outlier_ids.size %></span>
+          <span class="aware-drift-label">OUTLIERS</span>
+        </div>
+      </div>
+      <div class="aware-drift-clusters">
+        <% (@latest_snapshot.cluster_summary || []).first(6).each_with_index do |cluster, i| %>
+          <div class="aware-drift-cluster">
+            <span class="aware-drift-cluster-id">CLUSTER <%= i + 1 %></span>
+            <span class="aware-drift-cluster-size"><%= cluster["size"] %> articles</span>
+            <span class="aware-drift-cluster-threat aware-threat-<%= cluster["dominant_threat"].to_s.downcase %>">
+              <%= cluster["dominant_threat"] %>
+            </span>
+          </div>
+        <% end %>
+      </div>
+      <div class="aware-drift-meta">
+        Captured: <%= @latest_snapshot.captured_at.strftime("%d %b %Y %H:%M") %>
+        <% if @latest_snapshot.drift_metrics["status"] == "first_snapshot" %>
+          &mdash; First baseline snapshot
+        <% elsif @latest_snapshot.drift_metrics["cluster_delta"] %>
+          &mdash; Delta: <%= @latest_snapshot.drift_metrics["cluster_delta"] > 0 ? "+" : "" %><%= @latest_snapshot.drift_metrics["cluster_delta"] %> clusters since last capture
+        <% end %>
+      </div>
+    <% else %>
+      <div class="aware-empty">No embedding snapshots captured yet.</div>
+    <% end %>
+  </section>
+</div>

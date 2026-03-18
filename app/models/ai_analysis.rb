@@ -1,4 +1,6 @@
 class AiAnalysis < ApplicationRecord
+  include ConfidenceScoreable
+
   belongs_to :article
 
   after_update_commit :broadcast_color_update, if: :analysis_complete?
