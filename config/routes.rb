@@ -26,6 +26,7 @@ Rails.application.routes.draw do
   post "api/surge_check",                   to: "api/surge_checks#create"
   get  "api/mode",                           to: "api/mode#show"
   post "api/mode/toggle",                    to: "api/mode#toggle"
+  get  "api/perspective/:slug/context",      to: "api/perspective#context", as: :perspective_context
 
   # -------------------------------------------------------
   # Read-only public resources

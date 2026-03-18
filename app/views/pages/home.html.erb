@@ -2,26 +2,28 @@
 <div class="veritas-war-room"
      data-controller="narrative-dna tribunal entity-nexus">
 
-<!-- Perspective Selector Bar -->
+<!-- Perspective Lens Compass Bar -->
 <div class="veritas-perspective-bar"
      data-controller="perspective">
   <span class="perspective-label">LENS</span>
 
-  <button class="veritas-perspective-pill"
-          style="--pill-color: #64748b;"
-          data-perspective-id="all"
+  <button class="veritas-lens-btn"
+          style="--lens-color: #64748b;"
+          data-perspective-slug="all"
           data-perspective-target="pill"
           data-action="click->perspective#select">
-    ALL_SOURCES
+    <span class="lens-flag">◉</span>
+    <span class="lens-label">ALL</span>
   </button>
 
   <% @perspective_filters.each do |filter| %>
-    <button class="veritas-perspective-pill"
-            style="--pill-color: <%= filter.color %>;"
-            data-perspective-id="<%= filter.id %>"
+    <button class="veritas-lens-btn"
+            style="--lens-color: <%= filter.color %>;"
+            data-perspective-slug="<%= filter.slug %>"
             data-perspective-target="pill"
             data-action="click->perspective#select">
-      <%= filter.name.upcase.tr(' ', '_') %>
+      <span class="lens-flag"><%= filter.flag %></span>
+      <span class="lens-label"><%= filter.short_label %></span>
     </button>
   <% end %>
 
@@ -34,8 +36,21 @@
   </button>
 </div>
 
+<!-- Topic Filter Pills Row -->
+<div class="veritas-topic-bar"
+     data-controller="topic-filter">
+  <% %w[NATO BRICS EU UN TRADE_WAR SANCTIONS CYBER CLIMATE NUCLEAR ELECTIONS].each do |topic| %>
+    <button class="vt-topic-pill"
+            data-topic="<%= topic %>"
+            data-topic-filter-target="pill"
+            data-action="click->topic-filter#toggle">
+      <%= topic.tr('_', ' ') %>
+    </button>
+  <% end %>
+</div>
+
 <!-- VERITAS Main Dashboard -->
-<div class="veritas-dashboard">
+<div class="veritas-dashboard" data-controller="journey">
 
   <!-- LEFT SIDEBAR: Live Intelligence Feed -->
   <aside class="veritas-feed-sidebar mobile-hidden">
@@ -60,7 +75,7 @@
     </div>
 
     <%= turbo_stream_from "hot_articles" %>
-    <div class="veritas-feed-list" id="hot-articles-feed" data-controller="sidebar-limit">
+    <div class="veritas-feed-list" id="hot-articles-feed" data-controller="sidebar-limit" data-journey-target="feedList">
       <% @hot_articles.each do |article| %>
         <%= render partial: "articles/sidebar_item", locals: { article: article } %>
       <% end %>
@@ -68,7 +83,7 @@
   </aside>
 
   <!-- CENTER: 3D Globe (Globe.gl) -->
-  <section class="veritas-globe-section" style="position: relative;" data-controller="map-toggle">
+  <section class="veritas-globe-section" style="position: relative;" data-controller="map-toggle" data-journey-target="globeSection">
 
     <!-- Search/All Intel view toggle — hidden until search is active -->
     <div id="intel-view-toggle"
@@ -114,12 +129,12 @@
         <span class="vt-toggle-icon">⊘</span>
         <span data-isolate-toggle-target="label">ISOLATES</span>
       </button>
-      <button class="vt-flat-toggle"
+      <button class="vt-globe-toggle-btn vt-flat-toggle"
               data-map-toggle-target="btn"
               data-action="click->map-toggle#toggle"
               title="Toggle flat world map projection">
-        <span class="vt-flat-icon">◫</span>
-        <span class="vt-flat-label" data-map-toggle-target="label">GLOBE</span>
+        <span class="vt-toggle-icon">◫</span>
+        <span data-map-toggle-target="label">GLOBE</span>
       </button>
     </div>
 
@@ -127,6 +142,8 @@
     <div class="veritas-crosshair bottom"></div>
     <div class="veritas-crosshair left"></div>
     <div class="veritas-crosshair right"></div>
+
+    <div class="vt-journey-hud-layer" data-journey-target="hudLayer"></div>
 
     <!-- 3D Globe View -->
     <div id="globe-container"
@@ -182,6 +199,15 @@
 
   <!-- RIGHT SIDEBAR: Status Panel -->
   <aside class="veritas-status-sidebar mobile-hidden">
+
+    <!-- Narrative Lens Panel: rendered by narrative_lens_controller when a perspective is active -->
+    <div id="narrative-lens-panel"
+         class="d-none"
+         data-controller="narrative-lens"
+         style="padding: 8px 8px 0;"></div>
+
+    <div class="vt-journey-summary-slot" data-journey-target="summarySlot"></div>
+
     <div class="veritas-panel-header">
       <span class="panel-icon">&#9632;</span>
       <span class="panel-title">THREAT_MATRIX</span>

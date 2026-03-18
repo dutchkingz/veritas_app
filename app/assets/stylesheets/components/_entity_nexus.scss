@@ -706,6 +706,18 @@
   }
 }
 
+// A.W.A.R.E — AI intelligence hub, uses cyan accent
+.nexus-navbar-btn--aware {
+  border-color: rgba(0, 212, 255, 0.28);
+  color: rgba(0, 212, 255, 0.6);
+
+  &:hover {
+    background: rgba(0, 212, 255, 0.07);
+    border-color: rgba(0, 212, 255, 0.55);
+    color: #00d4ff;
+  }
+}
+
 // Convergence active state
 .nexus-navbar-btn.convergence-active {
   border-color: rgba(239, 68, 68, 0.35);

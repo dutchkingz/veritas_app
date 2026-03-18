@@ -7,22 +7,28 @@ export default class extends Controller {
 
   connect() {
     const saved = localStorage.getItem(STORAGE_KEY) || "all"
+    this._currentSlug = saved
     this._activate(saved)
   }
 
   select(event) {
-    const id = event.currentTarget.dataset.perspectiveId
-    if (!id) return
-    this._activate(id)
-    localStorage.setItem(STORAGE_KEY, id)
+    const slug = event.currentTarget.dataset.perspectiveSlug
+    if (!slug) return
+
+    // Toggle off if same lens clicked again
+    const next = this._currentSlug === slug ? "all" : slug
+    this._currentSlug = next
+    localStorage.setItem(STORAGE_KEY, next)
+    this._activate(next)
+
     window.dispatchEvent(new CustomEvent("veritas:perspectiveChange", {
-      detail: { perspectiveId: id }
+      detail: { slug: next }
     }))
   }
 
-  _activate(perspectiveId) {
+  _activate(slug) {
     this.pillTargets.forEach(pill => {
-      pill.classList.toggle("is-active", pill.dataset.perspectiveId === perspectiveId)
+      pill.classList.toggle("is-active", pill.dataset.perspectiveSlug === slug)
     })
   }
 }

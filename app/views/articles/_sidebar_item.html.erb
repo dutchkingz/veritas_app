@@ -1,9 +1,13 @@
+<% journey_data = article.best_journey_data %>
+
 <div class="veritas-feed-card <%= 'new-entry' if local_assigns[:is_new] %>"
      id="<%= dom_id(article) %>"
      data-controller="feed-card"
      data-feed-card-lat-value="<%= article.latitude %>"
      data-feed-card-lng-value="<%= article.longitude %>"
      data-feed-card-article-id-value="<%= article.id %>"
+     data-feed-card-journey-available-value="<%= journey_data.present? %>"
+     <% if journey_data.present? %>data-feed-card-journey-value="<%= json_escape(journey_data.to_json) %>"<% end %>
      data-article-id="<%= article.id %>"
      data-action="click->feed-card#select">
 
@@ -35,16 +39,29 @@
       <i class="fa fa-map-marker-alt me-1"></i>
       <%= article.country&.name %> [<%= article.country&.iso_code %>]
     </span>
-    <div class="d-flex align-items-center gap-1">
+    <div class="d-flex align-items-center gap-1 flex-wrap justify-content-end">
+      <% if journey_data.present? %>
+        <button class="vt-feed-journey-btn vt-feed-journey-btn--bloom"
+                type="button"
+                data-action="click->feed-card#openBloom"
+                title="Watch the narrative bloom across the globe">◉ BLOOM</button>
+        <button class="vt-feed-journey-btn vt-feed-journey-btn--chronicle"
+                type="button"
+                data-action="click->feed-card#openChronicle"
+                title="Step through the narrative route hop by hop">▶ CHRONICLE</button>
+      <% end %>
       <button class="ndna-trigger-btn"
+              type="button"
               style="font-family: 'JetBrains Mono', monospace; font-size: 0.55rem; padding: 1px 4px; border: 1px solid rgba(0,240,255,0.2); background: transparent; color: #00f0ff;"
               data-action="click->feed-card#openDna"
               title="View Narrative DNA">◈ DNA</button>
       <button class="tribunal-trigger-btn"
+              type="button"
               style="font-family: 'JetBrains Mono', monospace; font-size: 0.55rem; padding: 1px 4px; border: 1px solid rgba(0,240,255,0.2); background: transparent; color: #00f0ff;"
               data-action="click->feed-card#openTribunal"
               title="Open Intelligence Tribunal">⬟ TRIBUNAL</button>
       <button class="nexus-trigger-btn"
+              type="button"
               style="font-family: 'JetBrains Mono', monospace; font-size: 0.55rem; padding: 1px 4px; border: 1px solid rgba(167,139,250,0.2); background: transparent; color: #a78bfa;"
               data-action="click->feed-card#openNexus"
               title="Open Entity Nexus for this article">◈ NEXUS</button>

@@ -36,6 +36,22 @@ class Article < ApplicationRecord
     true
   end
 
+  def best_narrative_route
+    routes = narrative_arcs.flat_map(&:narrative_routes).select { |route| route.hops.present? }
+    routes.max_by do |route|
+      [
+        route.is_complete? ? 1 : 0,
+        route.total_hops.to_i,
+        route.manipulation_score.to_f,
+        route.created_at.to_i
+      ]
+    end
+  end
+
+  def best_journey_data
+    best_narrative_route&.as_journey_data
+  end
+
   private
 
   def broadcast_sidebar_update

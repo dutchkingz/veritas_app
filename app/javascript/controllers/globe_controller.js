@@ -11,7 +11,9 @@ export default class extends Controller {
   static values = { dataUrl: String }
 
   connect() {
+    this.element.__controller = this
     this._currentPerspective = localStorage.getItem("veritas:perspective") || "all"
+    this._currentTopic       = localStorage.getItem("veritas:topic")       || null
     this._currentTimestamp   = null
     this._pointHovered       = false
     this._arcHovered         = false
@@ -24,6 +26,7 @@ export default class extends Controller {
     this._lastHoveredCluster = null
     this._flyToHandler          = (e) => this._onFlyToEvent(e)
     this._perspectiveHandler    = (e) => this._onPerspectiveChange(e)
+    this._topicHandler          = (e) => this._onTopicFilter(e)
     this._timelineHandler       = (e) => this._onTimelineChange(e)
     this._searchHandler         = (e) => this._onSearchEvent(e)
     this._searchClearHandler    = (e) => this._onSearchClearEvent(e)
@@ -33,9 +36,18 @@ export default class extends Controller {
     this._dayNightToggleHandler  = (e) => this._onDayNightToggle(e)
     this._modeChangedHandler     = (e) => this._onModeChanged(e)
     this._isolateToggleHandler   = (e) => this._onIsolateToggle(e)
+    this._journeyActivateHandler = (e) => this._onJourneyActivated(e)
+    this._journeyEndedHandler    = (e) => this._onJourneyEnded(e)
+    this._routeMenuClickHandler  = (e) => this._handleRouteMenuDocumentClick(e)
     this._hideIsolated           = false
+    this._journeyActive          = false
+    this._allRoutes              = []
+    this._preJourneyState        = null
+    this._routeChoiceMenu        = null
+    this._routeMenuOpenedAt      = 0
     window.addEventListener("veritas:flyTo",             this._flyToHandler)
     window.addEventListener("veritas:perspectiveChange", this._perspectiveHandler)
+    window.addEventListener("veritas:topicFilter",       this._topicHandler)
     window.addEventListener("veritas:timelineChange",    this._timelineHandler)
     window.addEventListener("veritas:search",            this._searchHandler)
     window.addEventListener("veritas:searchClear",       this._searchClearHandler)
@@ -45,6 +57,10 @@ export default class extends Controller {
     window.addEventListener("veritas:dayNightToggle",    this._dayNightToggleHandler)
     window.addEventListener("veritas:mode-changed",      this._modeChangedHandler)
     window.addEventListener("veritas:isolateToggle",     this._isolateToggleHandler)
+    window.addEventListener("veritas:bloomActive",       this._journeyActivateHandler)
+    window.addEventListener("veritas:chronicleActive",   this._journeyActivateHandler)
+    window.addEventListener("veritas:journeyEnded",      this._journeyEndedHandler)
+    document.addEventListener("click",                   this._routeMenuClickHandler)
     this._initGlobe()
     this._subscription = consumer.subscriptions.create("GlobeChannel", {
       received:     (data) => this._onBroadcast(data),
@@ -58,9 +74,11 @@ export default class extends Controller {
   }
 
   disconnect() {
+    delete this.element.__controller
     this._subscription?.unsubscribe()
     window.removeEventListener("veritas:flyTo",             this._flyToHandler)
     window.removeEventListener("veritas:perspectiveChange", this._perspectiveHandler)
+    window.removeEventListener("veritas:topicFilter",       this._topicHandler)
     window.removeEventListener("veritas:timelineChange",    this._timelineHandler)
     window.removeEventListener("veritas:search",            this._searchHandler)
     window.removeEventListener("veritas:searchClear",       this._searchClearHandler)
@@ -70,6 +88,10 @@ export default class extends Controller {
     window.removeEventListener("veritas:dayNightToggle",    this._dayNightToggleHandler)
     window.removeEventListener("veritas:mode-changed",      this._modeChangedHandler)
     window.removeEventListener("veritas:isolateToggle",     this._isolateToggleHandler)
+    window.removeEventListener("veritas:bloomActive",       this._journeyActivateHandler)
+    window.removeEventListener("veritas:chronicleActive",   this._journeyActivateHandler)
+    window.removeEventListener("veritas:journeyEnded",      this._journeyEndedHandler)
+    document.removeEventListener("click",                   this._routeMenuClickHandler)
     clearTimeout(this._rotateTimer)
     if (this._heatmapPulseId) clearInterval(this._heatmapPulseId)
     if (this._heatmapTooltipEl) this._heatmapTooltipEl.remove()
@@ -87,6 +109,57 @@ export default class extends Controller {
     if (this._packetGroup && this._globe) {
       this._globe.scene().remove(this._packetGroup)
     }
+    this._hideRouteChoiceMenu()
+  }
+
+  get globe() {
+    return this._globe
+  }
+
+  captureJourneyState() {
+    if (!this._globe) return null
+
+    const controls = this._globe.controls()
+
+    return {
+      arcsData: this._cloneLayer(this._globe.arcsData() || []),
+      pointsData: this._cloneLayer(this._globe.pointsData() || []),
+      ringsData: this._cloneLayer(this._globe.ringsData() || []),
+      pointOfView: { ...(this._globe.pointOfView?.() || { lat: 20, lng: 10, altitude: 2.5 }) },
+      autoRotate: controls.autoRotate,
+      autoRotateSpeed: controls.autoRotateSpeed,
+      packetVisible: this._packetGroup ? this._packetGroup.visible !== false : true
+    }
+  }
+
+  restoreJourneyState(state = this._preJourneyState) {
+    if (!this._globe || !state) return
+
+    const controls = this._globe.controls()
+    controls.autoRotate = state.autoRotate ?? true
+    controls.autoRotateSpeed = state.autoRotateSpeed ?? 0.4
+
+    this._globe
+      .pointsData(this._cloneLayer(state.pointsData || []))
+      .arcsData(this._cloneLayer(state.arcsData || []))
+      .ringsData(this._cloneLayer(state.ringsData || []))
+
+    if (state.pointOfView) this._globe.pointOfView(state.pointOfView, 900)
+    if (this._packetGroup) this._packetGroup.visible = state.packetVisible !== false
+    if (this._globe) this._updatePackets()
+  }
+
+  getRoute(routeId) {
+    return (this._allRoutes || []).find((route) => String(route.routeId || route.id) === String(routeId))
+  }
+
+  getScreenPosition(lat, lng) {
+    if (!this._globe) return null
+
+    const coords = this._globe.getScreenCoords(lat, lng)
+    if (!coords) return null
+
+    return { x: coords.x, y: coords.y }
   }
 
   // -------------------------------------------------------
@@ -108,8 +181,8 @@ export default class extends Controller {
       .atmosphereAltitude(0.25)
       // Points layer (articles)
       .pointAltitude("size")
-      .pointColor("color")
-      .pointRadius(0.35)
+      .pointColor(d => this._pointColorForPerspective(d))
+      .pointRadius(d => d.radius || 0.35)
       // NOTE: pointsMerge disabled — required for individual point click events
       .onPointHover(point => this._onPointHover(point))
       .onPointClick(point => this._onPointClicked(point))
@@ -117,14 +190,12 @@ export default class extends Controller {
       // tier 1 (top 5 by strength): thick, animated dash, full opacity
       // tier 2 (next 10): thin, solid, 35% opacity
       // no tier (legacy fallback arcs): use thickness field
-      .arcColor(d => {
-        const c = d.color || '#00f0ff'
-        return d.tier === 2 ? this._hexToRgba(c, 0.35) : c
-      })
-      .arcDashLength(d => d.tier === 1 ? 0.5 : 0)
-      .arcDashGap(d => d.tier === 1 ? 0.15 : 0)
-      .arcDashAnimateTime(d => d.tier === 1 ? 2500 : 0)
+      .arcColor(d => this._arcColorForPerspective(d))
+      .arcDashLength(d => d.arcDashLength != null ? d.arcDashLength : (d.tier === 1 ? 0.5 : 0))
+      .arcDashGap(d => d.arcDashGap != null ? d.arcDashGap : (d.tier === 1 ? 0.15 : 0))
+      .arcDashAnimateTime(d => d.arcDashAnimateTime != null ? d.arcDashAnimateTime : (d.tier === 1 ? 2500 : 0))
       .arcStroke(d => {
+        if (d.arcStroke != null) return d.arcStroke
         if (d.tier === 1) return 2.5
         if (d.tier === 2) return 0.8
         return d.thickness || 0.5
@@ -350,10 +421,13 @@ export default class extends Controller {
   }
 
   _loadData() {
+    if (this._journeyActive) return Promise.resolve()
     return this._fetchAndRender()
   }
 
   async _fetchAndRender() {
+    if (this._journeyActive) return
+
     // Cancel any in-flight request before starting a new one
     this._abortController?.abort()
     this._abortController = new AbortController()
@@ -361,8 +435,8 @@ export default class extends Controller {
 
     try {
       const params = new URLSearchParams()
-      if (this._currentPerspective && this._currentPerspective !== "all") {
-        params.set("perspective_id", this._currentPerspective)
+      if (this._currentTopic) {
+        params.set("topic", this._currentTopic)
       }
       if (this._currentTimestamp) {
         params.set("to", this._currentTimestamp)
@@ -387,6 +461,8 @@ export default class extends Controller {
       // Store full datasets for isolate filter
       this._allPoints = data.points || []
       this._allArcs   = data.arcs || []
+      this._allRoutes = data.routes || []
+      this._allRoutes = data.routes || []
 
       if (this._heatmapActive) {
         this._globe.heatmapsData([this._heatmapBaseData])
@@ -412,6 +488,7 @@ export default class extends Controller {
   }
 
   _updatePackets() {
+    if (this._journeyActive) return
     if (!this._globe || !window.THREE) {
       console.warn("[VERITAS Globe] THREE.js not available, skipping packet animation")
       return
@@ -514,17 +591,51 @@ export default class extends Controller {
   }
 
   _onPerspectiveChange(event) {
-    this._currentPerspective = event.detail.perspectiveId
+    this._currentPerspective = event.detail.slug || event.detail.perspectiveId || "all"
+    localStorage.setItem("veritas:perspective", this._currentPerspective)
+    if (this._journeyActive) return
+    // Client-side only — re-apply color callbacks without re-fetching data
+    if (this._globe && this._allPoints) {
+      this._globe
+        .pointsData([...this._allPoints])
+        .arcsData([...this._allArcs || []])
+    }
+  }
+
+  _pointColorForPerspective(d) {
+    if (d?._journey) return d.color || '#00f0ff'
+    const c = d.color || '#00f0ff'
+    if (this._currentPerspective === 'all') return c
+    return d.perspectiveSlug === this._currentPerspective ? c : this._hexToRgba(c, 0.12)
+  }
+
+  _arcColorForPerspective(d) {
+    if (d?._journey) return d.color || '#00f0ff'
+    const c = Array.isArray(d.color) ? d.color[0] : (d.color || '#00f0ff')
+    const baseTierAlpha = d.tier === 2 ? 0.35 : 1.0
+    if (this._currentPerspective === 'all') {
+      return d.tier === 2 ? this._hexToRgba(c, 0.35) : c
+    }
+    const isActive = d.perspectiveSlug === this._currentPerspective
+    return this._hexToRgba(c, isActive ? baseTierAlpha : 0.07)
+  }
+
+  _onTopicFilter(event) {
+    this._currentTopic = event.detail.topic || null
+    localStorage.setItem("veritas:topic", this._currentTopic || "")
+    if (this._journeyActive) return
     this._loadData()
   }
 
   _onTimelineChange(event) {
     this._currentTimestamp = event.detail.toTimestamp
+    if (this._journeyActive) return
     this._loadData()
   }
 
   _onPointClicked(point) {
     if (!point) return
+    if (this._journeyActive) return
     this._flyTo(point.lat, point.lng)
     if (point.id) this._setActiveCard(point.id)
     if (point.id) this._visitArticle(point.id)
@@ -537,6 +648,14 @@ export default class extends Controller {
 
   _onArcClicked(arc) {
     if (!arc) return
+    if (this._journeyActive) return
+
+    if (arc.tier === 1 && arc.routeId) {
+      this._showRouteChoiceMenu(arc)
+      if (arc.articleId) this._setActiveCard(arc.articleId)
+      return
+    }
+
     const midLat = (arc.startLat + arc.endLat) / 2
     const midLng = (arc.startLng + arc.endLng) / 2
     this._flyTo(midLat, midLng, 2.0)
@@ -554,6 +673,7 @@ export default class extends Controller {
   }
 
   _onArcHover(arc) {
+    if (this._journeyActive) return
     // Reset previous hover highlights
     if (this._lastHoveredArc && this._lastHoveredArc !== arc && this._packets) {
       this._packets.forEach(packet => {
@@ -588,6 +708,85 @@ export default class extends Controller {
     const { lat, lng, articleId } = event.detail
     this._flyTo(lat, lng)
     if (articleId) this._setActiveCard(articleId)
+  }
+
+  _onJourneyActivated(event) {
+    if (!this._globe) return
+
+    this._journeyActive = true
+    this._preJourneyState = event.detail?.state || this._preJourneyState || this.captureJourneyState()
+    this._hideRouteChoiceMenu()
+
+    if (this._packetGroup) this._packetGroup.visible = false
+    this._globe.arcsData([]).pointsData([]).ringsData([])
+  }
+
+  _onJourneyEnded(event) {
+    this._journeyActive = false
+    this._hideRouteChoiceMenu()
+    this.restoreJourneyState(event.detail?.state || this._preJourneyState)
+    this._preJourneyState = null
+  }
+
+  _showRouteChoiceMenu(arc) {
+    const route = this.getRoute(arc.routeId)
+    if (!route) return
+
+    this._hideRouteChoiceMenu()
+
+    const position = this.getScreenPosition(
+      (arc.startLat + arc.endLat) / 2,
+      (arc.startLng + arc.endLng) / 2
+    )
+    if (!position) return
+
+    const menu = document.createElement("div")
+    menu.className = "vt-route-choice-menu"
+    menu.style.left = `${position.x}px`
+    menu.style.top = `${position.y}px`
+    menu.innerHTML = `
+      <div class="vt-route-choice-header">${route.routeName || "Narrative Route"}</div>
+      <button class="vt-route-choice-btn vt-route-choice-btn--bloom" type="button">◉ BLOOM</button>
+      <button class="vt-route-choice-btn vt-route-choice-btn--chronicle" type="button">▶ CHRONICLE</button>
+    `
+
+    const [bloomButton, chronicleButton] = menu.querySelectorAll("button")
+    bloomButton?.addEventListener("click", (clickEvent) => {
+      clickEvent.stopPropagation()
+      this._startJourneyFromRoute(route, "bloom")
+    })
+    chronicleButton?.addEventListener("click", (clickEvent) => {
+      clickEvent.stopPropagation()
+      this._startJourneyFromRoute(route, "chronicle")
+    })
+
+    this.element.appendChild(menu)
+    this._routeChoiceMenu = menu
+    this._routeMenuOpenedAt = Date.now()
+  }
+
+  _startJourneyFromRoute(route, mode) {
+    this._hideRouteChoiceMenu()
+    window.dispatchEvent(new CustomEvent("veritas:startJourney", {
+      detail: {
+        mode,
+        routeId: route.routeId || route.id,
+        route,
+        segments: route.segments || []
+      }
+    }))
+  }
+
+  _hideRouteChoiceMenu() {
+    if (this._routeChoiceMenu) this._routeChoiceMenu.remove()
+    this._routeChoiceMenu = null
+  }
+
+  _handleRouteMenuDocumentClick(event) {
+    if (!this._routeChoiceMenu) return
+    if (Date.now() - this._routeMenuOpenedAt < 80) return
+    if (this._routeChoiceMenu.contains(event.target)) return
+    this._hideRouteChoiceMenu()
   }
 
   _onBreakingAlert(event) {
@@ -758,6 +957,7 @@ export default class extends Controller {
   // -------------------------------------------------------
 
   _onHeatmapToggle() {
+    if (this._journeyActive) return
     this._heatmapActive = !this._heatmapActive
 
     if (this._heatmapActive) {
@@ -896,8 +1096,9 @@ export default class extends Controller {
     }, 2000)
   }
 
- _onBroadcast(data) {
+  _onBroadcast(data) {
     if (!this._globe) return
+    if (this._journeyActive) return
 
     if (data.type === "new_point") {
       const current = this._globe.pointsData()
@@ -917,10 +1118,12 @@ export default class extends Controller {
 
   _onModeChanged(event) {
     // Mode toggled (demo ↔ live) — re-fetch globe data
+    if (this._journeyActive) return
     this._loadData()
   }
 
   _onIsolateToggle() {
+    if (this._journeyActive) return
     this._hideIsolated = !this._hideIsolated
 
     if (this._globe && !this._heatmapActive) {
@@ -947,6 +1150,7 @@ export default class extends Controller {
   }
 
   _onViewModeChanged(event) {
+    if (this._journeyActive) return
     const { mode } = event.detail
     if (mode === "all") {
       this._loadData()
@@ -959,6 +1163,7 @@ export default class extends Controller {
 
   // Handle search event from search_controller.js / search_intelligence_controller.js
   async _onSearchEvent(event) {
+    if (this._journeyActive) return
     const { query } = event.detail
 
     if (!query) {
@@ -985,8 +1190,8 @@ export default class extends Controller {
         view: 'segments'
       })
 
-      if (this._currentPerspective && this._currentPerspective !== "all") {
-        params.set("perspective_id", this._currentPerspective)
+      if (this._currentTopic) {
+        params.set("topic", this._currentTopic)
       }
 
       const url = `${this.dataUrlValue}?${params.toString()}`
@@ -1042,6 +1247,7 @@ export default class extends Controller {
   }
 
   _onSearchClearEvent() {
+    if (this._journeyActive) return
     this._currentSearchQuery = null
     this._loadData()
   }
@@ -1049,6 +1255,10 @@ export default class extends Controller {
   // -------------------------------------------------------
   // Utilities
   // -------------------------------------------------------
+
+  _cloneLayer(layer) {
+    return JSON.parse(JSON.stringify(layer))
+  }
 
   // Convert a 6-digit hex color to rgba with the given opacity (0–1).
   // Used to dim secondary arcs without losing their framing-shift color identity.

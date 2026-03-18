@@ -1056,48 +1056,15 @@ $search-icon-color:   rgba(148, 180, 210, 0.55);
     animation: cyan-glow-fade 1.5s ease-out forwards;
 }
 
-// --- Flat Map Toggle ---
+// --- Flat Map Toggle (uses shared .vt-globe-toggle-btn base) ---
 .vt-flat-toggle {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.6rem;
-    letter-spacing: 0.1em;
-    padding: 5px 12px;
-    border-radius: 20px;
-    border: 1px solid rgba(0, 240, 255, 0.3);
-    background: rgba(10, 12, 20, 0.88);
-    color: rgba(0, 240, 255, 0.6);
-    cursor: pointer;
-    backdrop-filter: blur(10px);
-    transition: all 0.3s ease;
-
-    .vt-flat-icon {
-        font-size: 0.7rem;
-        opacity: 0.6;
-        transition: all 0.3s ease;
-    }
-
-    &:hover {
-        border-color: rgba(0, 240, 255, 0.6);
-        color: #00f0ff;
-        box-shadow: 0 0 12px rgba(0, 240, 255, 0.2);
-
-        .vt-flat-icon { opacity: 1; }
-    }
-
-    &.is-active {
-        border-color: #00f0ff;
-        color: #00f0ff;
-        background: rgba(0, 240, 255, 0.12);
-        box-shadow: 0 0 20px rgba(0, 240, 255, 0.35),
-                    inset 0 0 12px rgba(0, 240, 255, 0.08);
-
-        .vt-flat-icon {
-            opacity: 1;
-        }
-    }
+    --tc-solid:        rgb(0, 212, 255);
+    --tc-dim:          rgba(0, 212, 255, 0.55);
+    --tc-border:       rgba(0, 212, 255, 0.28);
+    --tc-border-hover: rgba(0, 212, 255, 0.6);
+    --tc-bg:           rgba(0, 212, 255, 0.10);
+    --tc-glow:         rgba(0, 212, 255, 0.22);
+    --tc-inner:        rgba(0, 212, 255, 0.06);
 }
 
 // --- Flat Map D3 Styles ---

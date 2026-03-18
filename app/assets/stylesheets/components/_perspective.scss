@@ -1,0 +1,324 @@
+// -------------------------------------------------------
+// VERITAS — Perspective Lens Compass + Topic Filter + Narrative Panel
+// -------------------------------------------------------
+
+// --- Topic Filter Bar ---
+.veritas-topic-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 16px;
+  height: 34px;
+  flex-shrink: 0;
+  background: rgba(8, 10, 18, 0.97);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  overflow-x: auto;
+
+  &::-webkit-scrollbar { display: none; }
+}
+
+.vt-topic-pill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.09em;
+  padding: 2px 8px;
+  border-radius: 2px;
+  border: 1px solid rgba(100, 116, 139, 0.22);
+  background: transparent;
+  color: rgba(100, 116, 139, 0.65);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+
+  &:hover {
+    border-color: rgba(0, 240, 255, 0.35);
+    color: rgba(0, 240, 255, 0.7);
+    background: rgba(0, 240, 255, 0.05);
+  }
+
+  &.is-active {
+    border-color: rgba(0, 240, 255, 0.55);
+    color: #00f0ff;
+    background: rgba(0, 240, 255, 0.09);
+    box-shadow: 0 0 8px rgba(0, 240, 255, 0.12);
+  }
+}
+
+// --- Lens Compass Buttons (replaces .veritas-perspective-pill) ---
+.veritas-lens-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 3px 8px;
+  border-radius: 2px;
+  border: 1px solid color-mix(in srgb, var(--lens-color, #64748b) 30%, transparent);
+  background: transparent;
+  color: color-mix(in srgb, var(--lens-color, #64748b) 55%, #94a3b8);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s ease;
+  min-width: 44px;
+
+  .lens-flag {
+    font-size: 0.85rem;
+    line-height: 1;
+  }
+
+  .lens-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.48rem;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    color: inherit;
+  }
+
+  &:hover {
+    background: color-mix(in srgb, var(--lens-color, #64748b) 12%, transparent);
+    border-color: var(--lens-color, #64748b);
+    color: var(--lens-color, #64748b);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--lens-color, #64748b) 22%, transparent);
+  }
+
+  &.is-active {
+    background: color-mix(in srgb, var(--lens-color, #64748b) 16%, transparent);
+    border-color: var(--lens-color, #64748b);
+    color: var(--lens-color, #64748b);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--lens-color, #64748b) 28%, transparent);
+  }
+}
+
+// Glass mode overrides
+.glass-mode {
+  .veritas-lens-btn {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+
+    &.is-active {
+      background: color-mix(in srgb, var(--lens-color, #64748b) 14%, rgba(0, 0, 0, 0.15)) !important;
+      backdrop-filter: blur(14px);
+    }
+  }
+
+  .vt-topic-pill {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}
+
+// --- Narrative Lens Panel (right sidebar) ---
+.vt-narrative-panel {
+  padding: 10px;
+  border: 1px solid rgba(0, 240, 255, 0.1);
+  border-radius: 2px;
+  background: rgba(8, 10, 18, 0.5);
+}
+
+.vt-narrative-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.vt-lens-flag {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.vt-narrative-lens-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  color: #00f0ff;
+  text-transform: uppercase;
+  flex: 1;
+}
+
+.vt-narrative-topic-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.48rem;
+  letter-spacing: 0.07em;
+  padding: 1px 5px;
+  border: 1px solid rgba(0, 240, 255, 0.28);
+  color: rgba(0, 240, 255, 0.55);
+  border-radius: 2px;
+}
+
+// Divergence meter
+.vt-divergence-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.vt-divergence-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.48rem;
+  letter-spacing: 0.06em;
+  color: #475569;
+  flex: 1;
+  text-transform: uppercase;
+  line-height: 1.3;
+}
+
+.vt-divergence-score {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.vt-divergence-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.46rem;
+  letter-spacing: 0.1em;
+  padding: 2px 5px;
+  border: 1px solid;
+  border-radius: 2px;
+}
+
+.vt-divergence-bar-track {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 2px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.vt-divergence-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+
+.vt-divergence-na {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.5rem;
+  letter-spacing: 0.08em;
+  color: #475569;
+  text-align: center;
+  padding: 6px 0 10px;
+}
+
+// Section titles
+.vt-narrative-section-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.48rem;
+  letter-spacing: 0.12em;
+  color: #475569;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+// Narrative frames
+.vt-narrative-frames {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.vt-narrative-frame {
+  padding: 5px 8px;
+  border-left: 2px solid rgba(0, 240, 255, 0.18);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.vt-frame-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.vt-frame-source {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.48rem;
+  letter-spacing: 0.06em;
+  color: #00f0ff;
+  text-transform: uppercase;
+}
+
+.vt-frame-sentiment {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.44rem;
+  letter-spacing: 0.05em;
+  padding: 1px 4px;
+  border: 1px solid rgba(100, 116, 139, 0.25);
+  border-radius: 2px;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.vt-frame-headline {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #cbd5e1;
+  line-height: 1.35;
+  margin-bottom: 3px;
+}
+
+.vt-frame-summary {
+  font-size: 0.6rem;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+// Source chips
+.vt-narrative-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.vt-source-chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.46rem;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border: 1px solid rgba(100, 116, 139, 0.18);
+  border-radius: 2px;
+  color: #64748b;
+  background: rgba(100, 116, 139, 0.04);
+}
+
+// Loading state
+.vt-narrative-panel--loading .vt-narrative-loading-text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.56rem;
+  letter-spacing: 0.1em;
+  color: #64748b;
+}
+
+.vt-narrative-loading-dots {
+  display: inline-flex;
+  gap: 1px;
+
+  span {
+    font-size: 0.9rem;
+    color: #00f0ff;
+    animation: vt-dot-blink 1.2s infinite;
+
+    &:nth-child(2) { animation-delay: 0.2s; }
+    &:nth-child(3) { animation-delay: 0.4s; }
+  }
+}
+
+@keyframes vt-dot-blink {
+  0%, 80%, 100% { opacity: 0.2; }
+  40%           { opacity: 1; }
+}
+
+// Error state
+.vt-narrative-error {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.53rem;
+  letter-spacing: 0.1em;
+  color: #ef4444;
+  padding: 8px 0;
+  text-align: center;
+}

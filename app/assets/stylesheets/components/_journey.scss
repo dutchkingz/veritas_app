@@ -1,0 +1,303 @@
+.vt-journey-hud-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 180;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.vt-journey-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.vt-journey-hud > * {
+  pointer-events: auto;
+}
+
+.veritas-dashboard.vt-journey-active {
+  .globe-overlay-stats,
+  .globe-timeline-bar,
+  .vt-globe-toggles,
+  #intel-view-toggle {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(8px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+}
+
+.veritas-globe-section.is-journey-active {
+  .veritas-crosshair {
+    opacity: 0.08;
+  }
+}
+
+.vt-route-choice-menu {
+  position: absolute;
+  min-width: 220px;
+  padding: 12px;
+  border: 1px solid rgba($veritas-cyan, 0.28);
+  border-radius: 16px;
+  background: rgba(6, 10, 18, 0.88);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(18px);
+  transform: translate(-50%, -112%);
+  z-index: 220;
+}
+
+.vt-route-choice-header {
+  margin-bottom: 10px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: $veritas-white;
+}
+
+.vt-route-choice-btn,
+.vt-feed-journey-btn,
+.vt-summary-action,
+.vt-journey-icon-btn,
+.vt-speed-pill {
+  border: 1px solid rgba($veritas-cyan, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  color: $veritas-white;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.67rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+
+  &:hover {
+    border-color: rgba($veritas-cyan, 0.55);
+    box-shadow: 0 0 20px rgba($veritas-cyan, 0.18);
+    transform: translateY(-1px);
+  }
+}
+
+.vt-route-choice-btn {
+  width: 100%;
+  margin-top: 6px;
+  padding: 9px 12px;
+  text-align: left;
+}
+
+.vt-route-choice-btn--bloom,
+.vt-feed-journey-btn--bloom,
+.vt-summary-action--bloom {
+  border-color: rgba($veritas-cyan, 0.3);
+  color: $veritas-cyan;
+}
+
+.vt-route-choice-btn--chronicle,
+.vt-feed-journey-btn--chronicle,
+.vt-summary-action--chronicle {
+  border-color: rgba(#f59e0b, 0.28);
+  color: #fbbf24;
+}
+
+.vt-feed-journey-btn {
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.veritas-feed-card.is-journey-dimmed {
+  opacity: 0.32;
+  transform: none;
+}
+
+.veritas-feed-card.is-journey-member {
+  border-color: rgba($veritas-cyan, 0.24);
+}
+
+.veritas-feed-card.is-journey-current {
+  border-color: rgba($veritas-cyan, 0.66);
+  box-shadow: 0 0 28px rgba($veritas-cyan, 0.16);
+}
+
+.vt-journey-icon-btn,
+.vt-speed-pill,
+.vt-summary-action {
+  padding: 8px 12px;
+}
+
+.vt-speed-pill.is-active {
+  border-color: rgba($veritas-cyan, 0.85);
+  color: $veritas-cyan;
+  box-shadow: 0 0 22px rgba($veritas-cyan, 0.22);
+}
+
+.vt-transmission-tag {
+  position: absolute;
+  min-width: 170px;
+  padding: 10px 12px;
+  border: 1px solid rgba($veritas-cyan, 0.22);
+  border-radius: 14px;
+  background: rgba(6, 10, 18, 0.84);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.34);
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.vt-transmission-tag.is-fading {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+.vt-transmission-source {
+  display: block;
+  margin-bottom: 4px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.68rem;
+  color: $veritas-white;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vt-transmission-shift {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.vt-journey-summary-slot {
+  padding: 10px 8px 0;
+  pointer-events: auto;
+}
+
+.vt-journey-summary-slot.is-visible {
+  display: block;
+}
+
+.vt-journey-summary-card {
+  margin-bottom: 12px;
+  padding: 18px;
+  border: 1px solid rgba($veritas-cyan, 0.2);
+  border-radius: 20px;
+  background: rgba(8, 13, 21, 0.88);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(16px);
+}
+
+.vt-summary-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.vt-summary-kicker,
+.vt-summary-section-title,
+.vt-summary-grid span,
+.vt-summary-peak span {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba($veritas-text, 0.82);
+}
+
+.vt-summary-title {
+  margin-top: 4px;
+  color: $veritas-white;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.vt-summary-grid {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.vt-summary-grid strong,
+.vt-summary-peak strong,
+.vt-summary-drift-meta {
+  display: block;
+  margin-top: 4px;
+  color: $veritas-white;
+  font-size: 0.86rem;
+}
+
+.vt-summary-drift {
+  margin-bottom: 18px;
+}
+
+.vt-summary-drift-bar {
+  position: relative;
+  height: 10px;
+  margin-top: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.vt-summary-drift-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.vt-summary-section {
+  margin-bottom: 18px;
+}
+
+.vt-summary-journey-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 12px;
+}
+
+.vt-summary-journey-dot {
+  width: 9px;
+  height: 9px;
+  margin-top: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.vt-summary-journey-label {
+  color: $veritas-white;
+  font-weight: 700;
+}
+
+.vt-summary-journey-meta {
+  margin-top: 4px;
+  color: rgba($veritas-text, 0.86);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.vt-summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.vt-summary-peak {
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 992px) {
+  .vt-journey-summary-slot {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 14px;
+    padding: 0;
+    z-index: 210;
+  }
+
+  .vt-journey-summary-card {
+    max-height: 58vh;
+    overflow-y: auto;
+  }
+}

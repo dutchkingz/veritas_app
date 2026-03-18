@@ -6,15 +6,55 @@ class PerspectiveFilter < ApplicationRecord
     keywords.to_s.split(',').map(&:strip).reject(&:blank?)
   end
 
-  def color
+  # Stable slug — used as the canonical identifier throughout JS/CSS/services.
+  # Independent of database ID so it survives re-seeds and migrations.
+  def slug
     case name.downcase
-    when /liberal/     then '#38bdf8'
-    when /conservative/ then '#ef4444'
-    when /china/       then '#f97316'
-    when /russia/      then '#dc2626'
-    when /mainstream/  then '#22c55e'
-    when /global south/ then '#eab308'
-    else '#64748b'
+    when /liberal/      then "us_liberal"
+    when /conservative/ then "us_conservative"
+    when /china/        then "china_state"
+    when /russia/       then "russia_state"
+    when /mainstream/   then "western_mainstream"
+    when /global south/ then "global_south"
+    else name.downcase.gsub(/\s+/, "_")
+    end
+  end
+
+  def color
+    case slug
+    when "western_mainstream" then "#38bdf8"
+    when "us_liberal"         then "#60a5fa"
+    when "us_conservative"    then "#f87171"
+    when "china_state"        then "#f97316"
+    when "russia_state"       then "#dc2626"
+    when "global_south"       then "#eab308"
+    else "#64748b"
+    end
+  end
+
+  # Flag emoji for the compass UI
+  def flag
+    case slug
+    when "western_mainstream" then "🌐"
+    when "us_liberal"         then "🔵"
+    when "us_conservative"    then "🔴"
+    when "china_state"        then "🇨🇳"
+    when "russia_state"       then "🇷🇺"
+    when "global_south"       then "🌍"
+    else "◈"
+    end
+  end
+
+  # Short label for compact display
+  def short_label
+    case slug
+    when "western_mainstream" then "NEUTRAL"
+    when "us_liberal"         then "US-LEFT"
+    when "us_conservative"    then "US-RIGHT"
+    when "china_state"        then "CHINA"
+    when "russia_state"       then "RUSSIA"
+    when "global_south"       then "SOUTH"
+    else name.upcase.truncate(8, omission: "")
     end
   end
 

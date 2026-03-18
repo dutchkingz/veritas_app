@@ -85,7 +85,7 @@ class PagesController < ApplicationController
   def home
     # Hot articles: highest threat level first, then trust score (lower = more suspicious)
     @hot_articles = Article
-      .includes(:country, :region, :ai_analysis)
+      .includes(:country, :region, :ai_analysis, narrative_arcs: :narrative_routes)
       .where.not(ai_analysis: { threat_level: nil })
       .order('ai_analysis.threat_level DESC, ai_analysis.trust_score ASC, articles.published_at DESC')
       .limit(15)
@@ -111,24 +111,38 @@ class PagesController < ApplicationController
   end
 
   # GET /api/globe_data — JSON feed for Globe.gl
+  #
+  # Perspective filtering is now CLIENT-SIDE (Globe.gl color callbacks).
+  # The server no longer hides non-perspective articles — it tags each point/arc
+  # with a perspectiveSlug so the JS can dim them without re-fetching.
+  #
+  # Params:
+  #   to             — timestamp ceiling (timeline scrubber)
+  #   view           — "segments" | "arcs"
+  #   search_query   — text or semantic search
+  #   topic          — keyword topic filter (NATO, BRICS, etc.) — server-side ILIKE
   def globe_data
-    perspective = PerspectiveFilter.find_by(id: params[:perspective_id])
-    to_time     = params[:to].present? ? Time.at(params[:to].to_i) : nil
-    view_mode   = params[:view] || "arcs"  # arcs | segments
+    to_time      = params[:to].present? ? Time.at(params[:to].to_i) : nil
+    view_mode    = params[:view] || "arcs"
     search_query = params[:search_query]
+    topic        = params[:topic].presence
 
     scope  = Article.includes(:country, :region, :ai_analysis)
     scope  = scope.where("published_at <= ?", to_time) if to_time
     scope  = scope.order(published_at: :desc)
 
-    # Filter by search query if provided
+    # Topic filter — ILIKE on headline (works in both demo and live mode)
+    if topic.present?
+      scope = scope.where("headline ILIKE ?", "%#{topic}%")
+                   .or(scope.where("content ILIKE ?", "%#{topic}%"))
+    end
+
+    # Search filter
     if search_query.present?
       if VeritasMode.demo?
-        # Demo mode: text search only — no external API calls
         scope = scope.where("headline ILIKE ?", "%#{search_query}%")
                      .or(scope.where("content ILIKE ?", "%#{search_query}%"))
       else
-        # Live mode: use pgvector similarity search via OpenRouter embedding
         begin
           vector = OpenRouterClient.new.embed(search_query)
           if vector.present?
@@ -145,31 +159,33 @@ class PagesController < ApplicationController
       end
     end
 
-    filtered_articles = scope.limit(250).select do |article|
-      perspective.nil? || perspective.matches_source?(article.source_name)
-    end
+    # All articles — perspective filtering is client-side via Globe.gl color callbacks
+    filtered_articles = scope.limit(250).to_a
 
     points = filtered_articles.first(200).filter_map do |a|
       next if a.latitude.blank? || a.longitude.blank?
 
-      next if perspective && !perspective.matches_source?(a.source_name)
-      sentiment_color = a.ai_analysis&.sentiment_color || "#00f0ff"
+      sentiment_color  = a.ai_analysis&.sentiment_color || "#00f0ff"
+      perspective_slug = SourceClassifierService.classify(a.source_name)[:slug]
       {
-        id:       a.id,
-        lat:      a.latitude,
-        lng:      a.longitude,
-        size:     0.4,
-        color:    sentiment_color,
-        headline: a.headline,
-        source:   a.source_name
+        id:              a.id,
+        lat:             a.latitude,
+        lng:             a.longitude,
+        size:            0.4,
+        color:           sentiment_color,
+        headline:        a.headline,
+        source:          a.source_name,
+        perspectiveSlug: perspective_slug
       }
     end
 
+    routes = []
     arcs = if view_mode == "segments"
-             segments = build_route_segments(filtered_articles, perspective, to_time)
-             segments.any? ? segments : build_globe_arcs(filtered_articles, perspective, to_time)
+             route_payload = build_route_segments(filtered_articles, nil, to_time)
+             routes = route_payload[:routes]
+             route_payload[:segments].any? ? route_payload[:segments] : build_globe_arcs(filtered_articles, nil, to_time)
            else
-             build_globe_arcs(filtered_articles, perspective, to_time)
+             build_globe_arcs(filtered_articles, nil, to_time)
            end
 
     # Dynamic regions: countries that actually have articles
@@ -256,7 +272,7 @@ class PagesController < ApplicationController
     end
 
     render json: {
-      points: points, arcs: arcs, regions: regions,
+      points: points, arcs: arcs, routes: routes, regions: regions,
       heatmap: heatmap, heatmapClusters: heatmap_clusters,
       mode: VeritasMode.current
     }
@@ -502,42 +518,28 @@ class PagesController < ApplicationController
     scored_routes.sort_by! { |r| -r[:strength] }
 
     segments = []
+    routes = []
 
     scored_routes.first(15).each_with_index do |r, index|
       tier     = index < 5 ? 1 : 2
       strength = r[:strength].round(3)
       route    = r[:route]
-      article  = r[:article]
+      route_data = route.as_journey_data
 
-      route_metadata = {
-        routeId:           route.id,
-        routeName:         route.name,
-        arcId:             route.narrative_arc_id,
-        manipulationScore: route.manipulation_score,
-        amplificationScore: route.amplification_score,
-        totalHops:         route.total_hops,
-        isComplete:        route.is_complete,
-        articleId:         article&.id,
-        headline:          article&.headline,
-        source:            article&.source_name,
-        originCountry:     route.narrative_arc.origin_country,
-        targetCountry:     route.narrative_arc.target_country,
-        strength:          strength,
-        tier:              tier
-      }
+      routes << route_data.merge(
+        strength: strength,
+        tier: tier
+      )
 
-      r[:route_data][:segments].each do |segment|
-        segments << segment.merge(route_metadata).merge(
-          color:    segment[:color] || '#00f0ff',
-          startLat: segment[:startLat],
-          startLng: segment[:startLng],
-          endLat:   segment[:endLat],
-          endLng:   segment[:endLng]
+      route_data[:segments].each do |segment|
+        segments << segment.merge(
+          strength: strength,
+          tier: tier
         )
       end
     end
 
-    segments
+    { segments: segments, routes: routes }
   end
 
   def build_globe_arcs(filtered_articles, perspective, to_time)
@@ -593,16 +595,17 @@ class PagesController < ApplicationController
     base_color = fallback_color || arc.article&.ai_analysis&.sentiment_color || arc.arc_color || DEFAULT_ARC_COLOR
 
     {
-      startLat:      arc.origin_lat,
-      startLng:      arc.origin_lng,
-      endLat:        arc.target_lat,
-      endLng:        arc.target_lng,
-      color:         [base_color, brighten_hex(base_color, 0.18)],
-      articleId:     arc.article_id,
-      headline:      arc.article&.headline,
-      source:        arc.article&.source_name,
-      originCountry: arc.origin_country,
-      targetCountry: arc.target_country
+      startLat:        arc.origin_lat,
+      startLng:        arc.origin_lng,
+      endLat:          arc.target_lat,
+      endLng:          arc.target_lng,
+      color:           [base_color, brighten_hex(base_color, 0.18)],
+      articleId:       arc.article_id,
+      headline:        arc.article&.headline,
+      source:          arc.article&.source_name,
+      perspectiveSlug: SourceClassifierService.classify(arc.article&.source_name.to_s)[:slug],
+      originCountry:   arc.origin_country,
+      targetCountry:   arc.target_country
     }
   end
 
