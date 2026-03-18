@@ -68,31 +68,91 @@ end
 def create_regions_and_countries!
   puts "Creating Regions and Countries..."
 
-  regions = [
-    { name: "North America", country: "United States", iso_code: "USA", lat: 37.0902, lng: -95.7129, threat: 1 },
-    { name: "Eastern Europe", country: "Ukraine", iso_code: "UKR", lat: 48.3794, lng: 31.1656, threat: 3 },
-    { name: "East Asia", country: "China", iso_code: "CHN", lat: 35.8617, lng: 104.1954, threat: 2 },
-    { name: "Middle East", country: "Israel", iso_code: "ISR", lat: 31.0461, lng: 34.8516, threat: 3 },
-    { name: "Western Europe", country: "Germany", iso_code: "DEU", lat: 51.1657, lng: 10.4515, threat: 1 }
-  ]
+  region_data = {
+    "North America" => { lat: 37.09, lng: -95.71, threat: 1, countries: [
+      { name: "United States", iso_code: "USA" },
+      { name: "Canada", iso_code: "CAN" },
+      { name: "Mexico", iso_code: "MEX" }
+    ]},
+    "South America" => { lat: -14.24, lng: -51.93, threat: 1, countries: [
+      { name: "Brazil", iso_code: "BRA" },
+      { name: "Argentina", iso_code: "ARG" },
+      { name: "Colombia", iso_code: "COL" },
+      { name: "Venezuela", iso_code: "VEN" }
+    ]},
+    "Western Europe" => { lat: 48.86, lng: 2.35, threat: 1, countries: [
+      { name: "Germany", iso_code: "DEU" },
+      { name: "France", iso_code: "FRA" },
+      { name: "United Kingdom", iso_code: "GBR" },
+      { name: "Netherlands", iso_code: "NLD" },
+      { name: "Spain", iso_code: "ESP" },
+      { name: "Italy", iso_code: "ITA" }
+    ]},
+    "Eastern Europe" => { lat: 48.38, lng: 31.17, threat: 3, countries: [
+      { name: "Ukraine", iso_code: "UKR" },
+      { name: "Poland", iso_code: "POL" },
+      { name: "Romania", iso_code: "ROU" },
+      { name: "Russia", iso_code: "RUS" }
+    ]},
+    "Middle East" => { lat: 31.05, lng: 34.85, threat: 3, countries: [
+      { name: "Israel", iso_code: "ISR" },
+      { name: "Iran", iso_code: "IRN" },
+      { name: "Saudi Arabia", iso_code: "SAU" },
+      { name: "Turkey", iso_code: "TUR" },
+      { name: "Iraq", iso_code: "IRQ" },
+      { name: "Syria", iso_code: "SYR" }
+    ]},
+    "East Asia" => { lat: 35.86, lng: 104.20, threat: 2, countries: [
+      { name: "China", iso_code: "CHN" },
+      { name: "Japan", iso_code: "JPN" },
+      { name: "South Korea", iso_code: "KOR" },
+      { name: "Taiwan", iso_code: "TWN" },
+      { name: "North Korea", iso_code: "PRK" }
+    ]},
+    "South Asia" => { lat: 20.59, lng: 78.96, threat: 2, countries: [
+      { name: "India", iso_code: "IND" },
+      { name: "Pakistan", iso_code: "PAK" },
+      { name: "Bangladesh", iso_code: "BGD" }
+    ]},
+    "Southeast Asia" => { lat: 1.35, lng: 103.82, threat: 1, countries: [
+      { name: "Indonesia", iso_code: "IDN" },
+      { name: "Philippines", iso_code: "PHL" },
+      { name: "Vietnam", iso_code: "VNM" },
+      { name: "Thailand", iso_code: "THA" }
+    ]},
+    "Africa" => { lat: -1.29, lng: 36.82, threat: 2, countries: [
+      { name: "Nigeria", iso_code: "NGA" },
+      { name: "South Africa", iso_code: "ZAF" },
+      { name: "Kenya", iso_code: "KEN" },
+      { name: "Egypt", iso_code: "EGY" },
+      { name: "Ethiopia", iso_code: "ETH" }
+    ]},
+    "Central Asia" => { lat: 41.30, lng: 69.28, threat: 2, countries: [
+      { name: "Kazakhstan", iso_code: "KAZ" },
+      { name: "Uzbekistan", iso_code: "UZB" },
+      { name: "Afghanistan", iso_code: "AFG" }
+    ]},
+    "Oceania" => { lat: -25.27, lng: 133.78, threat: 1, countries: [
+      { name: "Australia", iso_code: "AUS" },
+      { name: "New Zealand", iso_code: "NZL" }
+    ]}
+  }
 
-  regions.each_with_object({}) do |attrs, result|
+  region_data.each_with_object({}) do |(region_name, data), result|
     region = Region.create!(
-      name: attrs[:name],
-      latitude: attrs[:lat],
-      longitude: attrs[:lng],
-      threat_level: attrs[:threat],
+      name: region_name,
+      latitude: data[:lat],
+      longitude: data[:lng],
+      threat_level: data[:threat],
       article_volume: 0,
       last_calculated_at: Time.current
     )
 
-    country = Country.create!(
-      region: region,
-      name: attrs[:country],
-      iso_code: attrs[:iso_code]
-    )
+    countries = data[:countries].map do |c|
+      Country.create!(region: region, name: c[:name], iso_code: c[:iso_code])
+    end
 
-    result[attrs[:name]] = { region: region, country: country }
+    result[region_name] = { region: region, country: countries.first }
   end
 end
 
