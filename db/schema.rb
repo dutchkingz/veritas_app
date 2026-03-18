@@ -49,11 +49,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_17_150939) do
     t.jsonb "raw_data"
     t.bigint "region_id"
     t.string "source_name"
+    t.string "source_type", default: "news_api"
     t.string "source_url"
     t.integer "target_country"
+    t.string "telegram_channel_id"
+    t.integer "telegram_forwards"
+    t.string "telegram_message_id"
+    t.integer "telegram_views"
     t.datetime "updated_at", null: false
     t.index ["country_id"], name: "index_articles_on_country_id"
     t.index ["region_id"], name: "index_articles_on_region_id"
+    t.index ["source_type"], name: "index_articles_on_source_type"
+    t.index ["telegram_channel_id", "telegram_message_id"], name: "index_articles_on_telegram_metadata"
   end
 
   create_table "breaking_alerts", force: :cascade do |t|
@@ -356,6 +363,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_17_150939) do
     t.index ["expires_at"], name: "index_solid_queue_semaphores_on_expires_at"
     t.index ["key", "value"], name: "index_solid_queue_semaphores_on_key_and_value"
     t.index ["key"], name: "index_solid_queue_semaphores_on_key", unique: true
+  end
+
+  create_table "telegram_channels", force: :cascade do |t|
+    t.string "channel_id", null: false
+    t.datetime "created_at", null: false
+    t.integer "member_count"
+    t.boolean "monitoring_active", default: true
+    t.string "title"
+    t.string "topic"
+    t.datetime "updated_at", null: false
+    t.string "username"
+    t.index ["channel_id"], name: "index_telegram_channels_on_channel_id", unique: true
   end
 
   create_table "user_model_configs", force: :cascade do |t|

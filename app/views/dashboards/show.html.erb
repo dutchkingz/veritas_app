@@ -1,0 +1,147 @@
+<div class="min-h-screen bg-slate-950 text-slate-200 font-mono overflow-hidden flex flex-col"
+     data-controller="intelligence-dashboard"
+     data-intelligence-dashboard-data-url-value="/api/globe_data">
+
+  <!-- Header / Command Bar -->
+  <header class="h-16 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md flex items-center justify-between px-6 z-50">
+    <div class="flex items-center gap-4">
+      <div class="w-10 h-10 border-2 border-cyan-500 rounded-sm flex items-center justify-center relative overflow-hidden group">
+        <div class="absolute inset-0 bg-cyan-500/10 group-hover:bg-cyan-500/20 transition-colors"></div>
+        <span class="text-cyan-400 font-black text-xl">V</span>
+      </div>
+      <div>
+        <h1 class="text-sm font-bold tracking-widest text-slate-100">GLOBAL_INTEL_DASHBOARD_v4.2</h1>
+        <p class="text-[10px] text-slate-500 uppercase tracking-tighter">System Status: <span class="text-emerald-500">OPERATIONAL // ENCRYPTED</span></p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-8">
+      <div class="text-right">
+        <div class="text-[10px] text-slate-500 uppercase">Current_Coordinates</div>
+        <div class="text-xs text-cyan-500" data-intelligence-dashboard-target="coords">0.00°N, 0.00°E</div>
+      </div>
+      <div class="h-8 w-px bg-slate-800"></div>
+      <div class="flex flex-col items-end">
+        <div class="text-[10px] text-slate-500 uppercase">Live_Feed_Signal</div>
+        <div class="flex items-center gap-1.5">
+          <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+          <span class="text-xs text-emerald-500 font-bold uppercase">Active</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 flex overflow-hidden relative">
+    <!-- Left Panel: Signal Feed -->
+    <aside class="w-80 border-r border-slate-800 flex flex-col bg-slate-900/30 backdrop-blur-sm z-40">
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+        <span class="text-xs font-bold tracking-widest text-slate-400">SIGNAL_STREAM</span>
+        <span class="text-[10px] bg-cyan-950 text-cyan-400 px-2 py-0.5 border border-cyan-800 rounded-full">LIVE</span>
+      </div>
+      
+      <div class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4" 
+           id="signals-feed"
+           data-intelligence-dashboard-target="feed">
+        <%= render partial: "articles/feed_item", collection: @articles, as: :article %>
+      </div>
+    </aside>
+
+    <!-- Center Panel: 3D Globe -->
+    <div class="flex-1 relative bg-black">
+      <div id="dashboard-globe" class="w-full h-full" data-intelligence-dashboard-target="globeContainer"></div>
+      
+      <!-- Globe Overlays -->
+      <div class="absolute top-6 left-6 flex flex-col gap-2">
+        <div class="bg-slate-900/80 border border-slate-700/50 p-3 backdrop-blur-md rounded-sm">
+          <div class="text-[10px] text-slate-500 uppercase mb-1">Total_Signals_24h</div>
+          <div class="text-2xl font-bold text-slate-100 tabular-nums"><%= @articles.count %></div>
+        </div>
+        <div class="bg-slate-900/80 border border-slate-700/50 p-3 backdrop-blur-md rounded-sm">
+          <div class="text-[10px] text-slate-500 uppercase mb-1">Threat_Escalations</div>
+          <div class="text-2xl font-bold text-orange-500 tabular-nums"><%= @latest_reports.count %></div>
+        </div>
+      </div>
+
+      <!-- Crosshair / HUD -->
+      <div class="absolute inset-0 pointer-events-none border border-cyan-500/10 opacity-50">
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-px h-8 bg-cyan-500/30"></div>
+        <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-px h-8 bg-cyan-500/30"></div>
+        <div class="absolute left-0 top-1/2 -translate-y-1/2 h-px w-8 bg-cyan-500/30"></div>
+        <div class="absolute right-0 top-1/2 -translate-y-1/2 h-px w-8 bg-cyan-500/30"></div>
+      </div>
+
+      <!-- Time Slider Control -->
+      <div class="absolute bottom-8 left-1/2 -translate-x-1/2 w-2/3 max-w-2xl bg-slate-900/90 border border-slate-700 p-6 backdrop-blur-xl rounded-lg shadow-2xl z-50">
+        <div class="flex items-center justify-between mb-4" data-controller="time-slider">
+          <div class="flex flex-col">
+            <span class="text-xs font-bold text-slate-400 tracking-wider">TEMPORAL_WINDOW_SCANNER</span>
+            <div class="text-cyan-500 text-xs font-medium" data-time-slider-target="label">Showing: Now (LIVE)</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button class="p-1 hover:bg-slate-800 rounded transition-colors" data-action="click->time-slider#prev">
+              <span class="text-slate-400">❮</span>
+            </button>
+            <input type="range" 
+                   class="w-64 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                   min="0" max="100" value="100"
+                   data-time-slider-target="slider"
+                   data-action="input->time-slider#update">
+            <button class="p-1 hover:bg-slate-800 rounded transition-colors" data-action="click->time-slider#next">
+              <span class="text-slate-400">❯</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Panel: Intelligence Briefing -->
+    <aside class="w-80 border-l border-slate-800 bg-slate-900/30 backdrop-blur-sm z-40 hidden xl:flex flex-col">
+      <div class="p-4 border-b border-slate-800 bg-slate-900/50">
+        <span class="text-xs font-bold tracking-widest text-slate-400">ANALYSIS_LAYER</span>
+      </div>
+      <div class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4" data-intelligence-dashboard-target="analysisContainer">
+        <% @latest_reports.each do |report| %>
+          <div class="p-3 border border-slate-800 bg-slate-900/50 hover:border-slate-600 transition-colors rounded-sm cursor-pointer group">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[10px] text-slate-500 uppercase"><%= report.region.name %></span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded-full border border-orange-500/50 text-orange-400 font-bold uppercase"><%= report.verdict %></span>
+            </div>
+            <p class="text-xs text-slate-300 line-clamp-2 italic">"<%= report.summary %>"</p>
+            <div class="mt-2 text-[10px] text-slate-600 flex items-center justify-between">
+              <span><%= time_ago_in_words(report.created_at) %> ago</span>
+              <span class="group-hover:text-cyan-400 transition-colors">DECRYPT_FULL_DOSSIER →</span>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<style>
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #1e293b;
+    border-radius: 2px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #334155;
+  }
+  
+  /* Range Slider Reset */
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 12px;
+    width: 12px;
+    border-radius: 50%;
+    background: #06b6d4;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+    border: 2px solid #083344;
+  }
+</style>

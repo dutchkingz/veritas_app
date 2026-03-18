@@ -11,6 +11,7 @@ class Article < ApplicationRecord
   has_many :entity_mentions, dependent: :destroy
   has_many :entities, through: :entity_mentions
 
+  after_create_commit :broadcast_sidebar_update
   after_create_commit :broadcast_to_globe
 
   # ----------------------------------------------------------
@@ -36,6 +37,15 @@ class Article < ApplicationRecord
   end
 
   private
+
+  def broadcast_sidebar_update
+    broadcast_prepend_to(
+      "hot_articles",
+      target: "hot-articles-feed",
+      partial: "articles/sidebar_item",
+      locals: { article: self, is_new: true }
+    )
+  end
 
   def broadcast_to_globe
     ActionCable.server.broadcast("globe", {

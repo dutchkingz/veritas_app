@@ -1,0 +1,49 @@
+<div class="veritas-feed-card <%= 'new-entry' if local_assigns[:is_new] %>"
+     id="<%= dom_id(article) %>"
+     data-controller="feed-card"
+     data-feed-card-lat-value="<%= article.latitude %>"
+     data-feed-card-lng-value="<%= article.longitude %>"
+     data-feed-card-article-id-value="<%= article.id %>"
+     data-article-id="<%= article.id %>"
+     data-action="click->feed-card#select">
+
+  <!-- Source + Time + Threat + Open link Row -->
+  <div class="d-flex justify-content-between align-items-center mb-1">
+    <span class="feed-source text-uppercase" style="font-size: 0.6rem; color: #00f0ff;"><%= article.source_name %></span>
+    <div class="d-flex align-items-center gap-2">
+      <% if article.ai_analysis&.threat_level %>
+        <span class="feed-threat" style="color: <%= article.ai_analysis.threat_color %>; font-size: 0.6rem;">
+          THREAT <%= article.ai_analysis.threat_level %>
+        </span>
+      <% end %>
+      <span class="feed-time" style="font-size: 0.6rem; color: #64748b;"><%= time_ago_in_words(article.published_at) %> ago</span>
+      <%= link_to "→", article_path(article),
+            class: "feed-card-open-link",
+            style: "font-size: 0.7rem; color: rgba(0,240,255,0.4); text-decoration: none;",
+            data: { turbo: false, action: "click->feed-card#openArticle" } %>
+    </div>
+  </div>
+
+  <!-- Headline -->
+  <p class="feed-headline" style="font-size: 0.8rem; font-weight: 600; line-height: 1.4; color: #e2e8f0; margin: 6px 0;">
+    <%= truncate(article.headline, length: 110) %>
+  </p>
+
+  <!-- Country + Coordinates + Intelligence Actions Row -->
+  <div class="d-flex justify-content-between align-items-center">
+    <span class="feed-location" style="font-size: 0.6rem; color: #64748b;">
+      <i class="fa fa-map-marker-alt me-1"></i>
+      <%= article.country&.name %> [<%= article.country&.iso_code %>]
+    </span>
+    <div class="d-flex align-items-center gap-1">
+      <button class="ndna-trigger-btn"
+              style="font-family: 'JetBrains Mono', monospace; font-size: 0.55rem; padding: 1px 4px; border: 1px solid rgba(0,240,255,0.2); background: transparent; color: #00f0ff;"
+              data-action="click->feed-card#openDna"
+              title="View Narrative DNA">◈ DNA</button>
+      <button class="tribunal-trigger-btn"
+              style="font-family: 'JetBrains Mono', monospace; font-size: 0.55rem; padding: 1px 4px; border: 1px solid rgba(0,240,255,0.2); background: transparent; color: #00f0ff;"
+              data-action="click->feed-card#openTribunal"
+              title="Open Intelligence Tribunal">⬟ TRIBUNAL</button>
+    </div>
+  </div>
+</div>
