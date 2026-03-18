@@ -12,6 +12,8 @@ ContradictionLog.destroy_all
 NarrativeSignatureArticle.destroy_all
 NarrativeSignature.destroy_all
 SourceCredibility.destroy_all
+EntityMention.destroy_all
+Entity.destroy_all
 BreakingAlert.destroy_all
 Briefing.destroy_all
 PerspectiveFilter.destroy_all
@@ -324,10 +326,203 @@ def seed_narrative_arcs!
   puts "Generated #{routes_created} real narrative routes."
 end
 
+def seed_compounding_intelligence!
+  puts "\n==== COMPOUNDING INTELLIGENCE SEED ===="
+
+  # --- Entities & Mentions ---
+  puts "Extracting entities from articles..."
+  entity_pool = {
+    "person" => %w[Volodymyr\ Zelensky Vladimir\ Putin Xi\ Jinping Joe\ Biden
+                    Narendra\ Modi Emmanuel\ Macron Olaf\ Scholz Benjamin\ Netanyahu
+                    Mohammad\ bin\ Salman Recep\ Tayyip\ Erdogan],
+    "organization" => %w[NATO UN EU BRICS OPEC WHO IMF Wagner\ Group Hezbollah Hamas
+                         CIA Mossad FSB IAEA G7 ASEAN African\ Union],
+    "country" => %w[Ukraine Russia China Taiwan United\ States Iran Israel
+                     Saudi\ Arabia North\ Korea India Pakistan Turkey Syria],
+    "event" => ["Ukraine Conflict", "Gaza War", "Taiwan Strait Tensions",
+                "BRICS Expansion", "US Election 2026", "Iran Nuclear Talks",
+                "Red Sea Shipping Crisis", "Sahel Insurgency", "AI Arms Race",
+                "Sanctions Escalation"]
+  }
+
+  entities = {}
+  entity_pool.each do |entity_type, names|
+    names.each do |name|
+      entities[name] = Entity.create!(
+        name: name,
+        normalized_name: name.downcase.strip,
+        entity_type: entity_type,
+        first_seen_at: rand(72).hours.ago
+      )
+    end
+  end
+
+  # Link entities to articles via EntityMention
+  all_entity_names = entities.keys
+  Article.find_each do |article|
+    headline = article.headline.to_s
+    # Match entities that appear in headline or assign 2-4 random ones
+    matched = all_entity_names.select { |name| headline.downcase.include?(name.downcase) }
+    matched = all_entity_names.sample(rand(2..4)) if matched.empty?
+
+    matched.each do |name|
+      EntityMention.create!(entity: entities[name], article: article)
+    rescue ActiveRecord::RecordInvalid
+      next # skip duplicates
+    end
+  end
+  puts "Created #{Entity.count} entities with #{EntityMention.count} mentions."
+
+  # --- Source Credibility ---
+  puts "Building source credibility profiles..."
+  Article.group(:source_name).count.each do |source_name, count|
+    analyses = AiAnalysis.joins(:article).where(articles: { source_name: source_name })
+    avg_trust = analyses.average(:trust_score)&.round(1) || 70.0
+    high_threat = analyses.where(threat_level: "3").count
+    low_threat = analyses.where(threat_level: "1").count
+    anomaly_count = analyses.where("sentinel_response->>'linguistic_anomaly_flag' = 'true'").count
+
+    topics = analyses.filter_map { |a| a.analyst_response&.dig("geopolitical_topic") }
+    sentiments = analyses.pluck(:sentiment_label).compact
+
+    SourceCredibility.create!(
+      source_name: source_name,
+      credibility_grade: avg_trust,
+      rolling_trust_score: avg_trust + rand(-5.0..5.0),
+      anomaly_rate: count > 0 ? (anomaly_count.to_f / count).round(3) : 0.0,
+      articles_analyzed: count,
+      high_threat_count: high_threat,
+      low_threat_count: low_threat,
+      topic_distribution: topics.tally,
+      sentiment_distribution: sentiments.tally,
+      coordination_flags: [],
+      first_analyzed_at: rand(72).hours.ago,
+      last_analyzed_at: Time.current
+    )
+  end
+  puts "Profiled #{SourceCredibility.count} sources."
+
+  # --- Narrative Signatures ---
+  puts "Detecting narrative signatures..."
+  topics = AiAnalysis.where(analysis_status: "complete")
+                     .filter_map { |a| a.analyst_response&.dig("geopolitical_topic") }
+                     .uniq
+
+  topics.each do |topic|
+    articles = Article.joins(:ai_analysis)
+                      .where("ai_analyses.analyst_response->>'geopolitical_topic' = ?", topic)
+                      .limit(50)
+    next if articles.size < 3
+
+    avg_trust = articles.joins(:ai_analysis).average("ai_analyses.trust_score")&.round(1) || 70.0
+    sources = articles.pluck(:source_name).tally
+    countries = articles.includes(:country).filter_map { |a| a.country&.name }.tally
+
+    sig = NarrativeSignature.create!(
+      label: "#{topic} Narrative Cluster",
+      active: true,
+      match_count: articles.size,
+      avg_trust_score: avg_trust,
+      dominant_threat_level: %w[1 2 3].sample,
+      source_distribution: sources,
+      country_distribution: countries,
+      first_seen_at: rand(48..72).hours.ago,
+      last_seen_at: rand(0..4).hours.ago
+    )
+
+    articles.each do |article|
+      NarrativeSignatureArticle.create!(
+        narrative_signature: sig,
+        article: article,
+        cosine_distance: rand(0.05..0.35).round(4),
+        matched_at: Time.current
+      )
+    rescue ActiveRecord::RecordInvalid
+      next
+    end
+  end
+  puts "Created #{NarrativeSignature.count} narrative signatures."
+
+  # --- Contradiction Logs ---
+  puts "Seeding contradiction detections..."
+  contradiction_descriptions = [
+    "Source A reports ceasefire agreement while Source B reports continued hostilities",
+    "Casualty figures differ by order of magnitude between state and independent media",
+    "Timeline of events contradicts between Eastern and Western outlets",
+    "Attribution of attack claimed by multiple conflicting sources",
+    "Economic impact assessment varies drastically across ideological lines",
+    "Diplomatic stance reported as both conciliatory and aggressive by different outlets",
+    "Troop movement reports contradict satellite imagery analysis",
+    "Election interference claims sourced to opposing intelligence agencies"
+  ]
+
+  articles = Article.where.not(source_name: nil).to_a
+  20.times do |i|
+    a, b = articles.sample(2)
+    next unless a && b && a.id != b.id
+
+    ContradictionLog.create!(
+      article_a_id: a.id,
+      article_b_id: b.id,
+      contradiction_type: %w[cross_source temporal_shift self_contradiction].sample,
+      severity: rand(0.3..0.95).round(2),
+      embedding_similarity: rand(0.4..0.85).round(4),
+      source_a: a.source_name,
+      source_b: b.source_name,
+      description: contradiction_descriptions[i % contradiction_descriptions.size],
+      metadata: {}
+    )
+  rescue ActiveRecord::RecordInvalid
+    next
+  end
+  puts "Logged #{ContradictionLog.count} contradictions."
+
+  # --- Intelligence Brief ---
+  puts "Generating intelligence brief..."
+  sig_names = NarrativeSignature.pluck(:label)
+  regions = Region.pluck(:name)
+
+  IntelligenceBrief.create!(
+    title: "VERITAS Daily Intelligence Assessment — #{Date.today.strftime('%d %b %Y')}",
+    brief_type: "daily",
+    status: "complete",
+    executive_summary: "VERITAS has processed #{Article.count} articles across #{SourceCredibility.count} profiled sources in the past 24 hours. #{NarrativeSignature.count} active narrative patterns detected with #{ContradictionLog.count} cross-source contradictions flagged for analyst review. Elevated threat posture observed in Eastern Europe and Middle East corridors.",
+    period_start: 24.hours.ago,
+    period_end: Time.current,
+    articles_processed: Article.count,
+    signatures_active: NarrativeSignature.count,
+    contradictions_found: ContradictionLog.count,
+    narrative_trends: sig_names.map { |name| { "label" => name, "direction" => %w[rising stable declining].sample, "article_count" => rand(10..50) } },
+    contradictions: ContradictionLog.limit(5).map { |c| { "description" => c.description, "severity" => c.severity, "sources" => [c.source_a, c.source_b] } },
+    blind_spots: regions.sample(3).map { |r| { "region" => r, "reason" => "Low article coverage (<5 articles in 24h)" } },
+    source_alerts: SourceCredibility.order(:credibility_grade).limit(3).map { |s| { "source" => s.source_name, "alert" => "Below-average trust score: #{s.credibility_grade}" } },
+    confidence_map: sig_names.index_with { rand(60..95) }
+  )
+  puts "Created #{IntelligenceBrief.count} intelligence brief."
+
+  # --- Embedding Snapshot ---
+  puts "Capturing embedding snapshot..."
+  EmbeddingSnapshot.create!(
+    captured_at: Time.current,
+    article_count: Article.where.not(embedding: nil).count,
+    cluster_count: NarrativeSignature.count,
+    cluster_summary: NarrativeSignature.limit(10).map { |s| { "label" => s.label, "size" => s.match_count, "avg_trust" => s.avg_trust_score } },
+    drift_metrics: { "mean_shift" => rand(0.01..0.05).round(4), "max_shift" => rand(0.05..0.15).round(4), "clusters_merged" => 0, "clusters_split" => 0 },
+    outlier_ids: Article.order("RANDOM()").limit(5).pluck(:id)
+  )
+  puts "Snapshot captured."
+end
+
 create_perspective_filters!
 create_users!
 created_regions = create_regions_and_countries!
 seed_articles!(created_regions)
 seed_narrative_arcs!
+seed_compounding_intelligence!
 
-puts "Final counts: #{Article.count} articles, #{NarrativeArc.count} arcs, #{Region.count} regions."
+puts "\n==== FINAL COUNTS ===="
+puts "#{Article.count} articles, #{AiAnalysis.count} analyses, #{NarrativeArc.count} arcs"
+puts "#{Region.count} regions, #{Country.count} countries"
+puts "#{Entity.count} entities, #{EntityMention.count} entity mentions"
+puts "#{SourceCredibility.count} source profiles, #{NarrativeSignature.count} signatures"
+puts "#{ContradictionLog.count} contradictions, #{IntelligenceBrief.count} briefs"
