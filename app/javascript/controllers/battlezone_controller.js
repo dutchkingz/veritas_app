@@ -18,8 +18,9 @@ const C = {
   redGlow:   "rgba(255,58,94,0.4)",
   bg:        "#09090f",
   text:      "#e8edf2",
-  gridDim:   "rgba(0,212,255,0.06)",
-  gridMid:   "rgba(0,212,255,0.14)",
+  gridDim:   "rgba(0,212,255,0.3)",
+  gridMid:   "rgba(0,212,255,0.6)",
+  gridBright:"rgba(0,212,255,0.9)",
 }
 
 const GRID_SIZE    = 10
@@ -118,10 +119,13 @@ export default class extends Controller {
 
   _onKeyDown(e) {
     if (e.key === "Escape") { this._close(); return }
-    this._keys.add(e.key.toLowerCase())
-    if (["arrowup","arrowdown","arrowleft","arrowright"," "].includes(e.key.toLowerCase()) || e.key === " ") {
+    const k = e.key === " " ? " " : e.key.toLowerCase()
+    this._keys.add(k)
+    if ([" ", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) {
       e.preventDefault()
     }
+    // Queue fire on keydown so quick taps are never missed
+    if (k === " ") this._fireQueued = true
     if (e.key === "Enter" && (this._state === "start" || this._state === "gameover")) {
       this._initGame()
       this._state = "playing"
@@ -129,7 +133,8 @@ export default class extends Controller {
   }
 
   _onKeyUp(e) {
-    this._keys.delete(e.key.toLowerCase())
+    const k = e.key === " " ? " " : e.key.toLowerCase()
+    this._keys.delete(k)
   }
 
   _key(k) { return this._keys.has(k) }
@@ -137,6 +142,7 @@ export default class extends Controller {
   // ── Game state init ──
 
   _initGame() {
+    this._fireQueued = false
     this._player = { x: 0, z: 0, rot: 0, cooldown: 0, lives: 3, invuln: 0 }
     this._enemies     = []
     this._bullets      = []
@@ -170,8 +176,8 @@ export default class extends Controller {
     const p = this._player
 
     // Player movement
-    if (this._key("a") || this._key("arrowleft"))  p.rot += TURN_SPEED * dt
-    if (this._key("d") || this._key("arrowright")) p.rot -= TURN_SPEED * dt
+    if (this._key("a") || this._key("arrowleft"))  p.rot -= TURN_SPEED * dt
+    if (this._key("d") || this._key("arrowright")) p.rot += TURN_SPEED * dt
     const fwd = (this._key("w") || this._key("arrowup")) ? 1 : (this._key("s") || this._key("arrowdown")) ? -1 : 0
     if (fwd) {
       p.x += Math.sin(p.rot) * PLAYER_SPEED * fwd * dt
@@ -184,10 +190,12 @@ export default class extends Controller {
       p.z *= FIELD_RADIUS / dist
     }
 
-    // Fire
+    // Fire — accept held key OR queued tap
     p.cooldown = Math.max(0, p.cooldown - dt)
     p.invuln   = Math.max(0, p.invuln - dt)
-    if (this._key(" ") && p.cooldown <= 0 && this._state === "playing") {
+    const wantsFire = this._key(" ") || this._fireQueued
+    this._fireQueued = false
+    if (wantsFire && p.cooldown <= 0 && this._state === "playing") {
       p.cooldown = FIRE_COOLDOWN
       this._bullets.push({
         x: p.x + Math.sin(p.rot) * 2,
@@ -337,7 +345,7 @@ export default class extends Controller {
   _transform(wx, wy, wz) {
     const p = this._player
     const dx = wx - p.x, dz = wz - p.z, dy = wy - CAM_HEIGHT
-    const s = Math.sin(-p.rot), c = Math.cos(-p.rot)
+    const s = Math.sin(p.rot), c = Math.cos(p.rot)
     return { x: dx * c - dz * s, y: dy, z: dx * s + dz * c }
   }
 
@@ -367,13 +375,16 @@ export default class extends Controller {
       return
     }
 
-    // Horizon line
-    ctx.strokeStyle = C.cyanMid
-    ctx.lineWidth = 1
+    // Horizon line — TRON glow
+    ctx.strokeStyle = C.gridMid
+    ctx.shadowColor = C.cyan
+    ctx.shadowBlur = 6
+    ctx.lineWidth = 1.5
     ctx.beginPath()
     ctx.moveTo(0, this._cy)
     ctx.lineTo(w, this._cy)
     ctx.stroke()
+    ctx.shadowBlur = 0
 
     this._renderGround(ctx)
     this._renderBullets(ctx)
@@ -482,7 +493,7 @@ export default class extends Controller {
   // ── Ground grid ──
 
   _renderGround(ctx) {
-    ctx.lineWidth = 1
+    ctx.lineWidth = 1.5
 
     for (let i = -GRID_EXTENT; i <= GRID_EXTENT; i += GRID_SIZE) {
       // Z-parallel lines
@@ -507,11 +518,24 @@ export default class extends Controller {
     const by = this._cy - (this._focal * b.y) / b.z
 
     const avgZ = (a.z + b.z) / 2
-    ctx.strokeStyle = avgZ < 40 ? C.gridMid : C.gridDim
+    if (avgZ < 20) {
+      ctx.strokeStyle = C.gridBright
+      ctx.shadowColor = C.cyan
+      ctx.shadowBlur = 6
+    } else if (avgZ < 60) {
+      ctx.strokeStyle = C.gridMid
+      ctx.shadowColor = C.cyan
+      ctx.shadowBlur = 4
+    } else {
+      ctx.strokeStyle = C.gridDim
+      ctx.shadowColor = C.cyan
+      ctx.shadowBlur = 2
+    }
     ctx.beginPath()
     ctx.moveTo(ax, ay)
     ctx.lineTo(bx, by)
     ctx.stroke()
+    ctx.shadowBlur = 0
   }
 
   _clipToNear(behind, infront) {
