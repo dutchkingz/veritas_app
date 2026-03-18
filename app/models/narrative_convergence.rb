@@ -1,4 +1,5 @@
 class NarrativeConvergence < ApplicationRecord
+  include ConfidenceScoreable
   # topic_keyword stores JSON metadata — see metadata accessors below
   # article_count         — number of articles in cluster
   # convergence_percentage — source diversity (unique sources / total * 100)

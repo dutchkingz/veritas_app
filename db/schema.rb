@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_17_150939) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_18_092119) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -87,6 +87,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_17_150939) do
     t.index ["user_id"], name: "index_briefings_on_user_id"
   end
 
+  create_table "contradiction_logs", force: :cascade do |t|
+    t.bigint "article_a_id", null: false
+    t.bigint "article_b_id", null: false
+    t.string "contradiction_type", null: false
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.float "embedding_similarity"
+    t.jsonb "metadata", default: {}
+    t.float "severity", default: 0.0
+    t.string "source_a"
+    t.string "source_b"
+    t.datetime "updated_at", null: false
+    t.index ["article_a_id", "article_b_id"], name: "idx_contradiction_pair", unique: true
+    t.index ["article_a_id"], name: "index_contradiction_logs_on_article_a_id"
+    t.index ["article_b_id"], name: "index_contradiction_logs_on_article_b_id"
+    t.index ["contradiction_type"], name: "index_contradiction_logs_on_contradiction_type"
+    t.index ["severity"], name: "index_contradiction_logs_on_severity"
+  end
+
   create_table "countries", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "iso_code"
@@ -94,6 +113,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_17_150939) do
     t.bigint "region_id", null: false
     t.datetime "updated_at", null: false
     t.index ["region_id"], name: "index_countries_on_region_id"
+  end
+
+  create_table "embedding_snapshots", force: :cascade do |t|
+    t.integer "article_count", null: false
+    t.datetime "captured_at", null: false
+    t.integer "cluster_count", default: 0
+    t.jsonb "cluster_summary", default: []
+    t.datetime "created_at", null: false
+    t.jsonb "drift_metrics", default: {}
+    t.jsonb "outlier_ids", default: []
+    t.datetime "updated_at", null: false
+    t.index ["captured_at"], name: "index_embedding_snapshots_on_captured_at"
   end
 
   create_table "entities", force: :cascade do |t|
@@ -117,6 +148,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_17_150939) do
     t.index ["article_id"], name: "index_entity_mentions_on_article_id"
     t.index ["entity_id", "article_id"], name: "index_entity_mentions_on_entity_id_and_article_id", unique: true
     t.index ["entity_id"], name: "index_entity_mentions_on_entity_id"
+  end
+
+  create_table "intelligence_briefs", force: :cascade do |t|
+    t.integer "articles_processed", default: 0
+    t.jsonb "blind_spots", default: []
+    t.string "brief_type", null: false
+    t.jsonb "confidence_map", default: {}
+    t.jsonb "contradictions", default: []
+    t.integer "contradictions_found", default: 0
+    t.datetime "created_at", null: false
+    t.text "executive_summary"
+    t.jsonb "narrative_trends", default: []
+    t.datetime "period_end"
+    t.datetime "period_start"
+    t.integer "signatures_active", default: 0
+    t.jsonb "source_alerts", default: []
+    t.string "status", default: "generating", null: false
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["brief_type"], name: "index_intelligence_briefs_on_brief_type"
+    t.index ["created_at"], name: "index_intelligence_briefs_on_created_at"
+    t.index ["status"], name: "index_intelligence_briefs_on_status"
   end
 
   create_table "intelligence_reports", force: :cascade do |t|
@@ -186,6 +239,34 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_17_150939) do
     t.index ["manipulation_score"], name: "index_narrative_routes_on_manipulation_score"
     t.index ["narrative_arc_id"], name: "index_narrative_routes_on_narrative_arc_id"
     t.index ["origin_country", "target_country"], name: "index_narrative_routes_on_origin_country_and_target_country"
+  end
+
+  create_table "narrative_signature_articles", force: :cascade do |t|
+    t.bigint "article_id", null: false
+    t.float "cosine_distance"
+    t.datetime "matched_at", null: false
+    t.bigint "narrative_signature_id", null: false
+    t.index ["article_id"], name: "index_narrative_signature_articles_on_article_id"
+    t.index ["narrative_signature_id", "article_id"], name: "idx_sig_articles_unique", unique: true
+    t.index ["narrative_signature_id"], name: "index_narrative_signature_articles_on_narrative_signature_id"
+  end
+
+  create_table "narrative_signatures", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.float "avg_trust_score", default: 0.0
+    t.vector "centroid", limit: 1536
+    t.jsonb "country_distribution", default: {}
+    t.datetime "created_at", null: false
+    t.string "dominant_threat_level"
+    t.datetime "first_seen_at", null: false
+    t.string "label", null: false
+    t.datetime "last_seen_at", null: false
+    t.integer "match_count", default: 0, null: false
+    t.jsonb "source_distribution", default: {}
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_narrative_signatures_on_active"
+    t.index ["last_seen_at"], name: "index_narrative_signatures_on_last_seen_at"
+    t.index ["match_count"], name: "index_narrative_signatures_on_match_count"
   end
 
   create_table "pages", force: :cascade do |t|
@@ -358,6 +439,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_17_150939) do
     t.index ["key"], name: "index_solid_queue_semaphores_on_key", unique: true
   end
 
+  create_table "source_credibilities", force: :cascade do |t|
+    t.float "anomaly_rate", default: 0.0
+    t.integer "articles_analyzed", default: 0, null: false
+    t.jsonb "coordination_flags", default: []
+    t.datetime "created_at", null: false
+    t.float "credibility_grade", default: 50.0, null: false
+    t.datetime "first_analyzed_at"
+    t.integer "high_threat_count", default: 0
+    t.datetime "last_analyzed_at"
+    t.integer "low_threat_count", default: 0
+    t.float "rolling_trust_score", default: 0.0, null: false
+    t.jsonb "sentiment_distribution", default: {}
+    t.string "source_name", null: false
+    t.jsonb "topic_distribution", default: {}
+    t.datetime "updated_at", null: false
+    t.index ["credibility_grade"], name: "index_source_credibilities_on_credibility_grade"
+    t.index ["rolling_trust_score"], name: "index_source_credibilities_on_rolling_trust_score"
+    t.index ["source_name"], name: "index_source_credibilities_on_source_name", unique: true
+  end
+
   create_table "user_model_configs", force: :cascade do |t|
     t.string "analyst_model", default: "google/gemini-2.0-flash-001", null: false
     t.string "arbiter_model", default: "anthropic/claude-3.5-haiku", null: false
@@ -393,12 +494,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_17_150939) do
   add_foreign_key "breaking_alerts", "regions"
   add_foreign_key "breaking_alerts", "users", column: "triggered_by_id"
   add_foreign_key "briefings", "users"
+  add_foreign_key "contradiction_logs", "articles", column: "article_a_id"
+  add_foreign_key "contradiction_logs", "articles", column: "article_b_id"
   add_foreign_key "countries", "regions"
   add_foreign_key "entity_mentions", "articles"
   add_foreign_key "entity_mentions", "entities"
   add_foreign_key "intelligence_reports", "regions"
   add_foreign_key "narrative_arcs", "articles"
   add_foreign_key "narrative_routes", "narrative_arcs"
+  add_foreign_key "narrative_signature_articles", "articles"
+  add_foreign_key "narrative_signature_articles", "narrative_signatures"
   add_foreign_key "saved_articles", "articles"
   add_foreign_key "saved_articles", "users"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

@@ -30,6 +30,27 @@ production:
     queue: default
     schedule: every 6 hours at minute 30
 
+  cluster_narrative_signatures:
+    class: NarrativeSignatureClusterJob
+    queue: intelligence
+    schedule: every 4 hours at minute 45
+
+  detect_contradictions:
+    class: DetectContradictionsJob
+    queue: intelligence
+    schedule: every 6 hours
+
+  generate_daily_brief:
+    class: GenerateIntelligenceBriefJob
+    queue: intelligence
+    args: ["daily"]
+    schedule: every day at 6am
+
+  capture_embedding_snapshot:
+    class: CaptureEmbeddingSnapshotJob
+    queue: intelligence
+    schedule: every 12 hours
+
 development:
   fetch_articles:
     class: FetchArticlesJob
@@ -46,3 +67,24 @@ development:
     class: ScheduleRegionalAnalysisJob
     queue: default
     schedule: every 6 hours at minute 30
+
+  cluster_narrative_signatures:
+    class: NarrativeSignatureClusterJob
+    queue: intelligence
+    schedule: every 4 hours at minute 45
+
+  detect_contradictions:
+    class: DetectContradictionsJob
+    queue: intelligence
+    schedule: every 6 hours
+
+  generate_daily_brief:
+    class: GenerateIntelligenceBriefJob
+    queue: intelligence
+    args: ["daily"]
+    schedule: every day at 6am
+
+  capture_embedding_snapshot:
+    class: CaptureEmbeddingSnapshotJob
+    queue: intelligence
+    schedule: every 12 hours
