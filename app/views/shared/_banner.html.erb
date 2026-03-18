@@ -104,6 +104,14 @@
         NEXUS
       </button>
 
+      <%= link_to aware_path,
+            class: "d-none d-lg-flex align-items-center gap-2",
+            style: "text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #00d4ff; letter-spacing: 1px; transition: color 0.2s;",
+            data: { turbo: false } do %>
+        <i class="fa fa-brain"></i>
+        A.W.A.R.E
+      <% end %>
+
       <%= link_to briefings_path,
             class: "nexus-navbar-btn d-none d-lg-flex",
             data: { turbo: false } do %>

@@ -18,3 +18,4 @@ pin "three", to: "https://ga.jspm.io/npm:three@0.160.0/build/three.module.js"
 
 # D3.js — Force-directed network graphs (Narrative DNA)
 pin "d3", to: "https://cdn.jsdelivr.net/npm/d3@7/+esm"
+pin "topojson-client", to: "https://cdn.jsdelivr.net/npm/topojson-client@3/+esm"

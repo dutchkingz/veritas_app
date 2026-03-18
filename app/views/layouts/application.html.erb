@@ -18,7 +18,7 @@
     <%= javascript_importmap_tags %>
   </head>
 
-  <body class="veritas-body"<% if user_signed_in? %> data-controller="breaking-alert"<% end %>>
+  <body class="veritas-body" data-controller="screensaver<%= ' breaking-alert' if user_signed_in? %>" data-screensaver-image="<%= asset_path('warroom_screensaver.png') %>">
 
 
     <!-- Top Navigation Bar -->

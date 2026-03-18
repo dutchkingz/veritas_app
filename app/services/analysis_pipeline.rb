@@ -53,8 +53,14 @@ class AnalysisPipeline
 
       Rails.logger.info "[VERITAS TRIAD] ✅ Analysis pipeline COMPLETE for Article ##{article.id}"
 
+      # ━━━ PHASE 3b: Source Credibility Update ━━━
+      SourceCredibilityService.new.update_for(article)
+
       # ━━━ PHASE 4: Semantic Intelligence (Vector Embedding) ━━━
       EmbeddingService.new.generate(article)
+
+      # ━━━ PHASE 4b: Narrative Signature Classification ━━━
+      NarrativeSignatureService.new.classify(article)
 
       # ━━━ PHASE 5: Entity Extraction (non-blocking) ━━━
       begin

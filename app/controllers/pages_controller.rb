@@ -1,6 +1,6 @@
 class PagesController < ApplicationController
   DEFAULT_ARC_COLOR = "#00f0ff".freeze
-  skip_before_action :authenticate_user!, only: [:welcome, :home, :globe_data, :search, :narrative_dna, :tribunal, :article_preview, :entity_nexus, :entity_nexus_detail]
+  skip_before_action :authenticate_user!, only: [:welcome, :home, :globe_data, :search, :aware, :aware_narration, :narrative_dna, :tribunal, :article_preview, :entity_nexus, :entity_nexus_detail]
 
   def welcome
     redirect_to dashboard_path if user_signed_in?
@@ -15,6 +15,71 @@ class PagesController < ApplicationController
                           .where.not(ai_analysis: { threat_level: nil })
                           .order('ai_analysis.threat_level DESC, published_at DESC')
                           .limit(10)
+  end
+
+  def aware
+    @latest_brief = IntelligenceBrief.complete.latest.first
+    @signatures = NarrativeSignature.active.recent.limit(20)
+    @top_sources = SourceCredibility.by_grade.limit(20)
+    @contradictions = ContradictionLog.recent.limit(10)
+    @latest_snapshot = EmbeddingSnapshot.recent.first
+    @total_articles = Article.joins(:ai_analysis).where(ai_analyses: { analysis_status: "complete" }).count
+    @total_sources = SourceCredibility.count
+    @confidence_map = AiAnalysis.where(analysis_status: "complete")
+                                .where.not(geopolitical_topic: [nil, ""])
+                                .group(:geopolitical_topic)
+                                .count
+                                .sort_by { |_, v| -v }
+                                .first(15)
+
+    # Self-narration data
+    @total_analyses = AiAnalysis.where(analysis_status: "complete").count
+    @total_contradictions = ContradictionLog.count
+    @total_briefs = IntelligenceBrief.complete.count
+    @total_entities = Entity.count
+    @total_entity_mentions = EntityMention.count
+    @top_entity = Entity.order(mentions_count: :desc).first
+    @top_signature = @signatures.first
+    @entity_types_breakdown = Entity.group(:entity_type).count
+
+    # System age & learning rate
+    first_article = Article.order(:created_at).limit(1).pick(:created_at)
+    @system_age_hours = first_article ? ((Time.current - first_article) / 1.hour).round : 0
+    @articles_per_day = (@total_articles.to_f / [(@system_age_hours / 24.0).ceil, 1].max).round(1)
+
+    # Knowledge gaps
+    @under_profiled_sources = SourceCredibility.where("articles_analyzed < ?", 5).limit(10)
+    @under_profiled_count = SourceCredibility.where("articles_analyzed < ?", 5).count
+    @blind_spot_regions = @latest_brief&.blind_spots&.map { |bs| bs["region"] }&.compact || []
+    @low_confidence_topics = @confidence_map.select { |_, count| count < 5 }
+    @low_confidence_count = @low_confidence_topics.size
+
+    # System confidence gauge
+    total_coverage = @confidence_map.sum { |_, count| count }
+    max_possible = [@confidence_map.size * 50, 1].max
+    @system_confidence = ((total_coverage.to_f / max_possible) * 100).clamp(0, 100).round
+
+    # Signature growth status
+    @signature_statuses = @signatures.to_h { |sig|
+      status = sig.last_seen_at > 6.hours.ago ? "RISING" : sig.last_seen_at > 48.hours.ago ? "STABLE" : "DORMANT"
+      [sig.id, status]
+    }
+  end
+
+  # GET /api/aware_narration — ElevenLabs TTS audio of the VERITAS self-narration
+  def aware_narration
+    narration_text = build_aware_narration
+    cache_key = "aware_narration/#{Digest::MD5.hexdigest(narration_text)}"
+
+    audio = Rails.cache.fetch(cache_key, expires_in: 1.hour) do
+      ElevenLabsService.new(text: narration_text).call
+    end
+
+    if audio
+      send_data audio, type: "audio/mpeg", disposition: "inline"
+    else
+      head :service_unavailable
+    end
   end
 
   def home
@@ -344,6 +409,32 @@ class PagesController < ApplicationController
   end
 
   private
+
+  def build_aware_narration
+    total_articles = Article.joins(:ai_analysis).where(ai_analyses: { analysis_status: "complete" }).count
+    total_sources  = SourceCredibility.count
+    signatures     = NarrativeSignature.active.recent.limit(5)
+    top_signature  = signatures.first
+    top_entity     = Entity.order(mentions_count: :desc).first
+    total_entities = Entity.count
+    total_contradictions = ContradictionLog.count
+    latest_brief   = IntelligenceBrief.complete.latest.first
+
+    first_article = Article.order(:created_at).limit(1).pick(:created_at)
+    system_age_hours = first_article ? ((Time.current - first_article) / 1.hour).round : 0
+
+    blind_spots = latest_brief&.blind_spots&.map { |bs| bs["region"] }&.compact || []
+
+    parts = []
+    parts << "I have processed... #{total_articles} articles... across #{total_sources} sources... in #{system_age_hours} hours of operation."
+    parts << "I recognize... #{signatures.size} recurring narrative patterns." if signatures.any?
+    parts << "My strongest signal... is #{top_signature.label}... #{top_signature.match_count} articles... and growing." if top_signature
+    parts << "I track #{total_entities} entities... #{top_entity.name}... appears most frequently... across #{top_entity.mentions_count} mentions." if top_entity
+    parts << "I have caught... #{total_contradictions} contradictions... between sources." if total_contradictions > 0
+    parts << "I have #{blind_spots.size} blind spots... Regions I cannot yet... adequately cover." if blind_spots.any?
+    parts << "My last intelligence assessment... was #{ActionController::Base.helpers.time_ago_in_words(latest_brief.created_at)} ago." if latest_brief
+    parts.join(" ... ")
+  end
 
   def compute_sentiment_breakdown(entity)
     labels = entity.articles

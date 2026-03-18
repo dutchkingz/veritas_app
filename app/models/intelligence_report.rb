@@ -1,4 +1,6 @@
 class IntelligenceReport < ApplicationRecord
+  include ConfidenceScoreable
+
   belongs_to :region
 
   # ----------------------------------------------------------
