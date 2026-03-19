@@ -1,6 +1,6 @@
 Rails.application.routes.draw do
   get "dashboards/show"
-  devise_for :users
+  devise_for :users, controllers: { sessions: "users/sessions" }
 
   # -------------------------------------------------------
   # Root & Search
