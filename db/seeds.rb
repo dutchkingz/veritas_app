@@ -365,46 +365,95 @@ def seed_compounding_intelligence!
   # --- Entities & Mentions ---
   puts "Extracting entities from articles..."
   entity_pool = {
-    "person" => %w[Volodymyr\ Zelensky Vladimir\ Putin Xi\ Jinping Joe\ Biden
-                    Narendra\ Modi Emmanuel\ Macron Olaf\ Scholz Benjamin\ Netanyahu
-                    Mohammad\ bin\ Salman Recep\ Tayyip\ Erdogan],
-    "organization" => %w[NATO UN EU BRICS OPEC WHO IMF Wagner\ Group Hezbollah Hamas
-                         CIA Mossad FSB IAEA G7 ASEAN African\ Union],
-    "country" => %w[Ukraine Russia China Taiwan United\ States Iran Israel
-                     Saudi\ Arabia North\ Korea India Pakistan Turkey Syria],
-    "event" => ["Ukraine Conflict", "Gaza War", "Taiwan Strait Tensions",
-                "BRICS Expansion", "US Election 2026", "Iran Nuclear Talks",
-                "Red Sea Shipping Crisis", "Sahel Insurgency", "AI Arms Race",
-                "Sanctions Escalation"]
+    "person" => [
+      "Volodymyr Zelensky", "Vladimir Putin", "Xi Jinping", "Joe Biden",
+      "Narendra Modi", "Emmanuel Macron", "Olaf Scholz", "Benjamin Netanyahu",
+      "Mohammad bin Salman", "Recep Tayyip Erdogan", "Ali Khamenei",
+      "Hossein Amir-Abdollahian", "Yoav Gallant", "Amos Yadlin",
+      "Janet Yellen", "Anthony Blinken", "Jake Sullivan", "Sergei Lavrov",
+      "Wang Yi", "Jens Stoltenberg", "Mark Milley", "Christopher Wray"
+    ],
+    "organization" => [
+      "NATO", "UN", "EU", "BRICS", "OPEC", "WHO", "IMF", "IAEA", "G7", "G20",
+      "Wagner Group", "Africa Corps", "Hezbollah", "Hamas", "Houthis",
+      "CIA", "Mossad", "FSB", "GRU", "NSA", "CISA", "Sandworm",
+      "ASEAN", "African Union", "Mandiant", "Lloyd's of London",
+      "TSMC", "NVIDIA", "Samsung", "Rapidus", "Pentagon",
+      "Internet Research Agency", "Stanford Internet Observatory"
+    ],
+    "country" => [
+      "Ukraine", "Russia", "China", "Taiwan", "United States", "Iran", "Israel",
+      "Saudi Arabia", "North Korea", "India", "Pakistan", "Turkey", "Syria",
+      "France", "Germany", "United Kingdom", "Poland", "Qatar",
+      "Japan", "South Korea", "Singapore", "Brazil", "Mali", "Niger"
+    ],
+    "event" => [
+      "Ukraine Conflict", "Gaza War", "Taiwan Strait Tensions",
+      "BRICS Expansion", "US Election 2026", "Iran Nuclear Talks",
+      "Red Sea Shipping Crisis", "Sahel Insurgency", "AI Arms Race",
+      "Sanctions Escalation", "Fordow Enrichment Crisis", "Black Sea Naval Standoff",
+      "TIDEWRECK Cyber Attack", "Silicon Chip War", "Deepfake Election Campaign",
+      "BRICS Bridge Launch", "Operation Blue Horizon", "Houthi Chokehold"
+    ]
   }
 
   entities = {}
   entity_pool.each do |entity_type, names|
     names.each do |name|
       entities[name] = Entity.create!(
-        name: name,
+        name:            name,
         normalized_name: name.downcase.strip,
-        entity_type: entity_type,
-        first_seen_at: rand(72).hours.ago
+        entity_type:     entity_type,
+        first_seen_at:   rand(72).hours.ago
       )
     end
   end
 
-  # Link entities to articles via EntityMention
-  all_entity_names = entities.keys
-  Article.find_each do |article|
-    headline = article.headline.to_s
-    # Match entities that appear in headline or assign 2-4 random ones
-    matched = all_entity_names.select { |name| headline.downcase.include?(name.downcase) }
-    matched = all_entity_names.sample(rand(2..4)) if matched.empty?
+  # Topic → entity affinity map for richer, meaningful NEXUS connections
+  topic_entity_affinity = {
+    "Military"   => ["NATO", "Wagner Group", "Africa Corps", "GRU", "NSA", "CIA", "Mossad",
+                      "Pentagon", "Vladimir Putin", "Benjamin Netanyahu", "Yoav Gallant",
+                      "Ukraine Conflict", "Black Sea Naval Standoff", "Sahel Insurgency",
+                      "Russia", "Ukraine", "Iran", "Israel"],
+    "Diplomacy"  => ["IAEA", "UN", "EU", "G7", "G20", "BRICS", "Hossein Amir-Abdollahian",
+                      "Anthony Blinken", "Sergei Lavrov", "Wang Yi", "Jens Stoltenberg",
+                      "Iran Nuclear Talks", "Fordow Enrichment Crisis", "BRICS Expansion",
+                      "BRICS Bridge Launch", "Iran", "Saudi Arabia", "China", "Russia"],
+    "Cyber"      => ["NSA", "CIA", "GRU", "Sandworm", "FSB", "CISA", "Mandiant",
+                      "Internet Research Agency", "Stanford Internet Observatory",
+                      "Christopher Wray", "TIDEWRECK Cyber Attack", "Deepfake Election Campaign",
+                      "AI Arms Race", "United States", "Russia"],
+    "Trade"      => ["TSMC", "NVIDIA", "Samsung", "Rapidus", "OPEC", "IMF", "Janet Yellen",
+                      "Lloyd's of London", "Silicon Chip War", "Red Sea Shipping Crisis",
+                      "BRICS Bridge Launch", "Sanctions Escalation", "Houthi Chokehold",
+                      "China", "Taiwan", "United States", "Japan", "South Korea"]
+  }
 
-    matched.each do |name|
+  # Link entities to articles — headline match + topic affinity + random fill
+  all_entity_names = entities.keys
+  Article.includes(:ai_analysis).find_each do |article|
+    headline = article.headline.to_s.downcase
+    topic    = article.ai_analysis&.analyst_response&.dig("geopolitical_topic") || "Military"
+
+    # 1. Headline keyword matches
+    matched = all_entity_names.select { |name| headline.include?(name.downcase) }
+
+    # 2. Topic-affinity entities (pick 3-5 from affinity pool)
+    affinity = topic_entity_affinity[topic] || topic_entity_affinity["Military"]
+    affinity_picks = (affinity & all_entity_names).sample(rand(3..5))
+
+    # 3. Combine and ensure 5-8 total mentions for rich NEXUS graph
+    combined = (matched + affinity_picks).uniq
+    combined += all_entity_names.sample(rand(2..3)) while combined.size < 5
+    combined = combined.first(8)
+
+    combined.each do |name|
       EntityMention.create!(entity: entities[name], article: article)
     rescue ActiveRecord::RecordInvalid
-      next # skip duplicates
+      next
     end
   end
-  puts "Created #{Entity.count} entities with #{EntityMention.count} mentions."
+  puts "Created #{Entity.count} entities with #{EntityMention.count} mentions (avg #{(EntityMention.count.to_f / [Article.count, 1].max).round(1)} per article)."
 
   # --- Source Credibility ---
   puts "Building source credibility profiles..."
@@ -572,11 +621,358 @@ def seed_compounding_intelligence!
   puts "Snapshot captured."
 end
 
+def seed_demo_routes!
+  puts "\n==== CINEMATIC NARRATIVE ROUTE INJECTION ===="
+
+  # ── City coordinate hub map ─────────────────────────────────────────────────
+  hubs = {
+    vienna:     { lat: 48.21,  lng:  16.37,   country: "Austria",        city: "Vienna" },
+    tehran:     { lat: 35.69,  lng:  51.39,   country: "Iran",           city: "Tehran" },
+    tel_aviv:   { lat: 32.09,  lng:  34.78,   country: "Israel",         city: "Tel Aviv" },
+    riyadh:     { lat: 24.69,  lng:  46.72,   country: "Saudi Arabia",   city: "Riyadh" },
+    moscow:     { lat: 55.76,  lng:  37.62,   country: "Russia",         city: "Moscow" },
+    beijing:    { lat: 39.90,  lng: 116.41,   country: "China",          city: "Beijing" },
+    new_delhi:  { lat: 28.61,  lng:  77.21,   country: "India",          city: "New Delhi" },
+    washington: { lat: 38.91,  lng: -77.04,   country: "United States",  city: "Washington DC" },
+    new_york:   { lat: 40.71,  lng: -74.01,   country: "United States",  city: "New York" },
+    london:     { lat: 51.51,  lng:  -0.13,   country: "United Kingdom", city: "London" },
+    paris:      { lat: 48.86,  lng:   2.35,   country: "France",         city: "Paris" },
+    berlin:     { lat: 52.52,  lng:  13.41,   country: "Germany",        city: "Berlin" },
+    doha:       { lat: 25.29,  lng:  51.53,   country: "Qatar",          city: "Doha" },
+    tokyo:      { lat: 35.68,  lng: 139.65,   country: "Japan",          city: "Tokyo" },
+    seoul:      { lat: 37.57,  lng: 126.98,   country: "South Korea",    city: "Seoul" },
+    taipei:     { lat: 25.04,  lng: 121.57,   country: "Taiwan",         city: "Taipei" },
+    singapore:  { lat:  1.35,  lng: 103.82,   country: "Singapore",      city: "Singapore" },
+    cairo:      { lat: 30.04,  lng:  31.24,   country: "Egypt",          city: "Cairo" },
+    nairobi:    { lat: -1.29,  lng:  36.82,   country: "Kenya",          city: "Nairobi" },
+    islamabad:  { lat: 33.68,  lng:  73.05,   country: "Pakistan",       city: "Islamabad" },
+    ankara:     { lat: 39.92,  lng:  32.85,   country: "Turkey",         city: "Ankara" },
+    brasilia:   { lat: -15.78, lng: -47.93,   country: "Brazil",         city: "Brasilia" },
+    kyiv:       { lat: 50.45,  lng:  30.52,   country: "Ukraine",        city: "Kyiv" },
+    rotterdam:  { lat: 51.92,  lng:   4.48,   country: "Netherlands",    city: "Rotterdam" },
+    warsaw:     { lat: 52.23,  lng:  21.01,   country: "Poland",         city: "Warsaw" },
+    bamako:     { lat: 12.65,  lng:  -8.00,   country: "Mali",           city: "Bamako" },
+    dubai:      { lat: 25.20,  lng:  55.27,   country: "UAE",            city: "Dubai" },
+  }
+
+  # ── Helpers ─────────────────────────────────────────────────────────────────
+  article_by_source = Article.includes(:ai_analysis, :country)
+                             .group_by { |a| a.source_name.to_s.downcase }
+
+  find_article = ->(source) {
+    article_by_source[source.downcase]&.first ||
+    Article.where("LOWER(source_name) LIKE ?", "%#{source.downcase}%").first
+  }
+
+  make_hop = ->(source, city_key, framing, confidence, hours_offset, base_time, headline: nil) {
+    hub     = hubs[city_key]
+    article = find_article.(source)
+    {
+      "article_id"          => article&.id,
+      "source_name"         => source,
+      "headline"            => headline || article&.headline,
+      "source_country"      => hub[:country],
+      "source_city"         => hub[:city],
+      "lat"                 => hub[:lat] + rand(-0.25..0.25).round(4),
+      "lng"                 => hub[:lng] + rand(-0.25..0.25).round(4),
+      "published_at"        => (base_time + hours_offset.hours).iso8601,
+      "framing_shift"       => framing,
+      "confidence_score"    => confidence,
+      "delay_from_previous" => hours_offset * 3600,
+    }
+  }
+
+  create_route = ->(origin_article, hops_data, name, description, color) {
+    return unless origin_article
+    arc = NarrativeArc.create!(
+      article_id:     origin_article.id,
+      origin_country: hops_data.first["source_country"],
+      origin_lat:     hops_data.first["lat"],
+      origin_lng:     hops_data.first["lng"],
+      target_country: hops_data.last["source_country"],
+      target_lat:     hops_data.last["lat"],
+      target_lng:     hops_data.last["lng"],
+      arc_color:      color,
+    )
+    NarrativeRoute.create!(
+      narrative_arc_id: arc.id,
+      name:             name,
+      description:      description,
+      hops:             hops_data,
+      is_complete:      true,
+      status:           "tracking",
+    )
+  }
+
+  t              = Time.current
+  routes_created = 0
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # ROUTE 1 — Iran Nuclear Talks Collapse: "Operation Fordow Signal"
+  # Vienna → Tehran → Tel Aviv → Riyadh → Moscow → Beijing → New Delhi → Washington
+  # Scoring: 10 → 26 → 42 → 50 → 74 → 98 → 100 → 100
+  # Labels:  ORIGINAL → AMPLIFIED → CONCERNING → CONCERNING → HOSTILE → CRITICAL THREAT
+  # ────────────────────────────────────────────────────────────────────────────
+  iran_origin = Article.where("headline ILIKE ?", "%Iran nuclear%").first ||
+                Article.where(source_name: "Reuters").first
+  if iran_origin
+    hops = [
+      make_hop.("Reuters",        :vienna,     "original",    0.95, 0,  t - 7.days, headline: "IAEA detects uranium enriched to 83.7% at Fordow — Vienna talks collapse"),
+      make_hop.("Al Jazeera",     :tehran,     "amplified",   0.88, 6,  t - 7.days, headline: "Iran dismisses IAEA findings as politically motivated fabrications against peaceful program"),
+      make_hop.("CNN",            :tel_aviv,   "amplified",   0.82, 14, t - 7.days, headline: "Israel puts IDF on heightened alert — Blue Horizon exercise simulates Iran strike"),
+      make_hop.("Arab News",      :riyadh,     "neutralized", 0.76, 22, t - 7.days, headline: "Saudi Arabia fast-tracks nuclear program as Iran breakout timeline collapses to weeks"),
+      make_hop.("TASS",           :moscow,     "distorted",   0.70, 32, t - 7.days, headline: "Russia accuses West of weaponising IAEA to justify military aggression against Iran"),
+      make_hop.("Xinhua",         :beijing,    "distorted",   0.65, 44, t - 7.days, headline: "China urges US restraint — Iran sanctions escalation threatens global energy stability"),
+      make_hop.("Times of India", :new_delhi,  "amplified",   0.79, 54, t - 7.days, headline: "IRGC vows full retaliation if Iran struck — nuclear breakout window now days, not months"),
+      make_hop.("Fox News",       :washington, "distorted",   0.61, 72, t - 7.days, headline: "Biden diplomacy failure leaves world on nuclear brink — appeasement has cost us everything"),
+    ]
+    r = create_route.(iran_origin, hops,
+      "Operation Fordow Signal",
+      "Nuclear enrichment crisis explodes across 8 global media ecosystems — tracking the collapse from diplomatic to existential threat in 72 hours",
+      "#a78bfa")
+    routes_created += 1 if r
+    puts "  ✓ Route 1: Iran Nuclear — 8 hops, Vienna → Washington (#{r ? 'OK' : 'SKIP'})"
+  end
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # ROUTE 2 — Black Sea Naval Standoff: "Crimea Gambit"
+  # London → Moscow → Kyiv → Ankara → Washington → Paris → Beijing
+  # Labels: ORIGINAL → HOSTILE → AMPLIFIED → CONCERNING → AMPLIFIED → CONCERNING → HOSTILE
+  # ────────────────────────────────────────────────────────────────────────────
+  black_sea_origin = Article.where("headline ILIKE ?", "%NATO%Black Sea%").first ||
+                     Article.where("headline ILIKE ?", "%Black Sea%").first
+  if black_sea_origin
+    hops = [
+      make_hop.("Reuters",          :london,     "original",    0.93, 0,  t - 5.days, headline: "NATO carrier group enters Black Sea — Russia shadows with 4 corvettes and submarines"),
+      make_hop.("RT",               :moscow,     "distorted",   0.72, 8,  t - 5.days, headline: "NATO provocateurs breach Russian security perimeter — Bastion-P systems on full alert"),
+      make_hop.("BBC",              :kyiv,       "amplified",   0.85, 16, t - 5.days, headline: "Ukraine: NATO ships are lifeline — Russia naval attacks on civilian shipping up 40%"),
+      make_hop.("TRT World",        :ankara,     "amplified",   0.78, 26, t - 5.days, headline: "Turkey's Bosphorus decision makes Istanbul flashpoint of NATO-Russia confrontation"),
+      make_hop.("Associated Press", :washington, "neutralized", 0.89, 38, t - 5.days, headline: "Satellite imagery contradicts Kremlin — NATO ships 90 miles from Crimea, not encroaching"),
+      make_hop.("AFP",              :paris,      "amplified",   0.83, 50, t - 5.days, headline: "European ministers alarmed as Black Sea standoff edges toward kinetic confrontation"),
+      make_hop.("CGTN",             :beijing,    "distorted",   0.64, 64, t - 5.days, headline: "China condemns NATO's Cold War aggression in Russia's legitimate Black Sea security zone"),
+    ]
+    r = create_route.(black_sea_origin, hops,
+      "Crimea Gambit",
+      "Naval escalation tracked across 7 global outlets — NATO framing war plays out from London to Beijing in 64 hours",
+      "#ef4444")
+    routes_created += 1 if r
+    puts "  ✓ Route 2: Black Sea Naval — 7 hops, London → Beijing (#{r ? 'OK' : 'SKIP'})"
+  end
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # ROUTE 3 — Taiwan AI Chip War: "Silicon Stranglehold"
+  # Washington → Beijing → Taipei → Tokyo → Seoul → Singapore → London
+  # Labels: ORIGINAL → HOSTILE → AMPLIFIED → AMPLIFIED → AMPLIFIED → CONCERNING → HOSTILE
+  # ────────────────────────────────────────────────────────────────────────────
+  chip_origin = Article.where("headline ILIKE ?", "%AI chip%China%").first ||
+                Article.where("headline ILIKE ?", "%chip%ban%").first ||
+                Article.where(source_name: "Bloomberg").first
+  if chip_origin
+    hops = [
+      make_hop.("Bloomberg",        :new_york,   "original",    0.96, 0,  t - 6.days, headline: "US expands AI chip export ban to 14 Chinese entities — $12B annual revenue wiped overnight"),
+      make_hop.("Global Times",     :beijing,    "distorted",   0.68, 10, t - 6.days, headline: "China retaliates with rare earth export controls targeting F-35, precision munitions supply chains"),
+      make_hop.("Financial Times",  :taipei,     "amplified",   0.87, 20, t - 6.days, headline: "TSMC caught in crossfire — Arizona fab 18 months late as both superpowers demand loyalty"),
+      make_hop.("NHK World",        :tokyo,      "amplified",   0.82, 32, t - 6.days, headline: "Japan-South Korea historic chip alliance: Samsung and Rapidus ink $8B deal"),
+      make_hop.("Associated Press", :seoul,      "amplified",   0.84, 46, t - 6.days, headline: "Seoul warns semiconductor decoupling accelerates — Asia enters permanent tech cold war"),
+      make_hop.("Channel NewsAsia", :singapore,  "amplified",   0.76, 58, t - 6.days, headline: "Southeast Asia becomes contested battleground as US demands supply chain alignment"),
+      make_hop.("The Economist",    :london,     "distorted",   0.80, 72, t - 6.days, headline: "The chip war will reshape the global order — and there are no winners, only survivors"),
+    ]
+    r = create_route.(chip_origin, hops,
+      "Silicon Stranglehold",
+      "AI chip embargo cascades across 7 Indo-Pacific media centers — trade warfare narrative escalates from commercial to civilizational conflict",
+      "#f59e0b")
+    routes_created += 1 if r
+    puts "  ✓ Route 3: Taiwan Chip War — 7 hops, New York → London (#{r ? 'OK' : 'SKIP'})"
+  end
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # ROUTE 4 — European Cyber Attack: "TIDEWRECK Cascade"
+  # Rotterdam → Moscow → Washington → London → Berlin → Warsaw → Nairobi
+  # Labels: ORIGINAL → HOSTILE → AMPLIFIED → AMPLIFIED → AMPLIFIED → CONCERNING → CONCERNING
+  # ────────────────────────────────────────────────────────────────────────────
+  cyber_origin = Article.where("headline ILIKE ?", "%cyberattack%port%").first ||
+                 Article.where("headline ILIKE ?", "%TIDEWRECK%").first ||
+                 Article.where("headline ILIKE ?", "%cyber%European%").first
+  if cyber_origin
+    hops = [
+      make_hop.("BBC",             :rotterdam,  "original",    0.92, 0,  t - 4.days, headline: "TIDEWRECK malware cripples 6 European ports simultaneously — $2.1B daily trade paralysed"),
+      make_hop.("TASS",            :moscow,     "distorted",   0.55, 6,  t - 4.days, headline: "Russia categorically denies port hack — calls EU attribution a Russophobic false flag"),
+      make_hop.("Washington Post", :washington, "amplified",   0.84, 14, t - 4.days, headline: "NSA attributes TIDEWRECK to GRU Sandworm with high confidence — retaliation options on table"),
+      make_hop.("Financial Times", :london,     "amplified",   0.88, 24, t - 4.days, headline: "Lloyd's faces $4B cyber war exposure — state-attack exclusion clauses tested in landmark case"),
+      make_hop.("Deutsche Welle",  :berlin,     "amplified",   0.81, 36, t - 4.days, headline: "EU emergency cyber summit convenes — NATO Article 5 cyber clause invoked for first time"),
+      make_hop.("Reuters",         :warsaw,     "amplified",   0.77, 50, t - 4.days, headline: "Poland places military on alert as NATO confirms Sandworm attribution — sanctions incoming"),
+      make_hop.("Nation Africa",   :nairobi,    "amplified",   0.70, 66, t - 4.days, headline: "African ports brace for spillover as European cyber war disrupts global supply lanes"),
+    ]
+    r = create_route.(cyber_origin, hops,
+      "TIDEWRECK Cascade",
+      "State-sponsored cyber warfare narrative tracked from Rotterdam breach across 7 continents — incident to Article 5 in 66 hours",
+      "#00f0ff")
+    routes_created += 1 if r
+    puts "  ✓ Route 4: Cyber Attack — 7 hops, Rotterdam → Nairobi (#{r ? 'OK' : 'SKIP'})"
+  end
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # ROUTE 5 — Sahel Wagner Expansion: "Africa Corps Shadow"
+  # Paris → Moscow → Bamako → Nairobi → Beijing → Washington
+  # Labels: ORIGINAL → HOSTILE → CONCERNING → AMPLIFIED → HOSTILE → AMPLIFIED
+  # ────────────────────────────────────────────────────────────────────────────
+  wagner_origin = Article.where("headline ILIKE ?", "%Wagner%Sahel%").first ||
+                  Article.where("headline ILIKE ?", "%Wagner%Africa%").first ||
+                  Article.where(source_name: "Le Monde").first
+  if wagner_origin
+    hops = [
+      make_hop.("Le Monde",        :paris,      "original",    0.89, 0,  t - 3.days, headline: "Wagner Africa Corps doubles Sahel presence to 3,400 — gold and lithium mines fund expansion"),
+      make_hop.("Sputnik",         :moscow,     "distorted",   0.62, 12, t - 3.days, headline: "Africa Corps defends Sahel partners from French neo-colonial destabilisation operations"),
+      make_hop.("Africa News",     :bamako,     "amplified",   0.71, 24, t - 3.days, headline: "Mali government hails Russian security partnership — 300% civilian death toll surge omitted"),
+      make_hop.("Nation Africa",   :nairobi,    "neutralized", 0.74, 38, t - 3.days, headline: "African Union: Sahel nations have sovereign right to choose security partners"),
+      make_hop.("Xinhua",          :beijing,    "distorted",   0.67, 52, t - 3.days, headline: "China: Sahel nations resist Western interference in legitimate security arrangements"),
+      make_hop.("Associated Press",:washington, "amplified",   0.83, 68, t - 3.days, headline: "US-France warn Wagner Africa Corps now controls $250M annually in illicit mining"),
+    ]
+    r = create_route.(wagner_origin, hops,
+      "Africa Corps Shadow",
+      "Sahel security vacuum fractures across 6 global perspectives — Western alarm vs African sovereignty narrative war plays out in real time",
+      "#22c55e")
+    routes_created += 1 if r
+    puts "  ✓ Route 5: Wagner Sahel — 6 hops, Paris → Washington (#{r ? 'OK' : 'SKIP'})"
+  end
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # ROUTE 6 — Red Sea Shipping Disruption: "Houthi Chokehold"
+  # Dubai → Tehran → London → Frankfurt → New York → Tokyo
+  # Labels: ORIGINAL → HOSTILE → AMPLIFIED → AMPLIFIED → AMPLIFIED → CONCERNING
+  # ────────────────────────────────────────────────────────────────────────────
+  red_sea_origin = Article.where("headline ILIKE ?", "%Red Sea%").first ||
+                   Article.where("headline ILIKE ?", "%Houthi%tanker%").first
+  if red_sea_origin
+    hops = [
+      make_hop.("Reuters",         :dubai,      "original",    0.94, 0,  t - 2.days, headline: "Houthi missile strikes Greek tanker Sounion — 25 crew evacuated, oil spill expanding"),
+      make_hop.("Press TV",        :tehran,     "distorted",   0.60, 8,  t - 2.days, headline: "Yemen's resistance strikes Zionist-linked vessel — legitimate act of Palestinian solidarity"),
+      make_hop.("Bloomberg",       :london,     "amplified",   0.91, 18, t - 2.days, headline: "Red Sea crisis pushes European inflation to 18-month high — Maersk halts all transits"),
+      make_hop.("Deutsche Welle",  :berlin,     "amplified",   0.85, 28, t - 2.days, headline: "ECB warns shipping disruption forces inflation add of 0.5% — rate cut delayed indefinitely"),
+      make_hop.("Associated Press",:new_york,   "neutralized", 0.88, 40, t - 2.days, headline: "US Navy unable to intercept Houthi ballistic missile — capability gap now publicly exposed"),
+      make_hop.("NHK World",       :tokyo,      "distorted",   0.73, 54, t - 2.days, headline: "Japan's LNG supply chain threatened as Red Sea closure reroutes 40% of Asian energy transit"),
+    ]
+    r = create_route.(red_sea_origin, hops,
+      "Houthi Chokehold",
+      "Red Sea shipping crisis amplified through 6 media ecosystems — commercial disruption weaponised into geopolitical flashpoint narrative",
+      "#f97316")
+    routes_created += 1 if r
+    puts "  ✓ Route 6: Red Sea — 6 hops, Dubai → Tokyo (#{r ? 'OK' : 'SKIP'})"
+  end
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # ROUTE 7 — US Election Narrative War: "Deepfake Cascade"
+  # Washington → Moscow → New York → London → Berlin → Doha
+  # Labels: ORIGINAL → HOSTILE → AMPLIFIED → AMPLIFIED → AMPLIFIED → CONCERNING
+  # ────────────────────────────────────────────────────────────────────────────
+  election_origin = Article.where("headline ILIKE ?", "%deepfake%election%").first ||
+                    Article.where("headline ILIKE ?", "%Russia%troll%election%").first
+  if election_origin
+    hops = [
+      make_hop.("CNN",            :washington, "original",    0.83, 0,  t - 1.day, headline: "FBI opens investigation into military-grade deepfake campaign across 12 swing states"),
+      make_hop.("RT",             :moscow,     "distorted",   0.52, 10, t - 1.day, headline: "US blames Russia for deepfakes it manufactured itself — classic false flag for censorship"),
+      make_hop.("Fox News",       :new_york,   "amplified",   0.71, 18, t - 1.day, headline: "Democrat election integrity crisis: deepfake scandal exposes regime narrative machine"),
+      make_hop.("BBC",            :london,     "amplified",   0.86, 28, t - 1.day, headline: "AI deepfake election attack worst in democratic history — entire information ecosystem at risk"),
+      make_hop.("Deutsche Welle", :berlin,     "amplified",   0.80, 40, t - 1.day, headline: "EU demands emergency AI regulation summit after US deepfake election interference revelation"),
+      make_hop.("Al Jazeera",     :doha,       "distorted",   0.68, 54, t - 1.day, headline: "America's information collapse: no shared reality exists as election approaches"),
+    ]
+    r = create_route.(election_origin, hops,
+      "Deepfake Cascade",
+      "AI election interference narrative fractures into 6 incompatible realities — tracking disinformation as it crosses the Atlantic and back",
+      "#ec4899")
+    routes_created += 1 if r
+    puts "  ✓ Route 7: Election Narrative — 6 hops, Washington → Doha (#{r ? 'OK' : 'SKIP'})"
+  end
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # ROUTE 8 — BRICS Currency Challenge: "Dollar Siege"
+  # Doha → Moscow → Beijing → New Delhi → Brasilia → New York
+  # Labels: ORIGINAL → HOSTILE → HOSTILE → AMPLIFIED → AMPLIFIED → AMPLIFIED
+  # ────────────────────────────────────────────────────────────────────────────
+  brics_origin = Article.where("headline ILIKE ?", "%BRICS%digital%").first ||
+                 Article.where("headline ILIKE ?", "%BRICS%dollar%").first ||
+                 Article.where("headline ILIKE ?", "%BRICS%currency%").first
+  if brics_origin
+    hops = [
+      make_hop.("Al Jazeera",     :doha,       "original",    0.78, 0,  t - 30.hours, headline: "BRICS Bridge digital settlement system announced — blockchain to bypass US dollar"),
+      make_hop.("Sputnik",        :moscow,     "distorted",   0.58, 12, t - 30.hours, headline: "Putin: BRICS Bridge is beginning of end for dollar tyranny — new financial world order born"),
+      make_hop.("Xinhua",         :beijing,    "distorted",   0.61, 24, t - 30.hours, headline: "China hails multipolar financial architecture — Western sanctions regime faces existential threat"),
+      make_hop.("Times of India", :new_delhi,  "amplified",   0.74, 38, t - 30.hours, headline: "India walks tightrope — BRICS Bridge offers rupee independence without severing US ties"),
+      make_hop.("Reuters",        :brasilia,   "neutralized", 0.80, 52, t - 30.hours, headline: "Brazil cautious on BRICS ambitions — Goldman says system handles less than 2% of trade by 2030"),
+      make_hop.("Bloomberg",      :new_york,   "amplified",   0.91, 68, t - 30.hours, headline: "Dollar surges as markets shrug off BRICS threat — reserve currency status unassailable for decades"),
+    ]
+    r = create_route.(brics_origin, hops,
+      "Dollar Siege",
+      "BRICS currency challenge tracked across 6 financial capitals — East vs West framing diverges from declaration to market verdict",
+      "#38bdf8")
+    routes_created += 1 if r
+    puts "  ✓ Route 8: BRICS Currency — 6 hops, Doha → New York (#{r ? 'OK' : 'SKIP'})"
+  end
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # FALLBACK: guarantee every remaining article gets journey data
+  # ────────────────────────────────────────────────────────────────────────────
+  articles_without_routes = Article
+    .includes(:narrative_arcs, :ai_analysis, :country)
+    .select { |a| a.best_journey_data.nil? }
+
+  puts "  #{articles_without_routes.size} articles still need fallback routes..."
+
+  framing_seq = %w[original amplified amplified distorted distorted distorted]
+  arc_colors  = %w[#00f0ff #f59e0b #ff3a5e #22c55e #a78bfa #38bdf8]
+
+  articles_without_routes
+    .group_by { |a| a.ai_analysis&.analyst_response&.dig("geopolitical_topic") || "General" }
+    .each do |topic, group|
+      group.sort_by { |a| a.published_at || Time.at(0) }.each_slice(5) do |slice|
+        next if slice.size < 2
+        origin = slice.first
+        hops = slice.map.with_index do |article, idx|
+          {
+            "article_id"          => article.id,
+            "source_name"         => article.source_name,
+            "source_country"      => article.country&.name || "Unknown",
+            "source_city"         => article.country&.name || "Unknown",
+            "lat"                 => (article.latitude  || rand(-40.0..60.0)).round(4),
+            "lng"                 => (article.longitude || rand(-140.0..140.0)).round(4),
+            "published_at"        => (article.published_at || Time.current - (slice.size - idx).hours).iso8601,
+            "framing_shift"       => framing_seq[idx % framing_seq.size],
+            "confidence_score"    => (0.62 + idx * 0.06).clamp(0.0, 1.0).round(3),
+            "delay_from_previous" => idx.zero? ? 0 : rand(7200..72_000),
+          }
+        end
+        arc = NarrativeArc.create!(
+          article_id:     origin.id,
+          origin_country: origin.country&.name || "Unknown",
+          origin_lat:     hops.first["lat"],
+          origin_lng:     hops.first["lng"],
+          target_country: slice.last.country&.name || "Unknown",
+          target_lat:     hops.last["lat"],
+          target_lng:     hops.last["lng"],
+          arc_color:      arc_colors.sample,
+        )
+        NarrativeRoute.create!(
+          narrative_arc_id: arc.id,
+          name:             "#{topic} Narrative Route",
+          description:      "Fallback route — #{slice.size} outlets covering #{topic}",
+          hops:             hops,
+          is_complete:      true,
+          status:           "tracking",
+        )
+        routes_created += 1
+      end
+    end
+
+  puts "\n✓ #{routes_created} total routes created (8 cinematic + fallbacks)."
+  puts "✓ #{Article.all.count { |a| a.best_journey_data.present? }} / #{Article.count} articles BLOOM/CHRONICLE ready."
+end
+
 create_perspective_filters!
 create_users!
 created_regions = create_regions_and_countries!
 seed_articles!(created_regions)
 seed_narrative_arcs!
+seed_demo_routes!
 seed_compounding_intelligence!
 
 puts "\n==== FINAL COUNTS ===="

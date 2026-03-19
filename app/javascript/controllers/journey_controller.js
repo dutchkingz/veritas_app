@@ -22,10 +22,12 @@ export default class extends Controller {
     this._exitHandler = () => this.exit()
     this._keyHandler = (event) => this._handleKeydown(event)
     this._documentClickHandler = (event) => this._handleDocumentClick(event)
+    this._perspectiveHandler = (event) => this._onPerspectiveChange(event)
 
     window.addEventListener("veritas:startJourney", this._startHandler)
     window.addEventListener("veritas:exitJourney", this._exitHandler)
     window.addEventListener("keydown", this._keyHandler)
+    window.addEventListener("veritas:perspectiveChange", this._perspectiveHandler)
     document.addEventListener("click", this._documentClickHandler)
   }
 
@@ -33,6 +35,7 @@ export default class extends Controller {
     window.removeEventListener("veritas:startJourney", this._startHandler)
     window.removeEventListener("veritas:exitJourney", this._exitHandler)
     window.removeEventListener("keydown", this._keyHandler)
+    window.removeEventListener("veritas:perspectiveChange", this._perspectiveHandler)
     document.removeEventListener("click", this._documentClickHandler)
     this._teardown({ restore: false, preserveState: false })
   }
@@ -83,6 +86,11 @@ export default class extends Controller {
 
   endBloomDrag(event) {
     this._modeInstance?.endScrub?.(Number(event.currentTarget.value) / 100)
+  }
+
+  _onPerspectiveChange(event) {
+    const slug = event.detail?.slug || "all"
+    this._modeInstance?.updatePerspective?.(slug)
   }
 
   chroniclePrev() {
