@@ -234,20 +234,45 @@ export default class extends Controller {
     const time       = a.published_at ? this._timeAgo(new Date(a.published_at)) : "—"
     const color      = a.sentiment_color || "#00f0ff"
     const country    = this._esc(a.country || "Unknown")
-    const trust      = a.trust_score != null ? Math.round(a.trust_score) : "—"
     const threat     = a.threat_level ? `<span class="feed-threat" style="color:${color};">THREAT ${this._esc(a.threat_level)}</span>` : ""
     const geoTag     = a.geo_method === "keyword"
       ? `<span style="font-size:0.6rem;color:#22c55e;margin-left:4px;" title="Real coordinates">◎</span>` : ""
 
+    const hasJourney  = !!a.journey_data
+    const journeyAttr = hasJourney
+      ? `data-feed-card-journey-available-value="true" data-feed-card-journey-value="${this._esc(JSON.stringify(a.journey_data))}"`
+      : `data-feed-card-journey-available-value="false"`
+
+    const journeyBtns = hasJourney ? `
+        <button class="vt-feed-journey-btn vt-feed-journey-btn--bloom"
+                type="button"
+                data-action="click->feed-card#openBloom"
+                title="Watch the narrative bloom across the globe">◉ BLOOM</button>
+        <button class="vt-feed-journey-btn vt-feed-journey-btn--chronicle"
+                type="button"
+                data-action="click->feed-card#openChronicle"
+                title="Step through the narrative route hop by hop">▶ CHRONICLE</button>` : ""
+
     return `
       <div class="veritas-feed-card"
-           style="border-left: 2px solid ${color}30; cursor: pointer;"
-           onclick="window.location.assign('/articles/${a.id}')">
+           style="border-left: 2px solid ${color}30;"
+           data-controller="feed-card"
+           data-feed-card-lat-value="${a.latitude || ""}"
+           data-feed-card-lng-value="${a.longitude || ""}"
+           data-feed-card-article-id-value="${a.id}"
+           ${journeyAttr}
+           data-article-id="${a.id}"
+           data-action="click->feed-card#select">
         <div class="d-flex justify-content-between align-items-center mb-1">
           <span class="feed-source">${this._esc(a.source_name)}</span>
           <div class="d-flex align-items-center gap-2">
             ${threat}
             <span class="feed-time">${time}</span>
+            <a href="/articles/${a.id}"
+               class="feed-card-open-link"
+               style="font-size:0.7rem;color:rgba(0,240,255,0.4);text-decoration:none;"
+               data-turbo="false"
+               data-action="click->feed-card#openArticle">→</a>
           </div>
         </div>
         <p class="feed-headline" style="font-size:0.78rem; -webkit-line-clamp:2;">
@@ -257,9 +282,24 @@ export default class extends Controller {
           <span class="feed-location">
             <i class="fa fa-map-marker-alt me-1"></i>${country}${geoTag}
           </span>
-          <span style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:#94a3b8;">
-            TRUST: ${trust}%
-          </span>
+          <div class="d-flex align-items-center gap-1 flex-wrap justify-content-end">
+            ${journeyBtns}
+            <button class="ndna-trigger-btn"
+                    type="button"
+                    style="font-family:'JetBrains Mono',monospace;font-size:0.55rem;padding:1px 4px;border:1px solid rgba(0,240,255,0.2);background:transparent;color:#00f0ff;"
+                    data-action="click->feed-card#openDna"
+                    title="View Narrative DNA">◈ DNA</button>
+            <button class="tribunal-trigger-btn"
+                    type="button"
+                    style="font-family:'JetBrains Mono',monospace;font-size:0.55rem;padding:1px 4px;border:1px solid rgba(0,240,255,0.2);background:transparent;color:#00f0ff;"
+                    data-action="click->feed-card#openTribunal"
+                    title="Open Intelligence Tribunal">⬟ TRIBUNAL</button>
+            <button class="nexus-trigger-btn"
+                    type="button"
+                    style="font-family:'JetBrains Mono',monospace;font-size:0.55rem;padding:1px 4px;border:1px solid rgba(167,139,250,0.2);background:transparent;color:#a78bfa;"
+                    data-action="click->feed-card#openNexus"
+                    title="Open Entity Nexus for this article">◈ NEXUS</button>
+          </div>
         </div>
       </div>`
   }

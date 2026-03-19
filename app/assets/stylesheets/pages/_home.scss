@@ -11,11 +11,21 @@
     min-height: 100vh;
 }
 
+// On the war-room page, the body becomes a strict flex column so the
+// war-room can use flex:1 instead of a magic-number height calc.
+// This ensures the timeline bar is always visible regardless of navbar height.
+body.war-room-page {
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
 .veritas-war-room {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 88px);
-    height: calc(100dvh - 88px);
+    flex: 1;
+    min-height: 0;
     overflow: hidden;
 }
 
