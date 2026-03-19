@@ -5,7 +5,7 @@
     @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap');
 
     min-height: 100vh;
-    background: #020817;
+    background: #111f38;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -18,8 +18,8 @@
         position: absolute;
         inset: 0;
         background-image:
-            linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
+            linear-gradient(rgba(0, 255, 255, 0.09) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 255, 255, 0.09) 1px, transparent 1px);
         background-size: 40px 40px;
         animation: gridMove 20s linear infinite;
         z-index: 1;
@@ -30,7 +30,7 @@
         position: absolute;
         border-radius: 50%;
         filter: blur(80px);
-        opacity: 0.15;
+        opacity: 0.30;
         animation: authPulse 6s ease-in-out infinite;
         z-index: 2;
     }
@@ -81,15 +81,15 @@
         z-index: 10;
         width: 100%;
         max-width: 440px;
-        background: rgba(2, 12, 30, 0.85);
-        border: 1px solid rgba(0, 255, 255, 0.2);
+        background: rgba(14, 30, 58, 0.90);
+        border: 1px solid rgba(0, 255, 255, 0.32);
         border-radius: 4px;
         padding: 48px 40px;
         backdrop-filter: blur(20px);
         box-shadow:
-            0 0 0 1px rgba(0, 255, 255, 0.05),
-            0 0 40px rgba(0, 255, 255, 0.08),
-            0 40px 80px rgba(0, 0, 0, 0.6);
+            0 0 0 1px rgba(0, 255, 255, 0.12),
+            0 0 60px rgba(0, 255, 255, 0.18),
+            0 40px 80px rgba(0, 0, 0, 0.4);
 
         // Corner accents
         &::before,
@@ -127,20 +127,20 @@
         font-weight: 700;
         letter-spacing: 12px;
         color: #00FFFF;
-        text-shadow: 0 0 20px rgba(0, 255, 255, 0.6), 0 0 40px rgba(0, 255, 255, 0.3);
+        text-shadow: 0 0 20px rgba(0, 255, 255, 0.8), 0 0 40px rgba(0, 255, 255, 0.45);
     }
 
     .logo-sub {
         font-size: 11px;
         letter-spacing: 4px;
-        color: rgba(0, 255, 255, 0.4);
+        color: rgba(0, 255, 255, 0.55);
         text-transform: uppercase;
         margin-top: 6px;
     }
 
     .divider {
         height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.3), transparent);
+        background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.4), transparent);
         margin: 0 0 28px;
     }
 
@@ -164,7 +164,7 @@
     .status-text {
         font-family: 'Share Tech Mono', monospace;
         font-size: 11px;
-        color: rgba(0, 255, 255, 0.5);
+        color: rgba(0, 255, 255, 0.65);
         letter-spacing: 2px;
     }
 
@@ -176,7 +176,7 @@
             display: block;
             font-size: 11px;
             letter-spacing: 3px;
-            color: rgba(0, 255, 255, 0.5);
+            color: rgba(0, 255, 255, 0.65);
             text-transform: uppercase;
             margin-bottom: 8px;
         }
@@ -184,18 +184,18 @@
 
     .auth-input {
         width: 100%;
-        background: rgba(0, 255, 255, 0.03);
-        border: 1px solid rgba(0, 255, 255, 0.15);
+        background: rgba(0, 255, 255, 0.05);
+        border: 1px solid rgba(0, 255, 255, 0.22);
         border-radius: 2px;
         padding: 12px 16px;
-        color: #E0F7FF;
+        color: #F0FCFF;
         font-family: 'Share Tech Mono', monospace;
         font-size: 14px;
         outline: none;
         transition: all 0.3s;
 
         &::placeholder {
-            color: rgba(255, 255, 255, 0.15);
+            color: rgba(255, 255, 255, 0.25);
         }
 
         &:focus {
@@ -261,11 +261,11 @@
         text-align: center;
         margin-top: 24px;
         font-size: 13px;
-        color: rgba(255, 255, 255, 0.3);
+        color: rgba(255, 255, 255, 0.45);
         letter-spacing: 1px;
 
         a {
-            color: rgba(0, 255, 255, 0.6);
+            color: rgba(0, 255, 255, 0.78);
             text-decoration: none;
             transition: color 0.2s;
 
@@ -293,12 +293,12 @@
     0%,
     100% {
         transform: scale(1);
-        opacity: 0.15;
+        opacity: 0.30;
     }
 
     50% {
         transform: scale(1.1);
-        opacity: 0.25;
+        opacity: 0.45;
     }
 }
 
