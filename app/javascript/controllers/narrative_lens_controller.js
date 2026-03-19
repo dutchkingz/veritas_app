@@ -124,7 +124,13 @@ export default class extends Controller {
         ${framesHtml ? `
           <div class="vt-narrative-section-title">TOP NARRATIVE FRAMES</div>
           <div class="vt-narrative-frames">${framesHtml}</div>
-        ` : ""}
+        ` : `
+          <div class="vt-narrative-section-title">TOP NARRATIVE FRAMES</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:#475569;padding:8px 0;line-height:1.6;">
+            NO CACHED ARTICLES FROM THIS PERSPECTIVE.<br>
+            SOURCES ARE MONITORED — DATA WILL APPEAR<br>WHEN LIVE FEEDS ARE INGESTED.
+          </div>
+        `}
 
         ${sourcesHtml ? `
           <div class="vt-narrative-section-title">MONITORED SOURCES</div>

@@ -164,6 +164,11 @@ export class ChronicleMode {
     }
   }
 
+  updatePerspective(slug) {
+    this._activePerspective = slug
+    this._renderScene(this._currentIndex, { arrivalOnly: true })
+  }
+
   _renderScene(index, { arrivalOnly }) {
     const ghostColor = "rgba(140, 153, 173, 0.15)"
     const activeHop = this._hops[index]

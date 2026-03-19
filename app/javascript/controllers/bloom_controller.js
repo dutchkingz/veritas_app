@@ -135,6 +135,11 @@ export class BloomMode {
     if (!this._rafId) this._rafId = requestAnimationFrame((timestamp) => this._tick(timestamp))
   }
 
+  updatePerspective(slug) {
+    this._activePerspective = slug
+    this._renderAt(this._progress, { immediate: true, fromScrub: true })
+  }
+
   _tick(timestamp) {
     if (!this._playing) {
       this._rafId = null

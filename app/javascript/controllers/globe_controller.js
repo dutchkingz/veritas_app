@@ -606,7 +606,10 @@ export default class extends Controller {
     if (d?._journey) return d.color || '#00f0ff'
     const c = d.color || '#00f0ff'
     if (this._currentPerspective === 'all') return c
-    return d.perspectiveSlug === this._currentPerspective ? c : this._hexToRgba(c, 0.12)
+    if (d.perspectiveSlug === this._currentPerspective) return c
+    // Unclassified sources stay moderately visible as neutral context;
+    // articles from a different known perspective fade to near-invisible.
+    return this._hexToRgba(c, d.perspectiveSlug === 'unclassified' ? 0.28 : 0.10)
   }
 
   _arcColorForPerspective(d) {
@@ -617,7 +620,8 @@ export default class extends Controller {
       return d.tier === 2 ? this._hexToRgba(c, 0.35) : c
     }
     const isActive = d.perspectiveSlug === this._currentPerspective
-    return this._hexToRgba(c, isActive ? baseTierAlpha : 0.07)
+    if (isActive) return this._hexToRgba(c, baseTierAlpha)
+    return this._hexToRgba(c, d.perspectiveSlug === 'unclassified' ? 0.18 : 0.05)
   }
 
   _onTopicFilter(event) {

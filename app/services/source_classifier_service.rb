@@ -77,11 +77,14 @@ class SourceClassifierService
        "mail & guardian", "mail and guardian", "arab news", "middle east eye",
        "telesur", "dawn", "dawn pakistan", "the dawn", "deccan herald",
        "indian express", "ndtv", "the wire india", "scroll.in",
-       "africa news", "the east african", "business day", "citizen digital"],
+       "africa news", "the east african", "business day", "citizen digital",
+       "cna", "channel newsasia", "the star online", "new straits times",
+       "bangkok post", "vietnam news", "jakarta post", "philippine daily inquirer"],
       ["al jazeera", "al-jazeera", "trt world", "anadolu", "press tv",
        "wion", "times of india", "the hindu", "daily maverick",
        "nation africa", "arab news", "middle east eye", "telesur",
-       "dawn", "deccan herald", "ndtv"]
+       "dawn", "deccan herald", "ndtv", "channel newsasia", "bangkok post",
+       "jakarta post", "vietnam news"]
     ]
   ].freeze
 
@@ -92,21 +95,23 @@ class SourceClassifierService
 
     normalized = source_name.downcase.strip
 
+    # Short-string exact overrides must run BEFORE the fuzzy loop, because short
+    # strings like "rt" (2 chars) accidentally match as substrings of longer fuzzy
+    # patterns (e.g. "breitbart".include?("rt") => true → wrong us_conservative hit).
+    return { slug: "russia_state", confidence: "exact_match" } if normalized == "rt" || normalized == "rt news"
+
     MAPPINGS.each do |slug, exact_patterns, fuzzy_patterns|
       # 1. Exact match
       return { slug: slug, confidence: "exact_match" } if exact_patterns.include?(normalized)
 
       # 2. Fuzzy: pattern inside source_name OR source_name inside pattern
+      # Guard: skip reverse-direction check for very short normalized strings (< 4 chars)
+      # to prevent accidental substring hits (e.g. "rt" inside "breitbart").
       fuzzy_patterns.each do |pattern|
-        if normalized.include?(pattern) || pattern.include?(normalized)
-          return { slug: slug, confidence: "fuzzy_match" }
-        end
+        forward  = normalized.include?(pattern)
+        backward = normalized.length >= 4 && pattern.include?(normalized)
+        return { slug: slug, confidence: "fuzzy_match" } if forward || backward
       end
-    end
-
-    # Special case: "RT" alone can be ambiguous — only match if exactly "rt" or "rt news"
-    if normalized == "rt" || normalized == "rt news"
-      return { slug: "russia_state", confidence: "exact_match" }
     end
 
     { slug: "unclassified", confidence: "unclassified" }
