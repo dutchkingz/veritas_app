@@ -52,7 +52,8 @@ module Api
         trust_score:     article.ai_analysis&.trust_score,
         threat_level:    article.ai_analysis&.threat_level,
         sentiment_color: article.ai_analysis&.sentiment_color,
-        geo_method:      article.geo_method
+        geo_method:      article.geo_method,
+        journey_data:    article.best_journey_data
       }
     end
   end

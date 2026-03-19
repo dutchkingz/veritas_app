@@ -10,7 +10,7 @@ module Api
           .joins(:ai_analysis)
           .where("ai_analyses.geopolitical_topic ILIKE ?", "%#{query}%")
           .distinct
-          .pluck(:ai_analysis, :geopolitical_topic)
+          .pluck("ai_analyses.geopolitical_topic")
           .compact
           .uniq
           .first(5)

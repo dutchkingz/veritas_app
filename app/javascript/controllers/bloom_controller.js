@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 
-const BASE_PLAYBACK_MS = 15000
+const BASE_PLAYBACK_MS = 9000
 
 export default class extends Controller {}
 
@@ -367,14 +367,17 @@ export class BloomMode {
   _buildThresholds() {
     if (this._segments.length === 0) return []
 
+    const count = this._segments.length
     const start = this._hops[0]?.publishedAt ? Date.parse(this._hops[0].publishedAt) : null
     const finish = this._hops[this._hops.length - 1]?.publishedAt ? Date.parse(this._hops[this._hops.length - 1].publishedAt) : null
     const duration = start && finish && finish > start ? finish - start : 0
 
     return this._segments.map((segment, index) => {
+      const even = (index + 1) / count
       const hopTime = this._hops[index + 1]?.publishedAt ? Date.parse(this._hops[index + 1].publishedAt) : null
-      if (duration > 0 && hopTime) return clamp((hopTime - start) / duration, 0.05, 1)
-      return clamp((index + 1) / this._segments.length, 0.05, 1)
+      const real = (duration > 0 && hopTime) ? clamp((hopTime - start) / duration, 0.05, 1) : even
+      // Blend 50/50: honours real propagation timing while preventing huge gaps
+      return clamp(even * 0.5 + real * 0.5, 0.05, 1)
     })
   }
 
