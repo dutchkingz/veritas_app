@@ -45,6 +45,7 @@ export default class extends Controller {
     this._preJourneyState        = null
     this._routeChoiceMenu        = null
     this._routeMenuOpenedAt      = 0
+    this._selectedArcArticleId   = null
     window.addEventListener("veritas:flyTo",             this._flyToHandler)
     window.addEventListener("veritas:perspectiveChange", this._perspectiveHandler)
     window.addEventListener("veritas:topicFilter",       this._topicHandler)
@@ -195,6 +196,10 @@ export default class extends Controller {
       .arcDashGap(d => d.arcDashGap != null ? d.arcDashGap : (d.tier === 1 ? 0.15 : 0))
       .arcDashAnimateTime(d => d.arcDashAnimateTime != null ? d.arcDashAnimateTime : (d.tier === 1 ? 2500 : 0))
       .arcStroke(d => {
+        // Highlight selected arc with thicker stroke
+        if (this._selectedArcArticleId && String(d.articleId) === String(this._selectedArcArticleId)) {
+          return 4.0
+        }
         if (d.arcStroke != null) return d.arcStroke
         if (d.tier === 1) return 2.5
         if (d.tier === 2) return 0.8
@@ -614,8 +619,20 @@ export default class extends Controller {
 
   _arcColorForPerspective(d) {
     if (d?._journey) return d.color || '#00f0ff'
+
+    // Highlight selected arc in bright white-cyan
+    if (this._selectedArcArticleId && String(d.articleId) === String(this._selectedArcArticleId)) {
+      return '#ffffff'
+    }
+
     const c = Array.isArray(d.color) ? d.color[0] : (d.color || '#00f0ff')
     const baseTierAlpha = d.tier === 2 ? 0.35 : 1.0
+
+    // Dim non-selected arcs when one is selected
+    if (this._selectedArcArticleId) {
+      return this._hexToRgba(c, 0.12)
+    }
+
     if (this._currentPerspective === 'all') {
       return d.tier === 2 ? this._hexToRgba(c, 0.35) : c
     }
@@ -654,19 +671,22 @@ export default class extends Controller {
     if (!arc) return
     if (this._journeyActive) return
 
-    if (arc.tier === 1 && arc.routeId) {
-      this._showRouteChoiceMenu(arc)
-      if (arc.articleId) this._setActiveCard(arc.articleId)
-      return
-    }
-
     const midLat = (arc.startLat + arc.endLat) / 2
     const midLng = (arc.startLng + arc.endLng) / 2
     this._flyTo(midLat, midLng, 2.0)
     if (arc.articleId) this._setActiveCard(arc.articleId)
 
+    // Show Bloom/Chronicle menu for any arc with a route
+    if (arc.routeId) {
+      this._showRouteChoiceMenu(arc)
+    }
+
     // Show hop details in timeline sidebar
     this._showHopDetails(arc)
+
+    // Highlight this arc visually
+    this._selectedArcArticleId = arc.articleId
+    this._globe.arcsData(this._globe.arcsData())
 
     // Open Narrative DNA panel for this arc's source article
     if (arc.articleId) {
@@ -712,6 +732,7 @@ export default class extends Controller {
     const { lat, lng, articleId } = event.detail
     this._flyTo(lat, lng)
     if (articleId) this._setActiveCard(articleId)
+    if (articleId) this._highlightArcForArticle(articleId)
   }
 
   _onJourneyActivated(event) {
@@ -791,6 +812,13 @@ export default class extends Controller {
     if (Date.now() - this._routeMenuOpenedAt < 80) return
     if (this._routeChoiceMenu.contains(event.target)) return
     this._hideRouteChoiceMenu()
+    this._clearArcSelection()
+  }
+
+  _clearArcSelection() {
+    if (!this._selectedArcArticleId) return
+    this._selectedArcArticleId = null
+    if (this._globe) this._globe.arcsData(this._globe.arcsData()) // re-render with normal colors
   }
 
   _onBreakingAlert(event) {
@@ -843,6 +871,29 @@ export default class extends Controller {
     if (card) {
       card.classList.add('is-active')
       card.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  }
+
+  _highlightArcForArticle(articleId) {
+    if (!this._globe) return
+
+    // Find the arc matching this article
+    const arcs = this._globe.arcsData() || []
+    const arc = arcs.find(a => String(a.articleId) === String(articleId))
+    if (!arc) return
+
+    // Set the selected arc so the color callback can brighten it
+    this._selectedArcArticleId = articleId
+    this._globe.arcsData(arcs) // trigger re-render
+
+    // Fly to the arc midpoint
+    const midLat = (arc.startLat + arc.endLat) / 2
+    const midLng = (arc.startLng + arc.endLng) / 2
+    this._flyTo(midLat, midLng, 2.0)
+
+    // Show Bloom/Chronicle menu if the arc has a route
+    if (arc.routeId) {
+      this._showRouteChoiceMenu(arc)
     }
   }
 
