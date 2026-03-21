@@ -12,18 +12,29 @@ import consumer from "channels/consumer"
 //   veritas:search-cleared  — sidebar/toggle hide themselves, globe resets
 //   veritas:fresh-results   — fresh data arrived, badge updates + globe re-fetches
 
+const LOADING_STAGES = [
+  { delay: 0,    text: "🛰️  SCANNING GLOBAL INTELLIGENCE NETWORKS..." },
+  { delay: 2000, text: "🔍  ANALYZING NARRATIVE FRAMING..." },
+  { delay: 4000, text: "🌐  GENERATING INTELLIGENCE ROUTES..." }
+]
+
+const LOADING_TIMEOUT_MS = 15000
+
 export default class extends Controller {
   static targets = ["input", "statusBadge", "fetchingNotice", "clearBtn", "fullSearchLink"]
 
   connect() {
-    this._subscription = null
-    this._currentQuery  = null
+    this._subscription    = null
+    this._currentQuery    = null
+    this._loadingTimers   = []
+    this._loadingTimeout  = null
     // Keep the full-search link href in sync with what's typed
     this._syncLinkHref()
   }
 
   disconnect() {
     this._unsubscribeFromChannel()
+    this._clearLoadingTimers()
   }
 
   // ─── Public actions ────────────────────────────────────────────────────────
@@ -35,6 +46,7 @@ export default class extends Controller {
 
     this._currentQuery = query
     this._setLoading(true)
+    this._showLoadingOverlay()
 
     try {
       const response = await fetch("/api/search", {
@@ -72,6 +84,9 @@ export default class extends Controller {
       this._showNotice("Search temporarily unavailable.")
     } finally {
       this._setLoading(false)
+      // Overlay stays up until fresh results arrive or timeout fires.
+      // If there's no live fetch (demo mode / cached only), dismiss it now.
+      if (!this._subscription) this._hideLoadingOverlay()
     }
   }
 
@@ -80,6 +95,7 @@ export default class extends Controller {
     this.inputTarget.value = ""
 
     this._unsubscribeFromChannel()
+    this._hideLoadingOverlay()
     this._hideFetching()
     this._hideBadge()
     this._clearSearchPanel()
@@ -117,6 +133,7 @@ export default class extends Controller {
   }
 
   async _handleFreshResults(data) {
+    this._hideLoadingOverlay()
     this._hideFetching()
     const newCount = data.new_articles_count || 0
     const query    = data.query || this._currentQuery
@@ -302,6 +319,52 @@ export default class extends Controller {
           </div>
         </div>
       </div>`
+  }
+
+  // ─── Cinematic loading overlay ─────────────────────────────────────────────
+
+  _showLoadingOverlay() {
+    const overlay = document.getElementById("intel-loading-overlay")
+    const stage   = document.getElementById("intel-loading-stage")
+    if (!overlay) return
+
+    this._clearLoadingTimers()
+    overlay.classList.remove("is-fading")
+    overlay.classList.add("is-visible")
+
+    // Cycle through staged messages
+    LOADING_STAGES.forEach(({ delay, text }) => {
+      const t = setTimeout(() => {
+        if (stage) stage.textContent = text
+      }, delay)
+      this._loadingTimers.push(t)
+    })
+
+    // Fallback timeout — show "no results" message and dismiss
+    this._loadingTimeout = setTimeout(() => {
+      if (stage) stage.textContent = "⚠️  NO FRESH INTELLIGENCE FOUND — SHOWING CACHED RESULTS"
+      setTimeout(() => this._hideLoadingOverlay(), 2500)
+    }, LOADING_TIMEOUT_MS)
+  }
+
+  _hideLoadingOverlay() {
+    const overlay = document.getElementById("intel-loading-overlay")
+    if (!overlay) return
+
+    this._clearLoadingTimers()
+    overlay.classList.add("is-fading")
+    setTimeout(() => {
+      overlay.classList.remove("is-visible", "is-fading")
+    }, 650)
+  }
+
+  _clearLoadingTimers() {
+    this._loadingTimers.forEach(t => clearTimeout(t))
+    this._loadingTimers = []
+    if (this._loadingTimeout) {
+      clearTimeout(this._loadingTimeout)
+      this._loadingTimeout = null
+    }
   }
 
   // ─── UI helpers ────────────────────────────────────────────────────────────
