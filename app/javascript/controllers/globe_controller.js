@@ -984,6 +984,13 @@ export default class extends Controller {
             <div class="fw-bold">${segment.headline}</div>
           </div>
         ` : ''}
+
+        ${segment.framingExplanation ? `
+          <div class="border-start border-3 ps-3 mb-3" style="border-color: ${framingColor} !important;">
+            <div class="text-muted" style="font-size: 0.75rem;">Why ${framingLabel}</div>
+            <div style="font-size: 0.85rem; color: #cbd5e1;">${segment.framingExplanation}</div>
+          </div>
+        ` : ''}
         
         <div class="d-flex justify-content-between border-top pt-2">
           <div class="text-center">
