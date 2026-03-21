@@ -28,9 +28,26 @@ class FreshIntelligenceJob < ApplicationJob
 
     Rails.logger.info "[FreshIntelligenceJob] Got #{new_attrs.size} new article candidates"
 
-    # 2. Save articles individually — skip failures without aborting the batch
+    # 2. Geopolitical relevance filter — discard noise before hitting the DB
+    filter = GeopoliticalRelevanceFilter.new
+    relevant_attrs = new_attrs.select do |attrs|
+      headline    = attrs[:headline].to_s
+      description = attrs.dig(:raw_data, "description").to_s
+      result = filter.call(headline: headline, description: description)
+      result[:relevant]
+    end
+
+    Rails.logger.info "[FreshIntelligenceJob] #{relevant_attrs.size}/#{new_attrs.size} articles passed relevance filter"
+
+    if relevant_attrs.empty?
+      Rails.logger.info "[FreshIntelligenceJob] All articles filtered out for '#{query}'"
+      broadcast_completion(query, 0)
+      return
+    end
+
+    # 3. Save articles individually — skip failures without aborting the batch
     saved_articles = []
-    new_attrs.each do |attrs|
+    relevant_attrs.each do |attrs|
       article = Article.create!(attrs)
       saved_articles << article
     rescue ActiveRecord::RecordInvalid => e
@@ -41,7 +58,7 @@ class FreshIntelligenceJob < ApplicationJob
 
     Rails.logger.info "[FreshIntelligenceJob] Saved #{saved_articles.size} articles"
 
-    # 3. Generate embeddings for each saved article
+    # 4. Generate embeddings for each saved article
     # Globe broadcast happens automatically via after_create_commit :broadcast_to_globe
     # Embeddings are required before route generation
     embedding_service = EmbeddingService.new

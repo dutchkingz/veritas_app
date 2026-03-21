@@ -9,12 +9,13 @@ class OpenRouterClient
   CREDIT_LIMIT_ERROR_PATTERN = /requires more credits|fewer max_tokens|can only afford/i.freeze
 
   DEFAULT_MODELS = {
-    analyst:          "google/gemini-2.0-flash-001",
-    sentinel:         "openai/gpt-4o-mini",
-    arbiter:          "anthropic/claude-3.5-haiku",
-    briefing:         "anthropic/claude-3.5-haiku",
-    voice:            "anthropic/claude-3.5-haiku",
-    entity_extractor: "google/gemini-2.0-flash-001"
+    analyst:           "google/gemini-2.0-flash-001",
+    sentinel:          "openai/gpt-4o-mini",
+    arbiter:           "anthropic/claude-3.5-haiku",
+    briefing:          "anthropic/claude-3.5-haiku",
+    voice:             "anthropic/claude-3.5-haiku",
+    entity_extractor:  "google/gemini-2.0-flash-001",
+    relevance_filter:  "google/gemini-2.0-flash-001"
   }.freeze
 
   MAX_TOKENS = {
@@ -23,7 +24,8 @@ class OpenRouterClient
     arbiter:          900,
     briefing:         600,
     voice:            200,
-    entity_extractor: 400
+    entity_extractor: 400,
+    relevance_filter: 60
   }.freeze
 
   def initialize(user: nil)
