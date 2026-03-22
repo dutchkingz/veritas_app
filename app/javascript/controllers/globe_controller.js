@@ -2,9 +2,9 @@ import { Controller } from "@hotwired/stimulus"
 import consumer from "channels/consumer"
 
 const THREAT_RING = {
-  3: { color: "#ff3a5e", maxRadius: 7,  propagationSpeed: 3.0, repeatPeriod: 700  },
-  2: { color: "#ffc107", maxRadius: 5,  propagationSpeed: 1.8, repeatPeriod: 1200 },
-  1: { color: "#00ff87", maxRadius: 3,  propagationSpeed: 0.8, repeatPeriod: 2200 }
+  3: { color: "#ff3a5e", maxRadius: 2.5, propagationSpeed: 4.0, repeatPeriod: 2000 },
+  2: { color: "#ffc107", maxRadius: 1.8, propagationSpeed: 3.0, repeatPeriod: 3000 },
+  1: { color: "#00ff87", maxRadius: 1.2, propagationSpeed: 2.0, repeatPeriod: 4000 }
 }
 
 export default class extends Controller {
@@ -181,10 +181,10 @@ export default class extends Controller {
       .height(container.clientHeight)
       .atmosphereColor("#00f0ff")
       .atmosphereAltitude(0.25)
-      // Points layer (articles)
-      .pointAltitude("size")
+      // Points layer (articles) — flat dots on globe surface, not altitude pillars
+      .pointAltitude(0.01)
       .pointColor(d => this._pointColorForPerspective(d))
-      .pointRadius(d => d.radius || 0.35)
+      .pointRadius(d => d.radius || 0.25)
       // NOTE: pointsMerge disabled — required for individual point click events
       .onPointHover(point => this._onPointHover(point))
       .onPointClick(point => this._onPointClicked(point))
@@ -192,19 +192,53 @@ export default class extends Controller {
       // tier 1 (top 5 by strength): thick, animated dash, full opacity
       // tier 2 (next 10): thin, solid, 35% opacity
       // no tier (legacy fallback arcs): use thickness field
-      .arcColor(d => this._arcColorForPerspective(d))
-      .arcDashLength(d => d.arcDashLength != null ? d.arcDashLength : (d.tier === 1 ? 0.5 : 0))
-      .arcDashGap(d => d.arcDashGap != null ? d.arcDashGap : (d.tier === 1 ? 0.15 : 0))
-      .arcDashAnimateTime(d => d.arcDashAnimateTime != null ? d.arcDashAnimateTime : (d.tier === 1 ? 2500 : 0))
+      .arcColor(d => this._arcColorWithDrift(d))
+      .arcDashLength(d => {
+        if (d.arcDashLength != null) return d.arcDashLength
+        if (d.driftIntensity != null) {
+          const f = d.framingShift || 'original'
+          if (f === 'original') return 1
+          if (f === 'neutralized') return 0.6
+          if (f === 'amplified') return 0.4
+          if (f === 'distorted') return 0.25
+          return 1
+        }
+        return d.tier === 1 ? 0.5 : 0
+      })
+      .arcDashGap(d => {
+        if (d.arcDashGap != null) return d.arcDashGap
+        if (d.driftIntensity != null) {
+          const f = d.framingShift || 'original'
+          if (f === 'original') return 0
+          if (f === 'neutralized') return 0.15
+          if (f === 'amplified') return 0.2
+          if (f === 'distorted') return 0.25
+          return 0
+        }
+        return d.tier === 1 ? 0.15 : 0
+      })
+      .arcDashAnimateTime(d => {
+        if (d.arcDashAnimateTime != null) return d.arcDashAnimateTime
+        if (d.driftIntensity != null) {
+          const intensity = d.driftIntensity
+          return Math.round(4000 - (intensity * 2800))
+        }
+        return d.tier === 1 ? 2500 : 0
+      })
       .arcStroke(d => {
         // Highlight selected arc with thicker stroke
         if (this._selectedArcArticleId && String(d.articleId) === String(this._selectedArcArticleId)) {
-          return 4.0
+          return 2.5
         }
         if (d.arcStroke != null) return d.arcStroke
-        if (d.tier === 1) return 2.5
-        if (d.tier === 2) return 0.8
-        return d.thickness || 0.5
+        // Drift-modulated thickness: high drift = slightly thicker arc
+        if (d.driftIntensity != null) {
+          const base = d.tier === 1 ? 1.2 : (d.tier === 2 ? 0.5 : 0.4)
+          return base + (d.driftIntensity * 0.8)
+        }
+        if (d.tier === 1) return 1.2
+        if (d.tier === 2) return 0.5
+        return d.thickness ? Math.min(d.thickness, 1.0) : 0.4
       })
       .onArcHover(arc => this._onArcHover(arc))
       .onArcClick(arc => this._onArcClicked(arc))
@@ -229,43 +263,7 @@ export default class extends Controller {
           </div>
         </div>
       `)
-      .arcLabel(d => {
-        const isSegment = d.sourceName !== undefined || d.targetSourceName !== undefined
-        const segmentInfo = isSegment ? `
-          <div style="color:#a78bfa;font-size:8px;letter-spacing:0.1em;margin-bottom:2px;text-transform:uppercase;">
-            HOP ${d.segmentIndex + 1} of ${d.totalSegments}
-          </div>
-          <div style="font-size:10px;margin-bottom:4px;">
-            ${d.sourceName || 'Unknown'} → ${d.targetSourceName || 'Unknown'}
-          </div>
-        ` : ''
-        return `
-        <div style="
-          background: rgba(10,12,20,0.92);
-          border: 1px solid rgba(0,240,255,0.3);
-          border-radius: 4px;
-          padding: 8px 12px;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 11px;
-          color: #e0e6ed;
-          line-height: 1.4;
-          box-shadow: 0 0 20px rgba(0,240,255,0.15);
-        ">
-          <div style="color:#00f0ff;font-size:9px;letter-spacing:0.1em;margin-bottom:4px;">
-            ${isSegment ? 'NARRATIVE SEGMENT' : 'NARRATIVE ARC'}
-          </div>
-          ${segmentInfo}
-          <div>${d.originCountry || 'Unknown'} → ${d.targetCountry || 'Unknown'}</div>
-          <div style="margin-top:4px;font-weight:600;">${d.headline || 'Linked intelligence signal'}</div>
-          <div style="color:#6b7280;font-size:9px;margin-top:4px;">${d.source || 'UNKNOWN SOURCE'}</div>
-          ${d.publishedAt ? `<div style="color:#6b7280;font-size:8px;margin-top:2px;">${new Date(d.publishedAt).toLocaleString()}</div>` : ''}
-          ${d.strength != null ? `
-          <div style="margin-top:6px;padding-top:4px;border-top:1px solid rgba(0,240,255,0.2);display:flex;justify-content:space-between;align-items:center;">
-            <span style="color:#22c55e;font-size:8px;letter-spacing:0.08em;">SEMANTIC MATCH</span>
-            <span style="color:#22c55e;font-size:10px;font-weight:700;">${Math.round(d.strength * 100)}%</span>
-          </div>` : ''}
-        </div>
-      `})
+      .arcLabel(d => this._buildArcTooltip(d))
       // Heatmap layer (threat thermal overlay)
       // heatmapsData = [ pointsArray ] — each dataset IS the points array (identity accessor)
       .heatmapsData([])
@@ -296,7 +294,8 @@ export default class extends Controller {
         const r   = parseInt(hex.slice(1, 3), 16)
         const g   = parseInt(hex.slice(3, 5), 16)
         const b   = parseInt(hex.slice(5, 7), 16)
-        return `rgba(${r},${g},${b},${Math.max(0, (1 - t) * 0.75)})`
+        // Subtle sonar ping — fades quickly, low max opacity
+        return `rgba(${r},${g},${b},${Math.max(0, (1 - t) * 0.3)})`
       })
       .ringMaxRadius("maxRadius")
       .ringPropagationSpeed("propagationSpeed")
@@ -464,10 +463,9 @@ export default class extends Controller {
       this._heatmapBaseData  = data.heatmap || []
       this._heatmapClusters  = data.heatmapClusters || []
 
-      // Store full datasets for isolate filter
-      this._allPoints = data.points || []
-      this._allArcs   = data.arcs || []
-      this._allRoutes = data.routes || []
+      // Store full datasets for isolate filter — filter invalid coords client-side
+      this._allPoints = (data.points || []).filter(p => this._isValidPoint(p))
+      this._allArcs   = (data.arcs || []).filter(a => this._isValidArc(a))
       this._allRoutes = data.routes || []
 
       if (this._heatmapActive) {
@@ -621,9 +619,11 @@ export default class extends Controller {
   _arcColorForPerspective(d) {
     if (d?._journey) return d.color || '#00f0ff'
 
-    // Highlight selected arc in bright white-cyan
+    // Highlight selected arc: bright glowing version of its own color
     if (this._selectedArcArticleId && String(d.articleId) === String(this._selectedArcArticleId)) {
-      return '#ffffff'
+      const raw = Array.isArray(d.color) ? d.color[0] : (d.color || '#00f0ff')
+      const p = this._parseColor(raw)
+      return `rgba(${Math.min(255, p.r + Math.round((255 - p.r) * 0.5))},${Math.min(255, p.g + Math.round((255 - p.g) * 0.5))},${Math.min(255, p.b + Math.round((255 - p.b) * 0.5))},1)`
     }
 
     const c = Array.isArray(d.color) ? d.color[0] : (d.color || '#00f0ff')
@@ -1270,9 +1270,9 @@ export default class extends Controller {
       this._heatmapBaseData = data.heatmap || []
       this._heatmapClusters = data.heatmapClusters || []
 
-      // Store full datasets for isolate filter
-      this._allPoints = data.points || []
-      this._allArcs   = data.arcs || []
+      // Store full datasets for isolate filter — filter invalid coords client-side
+      this._allPoints = (data.points || []).filter(p => this._isValidPoint(p))
+      this._allArcs   = (data.arcs || []).filter(a => this._isValidArc(a))
 
       if (this._heatmapActive) {
         this._globe.heatmapsData([this._heatmapBaseData])
@@ -1330,6 +1330,276 @@ export default class extends Controller {
 
   // Convert a 6-digit hex color to rgba with the given opacity (0–1).
   // Used to dim secondary arcs without losing their framing-shift color identity.
+  // --- Drift visualization helpers ---
+
+  _getDriftTargetColor(framing, intensity) {
+    const alpha = 0.5 + (intensity * 0.3) // 0.5–0.8 range for smoother blending
+    switch (framing) {
+      case 'distorted':
+        // Warm crimson → deep red
+        return { r: Math.round(255), g: Math.round(60 - intensity * 30), b: Math.round(60 - intensity * 30), a: alpha }
+      case 'amplified':
+        // Amber → hot orange-magenta
+        return { r: 255, g: Math.round(160 - intensity * 100), b: Math.round(40 + intensity * 60), a: alpha }
+      case 'neutralized':
+        // Soft steel blue
+        return { r: Math.round(80 + intensity * 40), g: Math.round(160 + intensity * 40), b: Math.round(220), a: alpha }
+      case 'original':
+      default:
+        // Clean teal/cyan
+        return { r: 0, g: 200, b: 255, a: 0.4 + intensity * 0.2 }
+    }
+  }
+
+  _getFramingColor(framing) {
+    switch (framing) {
+      case 'distorted':   return '#ff2d2d'
+      case 'amplified':   return '#ff8c00'
+      case 'neutralized': return '#6ea8d7'
+      case 'original':    return '#00ffcc'
+      default:            return '#607080'
+    }
+  }
+
+  _parseColor(colorStr) {
+    if (typeof colorStr === 'object' && colorStr.r !== undefined) return colorStr
+    const rgbaMatch = colorStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+),?\s*([\d.]*)\)/)
+    if (rgbaMatch) {
+      return { r: parseInt(rgbaMatch[1]), g: parseInt(rgbaMatch[2]), b: parseInt(rgbaMatch[3]), a: rgbaMatch[4] ? parseFloat(rgbaMatch[4]) : 1.0 }
+    }
+    const hex = colorStr.replace('#', '')
+    if (hex.length === 6) {
+      return { r: parseInt(hex.slice(0, 2), 16), g: parseInt(hex.slice(2, 4), 16), b: parseInt(hex.slice(4, 6), 16), a: 1.0 }
+    }
+    return { r: 0, g: 255, b: 204, a: 0.6 }
+  }
+
+  _interpolateColor(c1, c2, t) {
+    const r = Math.round(c1.r + (c2.r - c1.r) * t)
+    const g = Math.round(c1.g + (c2.g - c1.g) * t)
+    const b = Math.round(c1.b + (c2.b - c1.b) * t)
+    const a = (c1.a + (c2.a - c1.a) * t).toFixed(2)
+    return `rgba(${r},${g},${b},${a})`
+  }
+
+  _buildGradientStops(sourceColor, targetColor, alpha) {
+    const src = this._parseColor(sourceColor)
+    const tgt = typeof targetColor === 'object' ? targetColor : this._parseColor(targetColor)
+    // Apply alpha override if provided (for dimming)
+    if (alpha != null) { src.a = alpha; tgt.a = alpha }
+    const stops = 8
+    const colors = []
+    for (let i = 0; i < stops; i++) {
+      const t = i / (stops - 1)
+      const eased = t * t // ease-in: subtle start, dramatic end
+      colors.push(this._interpolateColor(src, tgt, eased))
+    }
+    return colors
+  }
+
+  _arcColorWithDrift(d) {
+    if (d?._journey) return d.color || '#00f0ff'
+
+    // Highlight selected arc: bright glowing version of its own color, not white
+    if (this._selectedArcArticleId && String(d.articleId) === String(this._selectedArcArticleId)) {
+      const c = Array.isArray(d.color) ? d.color[0] : (d.color || '#00f0ff')
+      const parsed = this._parseColor(c)
+      // Boost brightness by blending toward white
+      const bright = {
+        r: Math.min(255, parsed.r + Math.round((255 - parsed.r) * 0.5)),
+        g: Math.min(255, parsed.g + Math.round((255 - parsed.g) * 0.5)),
+        b: Math.min(255, parsed.b + Math.round((255 - parsed.b) * 0.5)),
+        a: 1.0
+      }
+      return `rgba(${bright.r},${bright.g},${bright.b},1)`
+    }
+
+    // Segments with drift data: 8-stop smooth gradient
+    if (d.driftIntensity != null && d.sourceName !== undefined) {
+      const intensity = d.driftIntensity
+      const framing = d.framingShift || 'original'
+
+      // Low drift or original framing: return single color (no gradient needed)
+      if (intensity < 0.1 || framing === 'original') {
+        const c = d.color || '#00ffcc'
+        // Still apply perspective/selection dimming
+        if (this._selectedArcArticleId) return this._hexToRgba(c, 0.12)
+        if (this._currentPerspective !== 'all' && d.perspectiveSlug !== this._currentPerspective) {
+          return this._hexToRgba(c, d.perspectiveSlug === 'unclassified' ? 0.18 : 0.05)
+        }
+        return d.tier === 2 ? this._hexToRgba(c, 0.35) : c
+      }
+
+      const sourceColor = d.color || '#00ffcc'
+      const targetColor = this._getDriftTargetColor(framing, intensity)
+
+      // Apply perspective / selection dimming on the gradient
+      if (this._selectedArcArticleId) {
+        return this._buildGradientStops(sourceColor, targetColor, 0.12)
+      }
+      if (this._currentPerspective !== 'all') {
+        const isActive = d.perspectiveSlug === this._currentPerspective
+        if (!isActive) {
+          const dimAlpha = d.perspectiveSlug === 'unclassified' ? 0.18 : 0.05
+          return this._buildGradientStops(sourceColor, targetColor, dimAlpha)
+        }
+      }
+      if (d.tier === 2) {
+        return this._buildGradientStops(sourceColor, targetColor, 0.35)
+      }
+      return this._buildGradientStops(sourceColor, targetColor, null)
+    }
+
+    // Fallback: existing perspective-based color logic for non-segment arcs
+    return this._arcColorForPerspective(d)
+  }
+
+  _buildArcTooltip(d) {
+    if (!d) return ''
+
+    // Drift-enhanced tooltip for segments with drift data
+    if (d.driftIntensity != null && d.sourceName !== undefined) {
+      const intensity = d.driftIntensity || 0
+      const framing = d.framingShift || 'unknown'
+      const framingColor = this._getFramingColor(framing)
+      const sentimentShift = d.sentimentShift || 'N/A'
+      const similarity = d.semanticSimilarity || 0
+      const explanation = d.framingExplanation || ''
+
+      const driftLevel = intensity > 0.7 ? 'CRITICAL' :
+                         intensity > 0.4 ? 'SIGNIFICANT' :
+                         intensity > 0.15 ? 'MODERATE' : 'MINIMAL'
+      const driftLevelColor = intensity > 0.7 ? '#ff2d2d' :
+                              intensity > 0.4 ? '#ff8c00' :
+                              intensity > 0.15 ? '#ffd700' : '#00ffcc'
+
+      const headlines = (d.sourceHeadline && d.targetHeadline) ? `
+        <div style="font-size:10px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.06);">
+          <div style="color:#00ffcc;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:380px;">▸ ${d.sourceHeadline}</div>
+          <div style="color:${framingColor};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:380px;">▸ ${d.targetHeadline}</div>
+        </div>
+      ` : ''
+
+      return `
+        <div style="
+          background:rgba(10,12,18,0.92);
+          backdrop-filter:blur(12px);
+          border:1px solid rgba(0,255,204,0.15);
+          border-left:3px solid ${framingColor};
+          border-radius:6px;
+          padding:14px 18px;
+          font-family:'JetBrains Mono','Fira Code','SF Mono',monospace;
+          color:#e0e0e0;
+          min-width:320px;
+          max-width:420px;
+          line-height:1.5;
+          box-shadow:0 8px 32px rgba(0,0,0,0.5);
+        ">
+          <div style="font-size:9px;text-transform:uppercase;letter-spacing:2px;color:#607080;margin-bottom:8px;">
+            NARRATIVE DRIFT ANALYSIS
+          </div>
+          <div style="font-size:12px;margin-bottom:10px;">
+            <span style="color:#00ffcc;">${d.sourceCountry || '?'}</span>
+            <span style="color:#607080;margin:0 6px;">→</span>
+            <span style="color:${framingColor};">${d.targetCountry || '?'}</span>
+          </div>
+          <div style="font-size:10px;color:#8090a0;margin-bottom:10px;">
+            ${d.sourceName || '?'} → ${d.targetSourceName || '?'}
+          </div>
+          ${headlines}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+            <div>
+              <div style="font-size:8px;text-transform:uppercase;letter-spacing:1px;color:#506070;">Framing</div>
+              <div style="font-size:11px;color:${framingColor};font-weight:600;">${framing.toUpperCase()}</div>
+            </div>
+            <div>
+              <div style="font-size:8px;text-transform:uppercase;letter-spacing:1px;color:#506070;">Drift Level</div>
+              <div style="font-size:11px;color:${driftLevelColor};font-weight:600;">${driftLevel}</div>
+            </div>
+            <div>
+              <div style="font-size:8px;text-transform:uppercase;letter-spacing:1px;color:#506070;">Sentiment</div>
+              <div style="font-size:11px;">${sentimentShift}</div>
+            </div>
+            <div>
+              <div style="font-size:8px;text-transform:uppercase;letter-spacing:1px;color:#506070;">Semantic Match</div>
+              <div style="font-size:11px;color:${similarity > 85 ? '#00ffcc' : '#ffd700'};">${similarity}%</div>
+            </div>
+          </div>
+          ${explanation ? `
+            <div style="font-size:10px;color:#8898a8;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;font-style:italic;">
+              "${explanation}"
+            </div>
+          ` : ''}
+          <div style="margin-top:10px;">
+            <div style="font-size:8px;text-transform:uppercase;letter-spacing:1px;color:#506070;margin-bottom:4px;">Drift Intensity</div>
+            <div style="width:100%;height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;">
+              <div style="width:${Math.round(intensity * 100)}%;height:100%;background:linear-gradient(90deg,#00ffcc,${driftLevelColor});border-radius:2px;"></div>
+            </div>
+          </div>
+        </div>
+      `
+    }
+
+    // Fallback: legacy tooltip for simple arcs without drift data
+    const isSegment = d.sourceName !== undefined || d.targetSourceName !== undefined
+    const segmentInfo = isSegment ? `
+      <div style="color:#a78bfa;font-size:8px;letter-spacing:0.1em;margin-bottom:2px;text-transform:uppercase;">
+        HOP ${(d.segmentIndex || 0) + 1} of ${d.totalSegments || '?'}
+      </div>
+      <div style="font-size:10px;margin-bottom:4px;">
+        ${d.sourceName || 'Unknown'} → ${d.targetSourceName || 'Unknown'}
+      </div>
+    ` : ''
+    return `
+      <div style="
+        background:rgba(10,12,20,0.92);
+        border:1px solid rgba(0,240,255,0.3);
+        border-radius:4px;
+        padding:8px 12px;
+        font-family:'JetBrains Mono',monospace;
+        font-size:11px;
+        color:#e0e6ed;
+        line-height:1.4;
+        box-shadow:0 0 20px rgba(0,240,255,0.15);
+      ">
+        <div style="color:#00f0ff;font-size:9px;letter-spacing:0.1em;margin-bottom:4px;">
+          ${isSegment ? 'NARRATIVE SEGMENT' : 'NARRATIVE ARC'}
+        </div>
+        ${segmentInfo}
+        <div>${d.originCountry || 'Unknown'} → ${d.targetCountry || 'Unknown'}</div>
+        <div style="margin-top:4px;font-weight:600;">${d.headline || 'Linked intelligence signal'}</div>
+        <div style="color:#6b7280;font-size:9px;margin-top:4px;">${d.source || 'UNKNOWN SOURCE'}</div>
+        ${d.publishedAt ? `<div style="color:#6b7280;font-size:8px;margin-top:2px;">${new Date(d.publishedAt).toLocaleString()}</div>` : ''}
+        ${d.strength != null ? `
+        <div style="margin-top:6px;padding-top:4px;border-top:1px solid rgba(0,240,255,0.2);display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:#22c55e;font-size:8px;letter-spacing:0.08em;">SEMANTIC MATCH</span>
+          <span style="color:#22c55e;font-size:10px;font-weight:700;">${Math.round((d.strength || 0) * 100)}%</span>
+        </div>` : ''}
+      </div>
+    `
+  }
+
+  _isValidPoint(p) {
+    if (p.lat == null || p.lng == null) return false
+    if (Math.abs(p.lat) > 90 || Math.abs(p.lng) > 180) return false
+    if (Math.abs(p.lat) < 1 && Math.abs(p.lng) < 1) return false
+    return true
+  }
+
+  _isValidArc(arc) {
+    const { startLat, startLng, endLat, endLng } = arc
+    if (startLat == null || startLng == null || endLat == null || endLng == null) return false
+    // Out-of-range coordinates (GDELT parsing bug)
+    if (Math.abs(startLat) > 90 || Math.abs(endLat) > 90) return false
+    if (Math.abs(startLng) > 180 || Math.abs(endLng) > 180) return false
+    // Null island
+    if (Math.abs(startLat) < 1 && Math.abs(startLng) < 1) return false
+    if (Math.abs(endLat) < 1 && Math.abs(endLng) < 1) return false
+    // Too short (spike/needle) — within 2° in both axes
+    if (Math.abs(startLat - endLat) < 2 && Math.abs(startLng - endLng) < 2) return false
+    return true
+  }
+
   _hexToRgba(hex, alpha) {
     const h = hex.replace('#', '')
     if (h.length !== 6) return hex
