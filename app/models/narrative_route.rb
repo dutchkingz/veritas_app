@@ -172,7 +172,10 @@ class NarrativeRoute < ApplicationRecord
     thickness = [(manipulation_score || 0.5) * 0.8, 0.2].max.round(2)
     origin_score = serialized_hops.first[:manipulationScore]
 
-    serialized_hops.each_cons(2).with_index.map do |(source_hop, target_hop), index|
+    serialized_hops.each_cons(2).with_index.filter_map do |(source_hop, target_hop), index|
+      # Skip degenerate segments (same point or null island)
+      next if degenerate_segment?(source_hop, target_hop)
+
       {
         id: "#{id}-#{index}",
         routeId: id,
@@ -215,6 +218,14 @@ class NarrativeRoute < ApplicationRecord
         targetTrustScore: target_hop[:trustScore],
         sourceSentimentLabel: source_hop[:sentimentLabel],
         targetSentimentLabel: target_hop[:sentimentLabel],
+        sentimentShift: build_sentiment_shift(source_hop[:rawSentimentLabel], target_hop[:rawSentimentLabel]),
+        sentimentDelta: compute_sentiment_delta(source_hop[:rawSentimentLabel], target_hop[:rawSentimentLabel]),
+        driftIntensity: compute_drift_intensity(
+          target_hop[:framingShift],
+          source_hop[:rawSentimentLabel],
+          target_hop[:rawSentimentLabel],
+          target_hop[:confidenceScore]
+        ),
         sourcePerspectiveSlug: source_hop[:perspectiveSlug],
         targetPerspectiveSlug: target_hop[:perspectiveSlug],
         sourcePerspectiveLabel: source_hop[:perspectiveLabel],
@@ -486,5 +497,68 @@ class NarrativeRoute < ApplicationRecord
 
   def segment_color(framing_shift)
     FRAMING_SHIFT_COLORS[framing_shift.to_s] || "#6b7280"
+  end
+
+  def degenerate_segment?(source_hop, target_hop)
+    s_lat = source_hop[:lat]
+    s_lng = source_hop[:lng]
+    e_lat = target_hop[:lat]
+    e_lng = target_hop[:lng]
+
+    # Any nil coordinate = degenerate
+    return true if [s_lat, s_lng, e_lat, e_lng].any?(&:nil?)
+    # Null island (within 1° of 0,0)
+    return true if (s_lat.to_f.abs < 1.0 && s_lng.to_f.abs < 1.0) || (e_lat.to_f.abs < 1.0 && e_lng.to_f.abs < 1.0)
+    # Too close (within 2°) = spike/needle
+    return true if (s_lat.to_f - e_lat.to_f).abs < 2.0 && (s_lng.to_f - e_lng.to_f).abs < 2.0
+
+    false
+  end
+
+  # --- Drift metrics helpers ---
+
+  SENTIMENT_VALUES = {
+    "very positive" => 2.0, "positive" => 1.0, "bullish" => 1.0,
+    "neutral" => 0.0, "mixed" => 0.0,
+    "negative" => -1.0, "bearish" => -1.0, "hostile" => -1.5,
+    "very negative" => -2.0
+  }.freeze
+
+  def sentiment_numeric(raw_label)
+    label = raw_label.to_s.downcase.strip
+    return 0.0 if label.blank? || label == "unknown"
+
+    SENTIMENT_VALUES.each do |key, value|
+      return value if label.include?(key)
+    end
+    0.0
+  end
+
+  def build_sentiment_shift(source_label, target_label)
+    src = normalized_sentiment_label(source_label.to_s)
+    tgt = normalized_sentiment_label(target_label.to_s)
+    return "Unknown" if src == "NEUTRAL" && tgt == "NEUTRAL" && source_label.blank? && target_label.blank?
+
+    "#{src.capitalize} → #{tgt.capitalize}"
+  end
+
+  def compute_sentiment_delta(source_label, target_label)
+    (sentiment_numeric(target_label) - sentiment_numeric(source_label)).round(2)
+  end
+
+  def compute_drift_intensity(framing_shift, source_sentiment, target_sentiment, confidence_score)
+    framing_weight = case framing_shift.to_s
+                     when "original"    then 0.0
+                     when "neutralized" then 0.3
+                     when "amplified"   then 0.5
+                     when "distorted"   then 1.0
+                     else 0.0
+                     end
+
+    sentiment_weight = (compute_sentiment_delta(source_sentiment, target_sentiment).abs / 2.0).clamp(0.0, 1.0)
+
+    semantic_distance = 1.0 - (confidence_score || 1.0).to_f.clamp(0.0, 1.0)
+
+    ((framing_weight * 0.5) + (sentiment_weight * 0.3) + (semantic_distance * 0.2)).clamp(0.0, 1.0).round(3)
   end
 end

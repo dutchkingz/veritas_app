@@ -93,9 +93,11 @@ class PagesController < ApplicationController
 
   def home
     # Hot articles: highest threat level first, then trust score (lower = more suspicious)
+    # Exclude GDELT articles that still have placeholder headlines (not yet scraped)
     @hot_articles = Article
       .includes(:country, :region, :ai_analysis, narrative_arcs: :narrative_routes)
       .where.not(ai_analysis: { threat_level: nil })
+      .where.not("headline LIKE '%— GDELT'")
       .order('ai_analysis.threat_level DESC, ai_analysis.trust_score ASC, articles.published_at DESC')
       .limit(15)
     
@@ -188,6 +190,8 @@ class PagesController < ApplicationController
 
     points = filtered_articles.first(200).filter_map do |a|
       next if a.latitude.blank? || a.longitude.blank?
+      next if null_island?(a.latitude, a.longitude)
+      next unless valid_coordinates?(a.latitude, a.longitude)
 
       sentiment_color  = a.ai_analysis&.sentiment_color || "#00f0ff"
       perspective_slug = SourceClassifierService.classify(a.source_name)[:slug]
@@ -207,7 +211,15 @@ class PagesController < ApplicationController
     arcs = if view_mode == "segments"
              route_payload = build_route_segments(filtered_articles, nil, to_time)
              routes = route_payload[:routes]
-             route_payload[:segments].any? ? route_payload[:segments] : build_globe_arcs(filtered_articles, nil, to_time)
+             # If default view (no search/topic) returns few segments, inject top narratives
+             if route_payload[:segments].size < 5 && search_query.blank? && topic.blank?
+               top_payload = build_top_narrative_segments(to_time)
+               routes = (routes + top_payload[:routes]).uniq { |r| r[:id] }
+               all_segments = (route_payload[:segments] + top_payload[:segments]).uniq { |s| s[:id] }
+               all_segments.any? ? all_segments : build_globe_arcs(filtered_articles, nil, to_time)
+             else
+               route_payload[:segments].any? ? route_payload[:segments] : build_globe_arcs(filtered_articles, nil, to_time)
+             end
            else
              build_globe_arcs(filtered_articles, nil, to_time)
            end
@@ -280,6 +292,7 @@ class PagesController < ApplicationController
     # Base weight 0.4 ensures even unevaluated articles show up on the thermal layer.
     heatmap = filtered_articles.first(200).filter_map do |a|
       next if a.latitude.blank? || a.longitude.blank?
+      next if null_island?(a.latitude, a.longitude)
 
       threat = a.ai_analysis&.threat_level.to_f   # 0–10 (nil → 0)
       trust  = a.ai_analysis&.trust_score.to_f    # 0–100 (nil → 0, treated as unknown)
@@ -568,10 +581,46 @@ class PagesController < ApplicationController
       )
 
       route_data[:segments].each do |segment|
+        next if degenerate_arc?(segment)
         segments << segment.merge(
           strength: strength,
           tier: tier
         )
+      end
+    end
+
+    { segments: segments, routes: routes }
+  end
+
+  # Top narrative routes by manipulation score — used to populate the default homepage view
+  # so users see the most interesting intelligence immediately rather than an empty globe.
+  def build_top_narrative_segments(to_time)
+    scope = NarrativeRoute
+      .joins(narrative_arc: :article)
+      .includes(narrative_arc: { article: :ai_analysis })
+      .where.not(hops: nil)
+      .where("narrative_routes.total_hops >= ?", 2)
+      .where("narrative_routes.created_at >= ?", 7.days.ago)
+      .order(manipulation_score: :desc, total_reach_countries: :desc)
+
+    scope = scope.where("articles.published_at <= ?", to_time) if to_time
+
+    segments = []
+    routes = []
+
+    scope.limit(25).each_with_index do |route, index|
+      route_data = route.as_journey_data
+      next unless route_data[:segments]&.any?
+
+      tier = index < 5 ? 1 : 2
+      confidences = route.hops.filter_map { |h| h["confidence_score"]&.to_f }
+      strength = confidences.any? ? (confidences.sum / confidences.size.to_f).round(3) : 0.5
+
+      routes << route_data.merge(strength: strength, tier: tier)
+
+      route_data[:segments].each do |segment|
+        next if degenerate_arc?(segment)
+        segments << segment.merge(strength: strength, tier: tier)
       end
     end
 
@@ -598,7 +647,8 @@ class PagesController < ApplicationController
               end
 
     # Return only real narrative arcs to keep the intelligence layer focused.
-    db_arcs.first(100)
+    # Filter degenerate arcs (same start/end point = hedgehog needles)
+    db_arcs.reject { |arc| degenerate_arc?(arc) }.first(100)
   end
 
   def build_article_flow_arcs(filtered_articles, perspective)
@@ -676,6 +726,37 @@ class PagesController < ApplicationController
     else
       nil
     end
+  end
+
+  # Returns true for arcs where start ≈ end (hedgehog needles / spikes).
+  def degenerate_arc?(arc)
+    s_lat = arc[:startLat]
+    s_lng = arc[:startLng]
+    e_lat = arc[:endLat]
+    e_lng = arc[:endLng]
+
+    # Any nil coordinate = degenerate
+    return true if [s_lat, s_lng, e_lat, e_lng].any?(&:nil?)
+
+    # Out-of-range coordinates (GDELT parsing bug) = degenerate
+    return true unless valid_coordinates?(s_lat, s_lng) && valid_coordinates?(e_lat, e_lng)
+
+    return true if null_island?(s_lat, s_lng) || null_island?(e_lat, e_lng)
+
+    # Too close (within 2°) = spike/needle regardless of country
+    lat_diff = (s_lat.to_f - e_lat.to_f).abs
+    lng_diff = (s_lng.to_f - e_lng.to_f).abs
+    return true if lat_diff < 2.0 && lng_diff < 2.0
+
+    false
+  end
+
+  def null_island?(lat, lng)
+    lat.to_f.abs < 1.0 && lng.to_f.abs < 1.0
+  end
+
+  def valid_coordinates?(lat, lng)
+    lat.to_f.between?(-90.0, 90.0) && lng.to_f.between?(-180.0, 180.0)
   end
 
   def brighten_hex(hex_color, factor)
