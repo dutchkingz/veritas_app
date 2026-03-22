@@ -61,6 +61,9 @@ class Article < ApplicationRecord
   end
 
   def broadcast_sidebar_update
+    # Don't push GDELT articles with placeholder headlines to the sidebar
+    return if headline.to_s.end_with?("— GDELT")
+
     broadcast_prepend_to(
       "hot_articles",
       target: "hot-articles-feed",
