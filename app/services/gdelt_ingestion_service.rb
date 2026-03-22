@@ -27,9 +27,17 @@ class GdeltIngestionService
   end
 
   def fetch_and_process
-    Rails.logger.info "[GdeltIngestionService] Starting GDELT fetch (last 24h, limit #{RESULTS_LIMIT})"
+    hwm = last_gdelt_published_at
+    if hwm
+      Rails.logger.info "[GdeltIngestionService] Starting GDELT fetch (high-water mark: #{hwm.iso8601}, limit #{RESULTS_LIMIT})"
+    else
+      Rails.logger.info "[GdeltIngestionService] Starting GDELT fetch (no prior articles — full 24h window, limit #{RESULTS_LIMIT})"
+    end
 
-    rows   = @bq.execute_query(build_query)
+    sql = build_query(high_water_mark: hwm)
+    validate_sql_safety!(sql)
+
+    rows   = @bq.execute_query(sql)
     parsed = rows.map { |row| parse_row(row) }.compact
     Rails.logger.info "[GdeltIngestionService] Parsed #{parsed.size}/#{rows.count} usable rows"
 
@@ -73,10 +81,40 @@ class GdeltIngestionService
 
   private
 
-  def build_query
+  # PARANOIA CHECK: validate that the SQL is safe before sending to BigQuery.
+  # Even if build_query is correct today, a future refactor could accidentally
+  # drop the partition filter and scan the entire GDELT dataset.
+  def validate_sql_safety!(sql)
+    unless sql.include?("_PARTITIONTIME")
+      raise GdeltBigQueryService::QueryError,
+        "SAFETY BLOCK: Query missing _PARTITIONTIME filter. This would scan the entire GDELT dataset."
+    end
+
+    unless sql.match?(/LIMIT\s+\d+/i)
+      raise GdeltBigQueryService::QueryError,
+        "SAFETY BLOCK: Query missing LIMIT clause."
+    end
+  end
+
+  # Returns the published_at timestamp of the most recent GDELT article in our DB.
+  # Used as a high-water mark to avoid re-fetching rows we already have.
+  def last_gdelt_published_at
+    Article.where(data_source: "gdelt").maximum(:published_at)
+  end
+
+  def build_query(high_water_mark: nil)
     theme_conditions = GEOPOLITICAL_THEMES.map do |theme|
       "REGEXP_CONTAINS(V2Themes, r'(?:^|;)#{theme}')"
     end.join(" OR ")
+
+    # GDELT GKG DATE column is an INTEGER in YYYYMMDDHHMMSS format.
+    # Convert our Ruby timestamp to the same format for comparison.
+    hwm_clause = if high_water_mark
+      gdelt_date_int = high_water_mark.strftime("%Y%m%d%H%M%S").to_i
+      "AND DATE > #{gdelt_date_int}"
+    else
+      ""
+    end
 
     <<~SQL
       SELECT
@@ -90,6 +128,7 @@ class GdeltIngestionService
       FROM `#{GDELT_TABLE}`
       WHERE _PARTITIONTIME >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 24 HOUR)
         AND (#{theme_conditions})
+        #{hwm_clause}
       LIMIT #{RESULTS_LIMIT}
     SQL
   end
