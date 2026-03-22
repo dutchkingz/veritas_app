@@ -125,7 +125,7 @@ export default class extends Controller {
 
     return {
       arcsData: this._cloneLayer(this._globe.arcsData() || []),
-      pointsData: this._cloneLayer(this._globe.pointsData() || []),
+      hexBinPointsData: this._cloneLayer(this._globe.hexBinPointsData() || []),
       ringsData: this._cloneLayer(this._globe.ringsData() || []),
       pointOfView: { ...(this._globe.pointOfView?.() || { lat: 20, lng: 10, altitude: 2.5 }) },
       autoRotate: controls.autoRotate,
@@ -142,7 +142,7 @@ export default class extends Controller {
     controls.autoRotateSpeed = state.autoRotateSpeed ?? 0.4
 
     this._globe
-      .pointsData(this._cloneLayer(state.pointsData || []))
+      .hexBinPointsData(this._cloneLayer(state.hexBinPointsData || []))
       .arcsData(this._cloneLayer(state.arcsData || []))
       .ringsData(this._cloneLayer(state.ringsData || []))
 
@@ -181,13 +181,21 @@ export default class extends Controller {
       .height(container.clientHeight)
       .atmosphereColor("#00f0ff")
       .atmosphereAltitude(0.25)
-      // Points layer (articles) — flat dots on globe surface, not altitude pillars
-      .pointAltitude(0.01)
-      .pointColor(d => this._pointColorForPerspective(d))
-      .pointRadius(d => d.radius || 0.25)
-      // NOTE: pointsMerge disabled — required for individual point click events
-      .onPointHover(point => this._onPointHover(point))
-      .onPointClick(point => this._onPointClicked(point))
+      // Hex-bin layer — aggregates signals into hexagonal bins
+      // Height = signal density, Color = max threat level in bin
+      .hexBinPointsData([])
+      .hexBinPointLat(d => d.lat)
+      .hexBinPointLng(d => d.lng)
+      .hexBinPointWeight(d => this._hexBinWeight(d))
+      .hexBinResolution(3)
+      .hexBinMerge(true)
+      .hexMargin(0.3)
+      .hexTopColor(d => this._hexColor(d, 'top'))
+      .hexSideColor(d => this._hexColor(d, 'side'))
+      .hexAltitude(d => Math.min(0.15, 0.005 + (d.sumWeight * 0.003)))
+      .hexTransitionDuration(800)
+      .onHexHover(hex => this._onHexHover(hex))
+      .onHexClick(hex => this._onHexClicked(hex))
       // Arcs layer (narrative arcs)
       // tier 1 (top 5 by strength): thick, animated dash, full opacity
       // tier 2 (next 10): thin, solid, 35% opacity
@@ -243,26 +251,7 @@ export default class extends Controller {
       .onArcHover(arc => this._onArcHover(arc))
       .onArcClick(arc => this._onArcClicked(arc))
       // Tooltips
-      .pointLabel(d => `
-        <div style="
-          background: rgba(10,12,20,0.92);
-          border: 1px solid rgba(0,240,255,0.3);
-          border-radius: 4px;
-          padding: 8px 12px;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 11px;
-          color: #e0e6ed;
-          max-width: 280px;
-          line-height: 1.4;
-          box-shadow: 0 0 20px rgba(0,240,255,0.15);
-        ">
-          <div style="color:#00f0ff;font-size:9px;letter-spacing:0.1em;margin-bottom:4px;">${d.source || 'UNKNOWN SOURCE'}</div>
-          <div style="font-weight:600;">${d.headline || 'No headline'}</div>
-          <div style="color:#6b7280;font-size:9px;margin-top:4px;">
-            ${d.lat.toFixed(2)}°, ${d.lng.toFixed(2)}°
-          </div>
-        </div>
-      `)
+      .hexLabel(d => this._buildHexTooltip(d))
       .arcLabel(d => this._buildArcTooltip(d))
       // Heatmap layer (threat thermal overlay)
       // heatmapsData = [ pointsArray ] — each dataset IS the points array (identity accessor)
@@ -454,11 +443,6 @@ export default class extends Controller {
       const response = await fetch(url, { signal })
       const data     = await response.json()
 
-      const rings = (data.regions || []).map(r => ({
-        ...r,
-        ...(THREAT_RING[parseInt(r.threat, 10)] || THREAT_RING[1])
-      }))
-
       // Store heatmap base data + cluster summaries for thermal layer
       this._heatmapBaseData  = data.heatmap || []
       this._heatmapClusters  = data.heatmapClusters || []
@@ -479,9 +463,9 @@ export default class extends Controller {
         }
 
         this._globe
-          .pointsData(visiblePoints)
+          .hexBinPointsData(visiblePoints)
           .arcsData(this._allArcs)
-          .ringsData(rings)
+          .ringsData([])  // No rings on initial load — hex bins are enough
 
         if (this._globe) this._updatePackets()
       }
@@ -601,7 +585,7 @@ export default class extends Controller {
     // Client-side only — re-apply color callbacks without re-fetching data
     if (this._globe && this._allPoints) {
       this._globe
-        .pointsData([...this._allPoints])
+        .hexBinPointsData([...this._allPoints])
         .arcsData([...this._allArcs || []])
     }
   }
@@ -744,7 +728,7 @@ export default class extends Controller {
     this._hideRouteChoiceMenu()
 
     if (this._packetGroup) this._packetGroup.visible = false
-    this._globe.arcsData([]).pointsData([]).ringsData([])
+    this._globe.arcsData([]).hexBinPointsData([]).ringsData([])
   }
 
   _onJourneyEnded(event) {
@@ -1025,7 +1009,7 @@ export default class extends Controller {
 
     if (this._heatmapActive) {
       // Hide normal layers + packets
-      this._globe.arcsData([]).pointsData([]).ringsData([])
+      this._globe.arcsData([]).hexBinPointsData([]).ringsData([])
       if (this._packetGroup) this._packetGroup.visible = false
 
       // Render heatmap (reload data so heatmap branch is taken)
@@ -1164,16 +1148,17 @@ export default class extends Controller {
     if (this._journeyActive) return
 
     if (data.type === "new_point") {
-      const current = this._globe.pointsData()
-      this._globe.pointsData([...current, data.point])
+      const current = this._globe.hexBinPointsData() || []
+      this._globe.hexBinPointsData([...current, data.point])
 
-      // Flare heatmap at new article location
+      // Fire a one-shot ring at the new signal location
       if (data.point.lat && data.point.lng) {
+        this._onNewSignal(data.point)
         this._flareHeatmapAt(data.point.lat, data.point.lng)
       }
     } else if (data.type === "update_point") {
-      const current = this._globe.pointsData()
-      this._globe.pointsData(
+      const current = this._globe.hexBinPointsData() || []
+      this._globe.hexBinPointsData(
         current.map(p => p.id === data.point.id ? { ...p, ...data.point } : p)
       )
     } else if (data.type === "routes_updated" || data.type === "articles_fetched") {
@@ -1206,9 +1191,9 @@ export default class extends Controller {
           if (arc.articleId) connectedIds.add(arc.articleId)
         })
         const filtered = allPoints.filter(p => connectedIds.has(p.id))
-        this._globe.pointsData(filtered)
+        this._globe.hexBinPointsData(filtered)
       } else {
-        this._globe.pointsData(allPoints)
+        this._globe.hexBinPointsData(allPoints)
       }
     }
 
@@ -1243,7 +1228,7 @@ export default class extends Controller {
 
     // Purge the globe immediately so the user never sees stale arcs while loading
     if (this._globe) {
-      this._globe.arcsData([]).pointsData([]).ringsData([])
+      this._globe.arcsData([]).hexBinPointsData([]).ringsData([])
       if (this._packetGroup) this._packetGroup.visible = false
     }
 
@@ -1277,11 +1262,6 @@ export default class extends Controller {
       if (this._heatmapActive) {
         this._globe.heatmapsData([this._heatmapBaseData])
       } else {
-        const rings = (data.regions || []).map(r => ({
-          ...r,
-          ...(THREAT_RING[parseInt(r.threat, 10)] || THREAT_RING[1])
-        }))
-
         let visiblePoints = this._allPoints
         if (this._hideIsolated) {
           const connectedIds = new Set()
@@ -1290,9 +1270,9 @@ export default class extends Controller {
         }
 
         this._globe
-          .pointsData(visiblePoints)
+          .hexBinPointsData(visiblePoints)
           .arcsData(this._allArcs)
-          .ringsData(rings)
+          .ringsData([])  // No rings on search load — hex bins are enough
 
         if (this._packetGroup) this._packetGroup.visible = true
         if (this._globe) this._updatePackets()
@@ -1326,6 +1306,127 @@ export default class extends Controller {
 
   _cloneLayer(layer) {
     return JSON.parse(JSON.stringify(layer))
+  }
+
+  // -------------------------------------------------------
+  // Hex-bin layer helpers
+  // -------------------------------------------------------
+
+  _hexBinWeight(d) {
+    const threat = (d.threat_level || '').toUpperCase()
+    if (threat === 'SEVERE' || threat === 'CRITICAL') return 3
+    if (threat === 'HIGH') return 2
+    if (threat === 'MODERATE') return 1.5
+    return 1
+  }
+
+  _hexColor(bin, face) {
+    const points = bin.points || []
+    let maxThreat = 0
+    points.forEach(p => {
+      const threat = (p.threat_level || '').toUpperCase()
+      if (threat === 'SEVERE' || threat === 'CRITICAL') maxThreat = Math.max(maxThreat, 3)
+      else if (threat === 'HIGH') maxThreat = Math.max(maxThreat, 2)
+      else if (threat === 'MODERATE') maxThreat = Math.max(maxThreat, 1)
+    })
+
+    const alpha = face === 'top' ? 0.9 : 0.7
+    if (maxThreat >= 3) return `rgba(255, 40, 40, ${alpha})`      // Red — SEVERE
+    if (maxThreat >= 2) return `rgba(255, 140, 0, ${alpha})`      // Orange — HIGH
+    if (maxThreat >= 1) return `rgba(255, 210, 0, ${alpha})`      // Yellow — MODERATE
+    return `rgba(0, 255, 204, ${alpha})`                           // Teal — normal
+  }
+
+  _buildHexTooltip(bin) {
+    if (!bin) return ''
+    const points = bin.points || []
+    const count = points.length
+    if (count === 0) return ''
+
+    // Determine max threat in the bin
+    let maxThreat = 0
+    let maxThreatLabel = 'NORMAL'
+    points.forEach(p => {
+      const threat = (p.threat_level || '').toUpperCase()
+      if ((threat === 'SEVERE' || threat === 'CRITICAL') && maxThreat < 3) { maxThreat = 3; maxThreatLabel = threat }
+      else if (threat === 'HIGH' && maxThreat < 2) { maxThreat = 2; maxThreatLabel = 'HIGH' }
+      else if (threat === 'MODERATE' && maxThreat < 1) { maxThreat = 1; maxThreatLabel = 'MODERATE' }
+    })
+    const threatColor = maxThreat >= 3 ? '#ff2828' : maxThreat >= 2 ? '#ff8c00' : maxThreat >= 1 ? '#ffd200' : '#00ffcc'
+
+    // Show up to 3 headlines from the bin
+    const headlines = points.slice(0, 3).map(p =>
+      `<div style="margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px;">
+        <span style="color:${threatColor};font-size:8px;">&#9632;</span>
+        <span style="color:#8b95a5;font-size:8px;margin-right:4px;">${p.source || 'UNKNOWN'}</span>
+        <span style="font-size:10px;">${p.headline || 'No headline'}</span>
+      </div>`
+    ).join('')
+
+    return `
+      <div style="
+        background:rgba(10,12,20,0.92);
+        border:1px solid rgba(0,240,255,0.3);
+        border-radius:4px;
+        padding:8px 12px;
+        font-family:'JetBrains Mono',monospace;
+        font-size:11px;
+        color:#e0e6ed;
+        max-width:320px;
+        line-height:1.4;
+        box-shadow:0 0 20px rgba(0,240,255,0.15);
+      ">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="color:#00f0ff;font-size:9px;letter-spacing:0.12em;">SIGNAL CLUSTER</span>
+          <span style="color:${threatColor};font-size:9px;font-weight:700;">${maxThreatLabel}</span>
+        </div>
+        <div style="display:flex;gap:14px;margin-bottom:8px;">
+          <div>
+            <div style="color:#8b95a5;font-size:8px;letter-spacing:0.08em;">SIGNALS</div>
+            <div style="font-size:16px;font-weight:700;color:#e0e6ed;">${count}</div>
+          </div>
+          <div>
+            <div style="color:#8b95a5;font-size:8px;letter-spacing:0.08em;">MAX THREAT</div>
+            <div style="font-size:16px;font-weight:700;color:${threatColor};">${maxThreatLabel}</div>
+          </div>
+        </div>
+        ${headlines ? `<div style="border-top:1px solid rgba(0,240,255,0.15);padding-top:6px;">${headlines}</div>` : ''}
+      </div>
+    `
+  }
+
+  _onHexHover(hex) {
+    this._pointHovered = Boolean(hex)
+    this._syncAutoRotate()
+  }
+
+  _onHexClicked(hex) {
+    if (!hex || !this._globe) return
+    if (this._journeyActive) return
+    // Fly to the hex centroid
+    const center = hex.center || {}
+    if (center.lat != null && center.lng != null) {
+      this._flyTo(center.lat, center.lng, 2.0)
+    }
+  }
+
+  _onNewSignal(point) {
+    if (!this._globe) return
+    const ring = {
+      lat: point.lat,
+      lng: point.lng,
+      maxRadius: 3,
+      propagationSpeed: 2,
+      repeatPeriod: 0,
+      color: '#00f0ff',
+      threat: 1
+    }
+    const currentRings = this._globe.ringsData() || []
+    this._globe.ringsData([...currentRings, ring])
+    setTimeout(() => {
+      const updated = (this._globe.ringsData() || []).filter(r => r !== ring)
+      this._globe.ringsData(updated)
+    }, 2000)
   }
 
   // Convert a 6-digit hex color to rgba with the given opacity (0–1).
