@@ -15,6 +15,23 @@ class GdeltIngestionService
     TERROR ELECTION GOV_LEADER REBELLION CRISISLEX
   ].freeze
 
+  # Country centroid fallback for GDELT articles with valid country codes but
+  # broken/missing coordinates. GDELT uses FIPS 10-4 country codes.
+  # rubocop:disable Layout/HashAlignment
+  COUNTRY_CENTROIDS = {
+    "US" => [39.83, -98.58],   "CA" => [56.13, -106.35],  "UK" => [55.38, -3.44],
+    "FR" => [46.23, 2.21],     "GM" => [51.17, 10.45],    "IT" => [41.87, 12.57],
+    "SP" => [40.46, -3.75],    "PL" => [51.92, 19.15],    "UP" => [48.38, 31.17],
+    "RS" => [61.52, 105.32],   "CH" => [35.86, 104.20],   "JA" => [36.20, 138.25],
+    "KS" => [35.91, 127.77],   "TW" => [23.70, 120.96],   "IN" => [20.59, 78.96],
+    "PK" => [30.38, 69.35],    "IR" => [32.43, 53.69],    "IS" => [31.05, 34.85],
+    "TU" => [38.96, 35.24],    "SA" => [23.89, 45.08],    "IZ" => [33.22, 43.68],
+    "SY" => [34.80, 38.99],    "AF" => [33.94, 67.71],    "EG" => [26.82, 30.80],
+    "NI" => [9.08, 8.68],      "SF" => [-30.56, 22.94],   "KE" => [-0.02, 37.91],
+    "BR" => [-14.24, -51.93],   "AS" => [-25.27, 133.78], "MX" => [23.63, -102.55],
+  }.freeze
+  # rubocop:enable Layout/HashAlignment
+
   ParsedRow = Struct.new(
     :url, :source_name, :themes, :country, :latitude, :longitude,
     :location_name, :sentiment, :language, :published_at,
@@ -179,10 +196,21 @@ class GdeltIngestionService
     default = { country: nil, latitude: nil, longitude: nil, name: nil }
     return default if raw.blank?
 
+    # Track the first valid country code seen — used as centroid fallback
+    # when all coordinate fields are broken/missing.
+    fallback_country = nil
+    fallback_name    = nil
+
     raw.to_s.split(";").each do |block|
       parts = block.split("#")
       # Expect at least 6 parts: type, name, countryCode, ADM1, lat, lon
       next unless parts.size >= 6
+
+      # Capture country code for fallback even if coordinates are bad
+      if fallback_country.nil? && parts[2].presence
+        fallback_country = parts[2]
+        fallback_name    = parts[1].presence
+      end
 
       # Parts 4 and 5 should be lat/lon — validate they look like real coordinates
       lat_str = parts[4].to_s.strip
@@ -202,6 +230,18 @@ class GdeltIngestionService
         latitude:  lat,
         longitude: lon,
         name:      parts[1].presence
+      }
+    end
+
+    # No valid coordinates found — fall back to country centroid so the
+    # article still appears on the globe at approximate location.
+    if fallback_country && (centroid = COUNTRY_CENTROIDS[fallback_country])
+      Rails.logger.info "[GdeltIngestionService] Using country centroid for #{fallback_country} (#{fallback_name})"
+      return {
+        country:   fallback_country,
+        latitude:  centroid[0],
+        longitude: centroid[1],
+        name:      fallback_name
       }
     end
 

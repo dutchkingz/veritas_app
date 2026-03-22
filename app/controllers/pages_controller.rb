@@ -752,9 +752,7 @@ class PagesController < ApplicationController
   end
 
   def null_island?(lat, lng)
-    # Reject if EITHER coordinate is exactly zero (parsing artifact from empty
-    # GDELT fields where "".to_f => 0.0) OR both are within 1° of origin.
-    lat.to_f.zero? || lng.to_f.zero? || (lat.to_f.abs < 1.0 && lng.to_f.abs < 1.0)
+    lat.to_f.abs < 1.0 && lng.to_f.abs < 1.0
   end
 
   def valid_coordinates?(lat, lng)
