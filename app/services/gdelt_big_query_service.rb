@@ -5,8 +5,8 @@ require "google/cloud/bigquery"
 #
 # Usage:
 #   service = GdeltBigQueryService.new
-#   service.execute_query(sql)                 # dry_run + execute
-#   service.execute_query(sql, dry_run: true)  # estimate cost only, no execution
+#   service.execute_query(sql)                  # estimate cost + execute
+#   service.execute_query(sql, dryrun: true)    # estimate cost only, no execution
 
 class GdeltBigQueryService
   class QueryError < StandardError; end
@@ -24,15 +24,15 @@ class GdeltBigQueryService
   end
 
   # Executes a BigQuery SQL query.
-  # If dry_run: true — estimates bytes and returns MB without executing.
-  # If dry_run: false (default) — first estimates, logs cost, then executes and returns rows.
-  def execute_query(sql, dry_run: false)
+  # If dryrun: true — estimates bytes and returns MB without executing.
+  # If dryrun: false (default) — first estimates, logs cost, then executes and returns rows.
+  def execute_query(sql, dryrun: false)
     Rails.logger.info "[GdeltBigQueryService] Query: #{sql.truncate(200)}"
 
     estimated_mb = estimate_query_cost(sql)
     Rails.logger.info "[GdeltBigQueryService] Estimated cost: #{estimated_mb} MB"
 
-    return estimated_mb if dry_run
+    return estimated_mb if dryrun
 
     job = @bigquery.query_job(sql)
     job.wait_until_done!
@@ -59,7 +59,7 @@ class GdeltBigQueryService
   private
 
   def estimate_query_cost(sql)
-    job = @bigquery.query_job(sql, dry_run: true)
+    job = @bigquery.query_job(sql, dryrun: true)
     bytes = job.statistics&.dig("query", "estimatedBytesProcessed").to_i
     estimated_cost_mb(bytes)
   rescue Google::Cloud::Error => e
