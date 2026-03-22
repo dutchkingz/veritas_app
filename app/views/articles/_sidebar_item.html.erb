@@ -17,7 +17,7 @@
     <div class="d-flex align-items-center gap-2">
       <% if article.ai_analysis&.threat_level %>
         <span class="feed-threat" style="color: <%= article.ai_analysis.threat_color %>; font-size: 0.6rem;">
-          THREAT <%= article.ai_analysis.threat_level %>
+          THREAT <%= article.ai_analysis.threat_label %>
         </span>
       <% end %>
       <span class="feed-time" style="font-size: 0.6rem; color: #64748b;"><%= time_ago_in_words(article.published_at) %> ago</span>
