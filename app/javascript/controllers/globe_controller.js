@@ -731,6 +731,24 @@ export default class extends Controller {
   _onJourneyActivated(event) {
     if (!this._globe) return
 
+    // If timelapse is active, cleanly exit it first so captureJourneyState
+    // captures the real globe state (not the timelapse-modified one).
+    if (this._timelapseState) {
+      const state = this._timelapseState
+      if (state) state.playing = false
+      this._timelapseState = null
+
+      // Immediately restore original callbacks + data (synchronous, no fade)
+      this._restoreTimelapseState()
+      if (this._timelapseOverlay) {
+        this._timelapseOverlay.remove()
+        this._timelapseOverlay = null
+      }
+      window.dispatchEvent(new CustomEvent("veritas:timelapseState", {
+        detail: { active: false }
+      }))
+    }
+
     this._journeyActive = true
     this._preJourneyState = event.detail?.state || this._preJourneyState || this.captureJourneyState()
     this._hideRouteChoiceMenu()
@@ -1726,7 +1744,8 @@ export default class extends Controller {
     if (this._timelapseState) {
       this._exitTimelapse()
     } else {
-      this._startTimelapse()
+      // Micro-delay: let UI settle before playback
+      setTimeout(() => this._startTimelapse(), 150)
     }
   }
 
@@ -1806,7 +1825,8 @@ export default class extends Controller {
       startedAt: null,
       playing: true,
       revealedCount: 0,
-      _pausedAt: null
+      _pausedAt: null,
+      _latestArcId: null  // track which arc was most recently revealed
     }
 
     // Save current state for clean restore
@@ -1836,9 +1856,9 @@ export default class extends Controller {
       detail: { active: true }
     }))
 
-    // Start the animation loop
-    this._timelapseState.startedAt = performance.now()
-    this._timelapseFrame()
+    // Cinematic start: brief settle before first arc (300ms anticipation)
+    this._timelapseState.startedAt = performance.now() + 300
+    setTimeout(() => this._timelapseFrame(), 300)
   }
 
   _timelapseFrame() {
@@ -1866,10 +1886,18 @@ export default class extends Controller {
     // Fire emergence effect for newly revealed arcs
     newlyRevealed.forEach(seg => this._onTimelapseArcReveal(seg))
 
+    // Track the latest arc for visual highlighting
+    if (newlyRevealed.length > 0) {
+      const latest = newlyRevealed[newlyRevealed.length - 1]
+      state._latestArcId = latest.id || latest._timestamp
+    }
+
     // Update opacity on all active arcs (fast 300ms fade-in)
     const now = performance.now()
     state.activeArcs.forEach(arc => {
       arc._opacity = Math.min((now - arc._revealTime) / 300, 1.0)
+      // Mark whether this is the latest arc for highlight callback
+      arc._isLatest = (arc.id || arc._timestamp) === state._latestArcId
     })
 
     // Only push arcsData when new arcs appeared — avoids flicker from rebuilding every frame.
@@ -1900,8 +1928,8 @@ export default class extends Controller {
   }
 
   // Set arc callbacks ONCE at timelapse start. The callbacks read dynamic
-  // properties (_opacity, _revealTime) from the arc data objects, so they
-  // produce correct visuals without being re-registered every frame.
+  // properties (_opacity, _revealTime, _isLatest) from the arc data objects,
+  // so they produce correct visuals without being re-registered every frame.
   _applyTimelapseCallbacks() {
     if (!this._globe) return
 
@@ -1911,14 +1939,31 @@ export default class extends Controller {
         const intensity = d.driftIntensity || 0
         const framing = d.framingShift || 'original'
 
+        // Latest arc gets a subtle brightness boost
+        const boost = d._isLatest ? 1.3 : 1.0
+
         // Neutral baseline for low-drift / original framing (NOT green)
         if (intensity < 0.1 || framing === 'original') {
-          return `rgba(120, 140, 160, ${0.7 * opacity})`
+          const r = Math.min(255, Math.round(120 * boost))
+          const g = Math.min(255, Math.round(140 * boost))
+          const b = Math.min(255, Math.round(160 * boost))
+          return `rgba(${r}, ${g}, ${b}, ${0.7 * opacity})`
         }
 
-        // 8-stop gradient: neutral start → framing-specific end
-        const sourceColor = { r: 120, g: 140, b: 160, a: 0.7 * opacity }
+        // 8-stop gradient: neutral start -> framing-specific end
+        const sourceColor = {
+          r: Math.min(255, Math.round(120 * boost)),
+          g: Math.min(255, Math.round(140 * boost)),
+          b: Math.min(255, Math.round(160 * boost)),
+          a: 0.7 * opacity
+        }
         const targetColor = this._getDriftTargetColor(framing, intensity)
+        // Boost target brightness for latest arc
+        if (d._isLatest) {
+          targetColor.r = Math.min(255, Math.round(targetColor.r * 1.2))
+          targetColor.g = Math.min(255, Math.round(targetColor.g * 1.2))
+          targetColor.b = Math.min(255, Math.round(targetColor.b * 1.2))
+        }
         targetColor.a = Math.max(0.3, targetColor.a) * opacity
 
         const stops = 8
@@ -1933,7 +1978,9 @@ export default class extends Controller {
       .arcStroke(d => {
         const baseThickness = 0.6 + (d.driftIntensity || 0) * 1.2
         const revealScale = d._opacity != null ? d._opacity : 1
-        return baseThickness * (0.5 + revealScale * 0.5)
+        // Latest arc: 40% thicker for visual focus
+        const latestBoost = d._isLatest ? 1.4 : 1.0
+        return baseThickness * (0.5 + revealScale * 0.5) * latestBoost
       })
       .arcDashAnimateTime(d => {
         const age = performance.now() - (d._revealTime || 0)
@@ -2035,7 +2082,7 @@ export default class extends Controller {
     const targetLng = current.lng + Math.max(-maxDeg, Math.min(maxDeg, lngDiff * 0.4))
 
     this._globe.pointOfView(
-      { lat: targetLat, lng: targetLng, altitude: 2.2 },
+      { lat: targetLat, lng: targetLng, altitude: 1.6 },
       1500
     )
   }
@@ -2096,21 +2143,23 @@ export default class extends Controller {
           transform: translateY(10px);
           transition: opacity 0.5s ease, transform 0.5s ease;
         ">
-          <div id="tl-flow" style="font-size: 13px; margin-bottom: 8px;"></div>
-          <div id="tl-sources" style="font-size: 10px; color: #607080; margin-bottom: 10px;"></div>
+          <div id="tl-flow" style="font-size: 14px; margin-bottom: 6px; font-weight: 600;"></div>
+          <div id="tl-sources" style="font-size: 9px; color: #506070; margin-bottom: 8px;"></div>
           <div id="tl-headlines" style="
-            font-size: 10px;
-            margin-bottom: 10px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
+            font-size: 9px;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            opacity: 0.85;
             display: none;
           "></div>
-          <div id="tl-metrics" style="display: flex; gap: 20px; font-size: 10px;"></div>
+          <div id="tl-metrics" style="display: flex; gap: 16px; font-size: 9px; opacity: 0.75;"></div>
           <div id="tl-explanation" style="
-            font-size: 10px;
-            color: #8898a8;
+            font-size: 9px;
+            color: #687888;
             font-style: italic;
-            margin-top: 8px;
+            margin-top: 6px;
+            opacity: 0.6;
             display: none;
           "></div>
         </div>

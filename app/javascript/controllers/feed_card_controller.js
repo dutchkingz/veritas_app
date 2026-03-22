@@ -52,15 +52,27 @@ export default class extends Controller {
     event.stopPropagation()
     if (!this.journeyAvailableValue || !this.hasJourneyValue) return
 
+    // Brief visual feedback: highlight the card before triggering globe action
+    this.element.style.transition = 'box-shadow 0.15s ease, border-color 0.15s ease'
+    this.element.style.boxShadow = '0 0 12px rgba(0,240,255,0.3)'
+    this.element.style.borderColor = 'rgba(0,240,255,0.4)'
+    setTimeout(() => {
+      this.element.style.boxShadow = ''
+      this.element.style.borderColor = ''
+    }, 600)
+
     const route = this.journeyValue
 
-    window.dispatchEvent(new CustomEvent("veritas:startJourney", {
-      detail: {
-        mode,
-        routeId: route.routeId || route.id,
-        route,
-        segments: route.segments || []
-      }
-    }))
+    // Small delay so the glow registers before the globe takes focus
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("veritas:startJourney", {
+        detail: {
+          mode,
+          routeId: route.routeId || route.id,
+          route,
+          segments: route.segments || []
+        }
+      }))
+    }, 80)
   }
 }
