@@ -56,11 +56,6 @@ production:
     queue: default
     schedule: every hour
 
-  fetch_gdelt_articles:
-    class: FetchGdeltArticlesJob
-    queue: default
-    schedule: every hour
-
 development:
   fetch_articles:
     class: FetchArticlesJob

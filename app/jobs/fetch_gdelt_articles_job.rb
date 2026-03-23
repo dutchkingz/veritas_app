@@ -3,6 +3,11 @@ class FetchGdeltArticlesJob < ApplicationJob
 
   retry_on GdeltBigQueryService::QueryError, wait: :polynomially_longer, attempts: 3
 
+  # Do NOT retry quota errors — something is wrong, stop immediately
+  discard_on GdeltBigQueryService::QuotaExceededError do |_job, error|
+    Rails.logger.error "[FetchGdeltArticlesJob] QUOTA EXCEEDED — job discarded: #{error.message}"
+  end
+
   def perform
     if VeritasMode.demo?
       Rails.logger.info "[FetchGdeltArticlesJob] Demo mode — skipping GDELT fetch."

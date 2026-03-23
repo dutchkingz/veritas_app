@@ -49,6 +49,7 @@ export default class extends Controller {
     this._timelapseState         = null
     this._timelapseOverlay       = null
     this._preTimelapseState      = null
+    this._timelapseContext        = { mode: 'exploration', routeId: null }
     this._timelapseToggleHandler = (e) => this._onTimelapseToggle(e)
     window.addEventListener("veritas:flyTo",             this._flyToHandler)
     window.addEventListener("veritas:perspectiveChange", this._perspectiveHandler)
@@ -1744,15 +1745,24 @@ export default class extends Controller {
     if (this._timelapseState) {
       this._exitTimelapse()
     } else {
-      // Micro-delay: let UI settle before playback
+      // Toolbar button always triggers exploration mode
+      this._timelapseContext = { mode: 'exploration', routeId: null }
       setTimeout(() => this._startTimelapse(), 150)
     }
+  }
+
+  // Start story mode timelapse for a specific route (called from arc click / article)
+  startStoryTimelapse(routeId) {
+    if (this._timelapseState) this._exitTimelapseImmediate()
+    this._timelapseContext = { mode: 'story', routeId: routeId }
+    setTimeout(() => this._startTimelapse(), 150)
   }
 
   _maybeAutoTimelapse() {
     if (sessionStorage.getItem('veritas_timelapse_shown')) return
     setTimeout(() => {
-      const segments = this._prepareTimelapseData()
+      this._timelapseContext = { mode: 'exploration', routeId: null }
+      const segments = this._prepareExplorationData()
       if (segments.length >= 3) {
         sessionStorage.setItem('veritas_timelapse_shown', 'true')
         this._startTimelapse()
@@ -1760,11 +1770,11 @@ export default class extends Controller {
     }, 2500)
   }
 
-  _prepareTimelapseData() {
+  // ---- EXPLORATION MODE: top 3 routes, multi-narrative overview ----
+  _prepareExplorationData() {
     const allArcs = this._allArcs || []
     if (allArcs.length === 0) return []
 
-    // Group by routeId, calculate max drift per route
     const routeMap = new Map()
     allArcs.forEach(seg => {
       const routeId = seg.routeId
@@ -1777,14 +1787,12 @@ export default class extends Controller {
       route.maxDrift = Math.max(route.maxDrift, seg.driftIntensity || 0)
     })
 
-    // Pick top 3 routes by max drift (fewer = cleaner animation)
     const topRoutes = [...routeMap.entries()]
       .sort((a, b) => b[1].maxDrift - a[1].maxDrift)
       .slice(0, 3)
 
     if (topRoutes.length === 0) return []
 
-    // Collect and sort all segments chronologically
     const timelapseSegments = []
     topRoutes.forEach(([routeId, data]) => {
       data.segments.forEach(seg => {
@@ -1796,27 +1804,76 @@ export default class extends Controller {
       })
     })
 
-    timelapseSegments.sort((a, b) => a._timestamp - b._timestamp)
+    return this._normalizeTimestamps(timelapseSegments)
+  }
 
-    // Normalize timestamps to 0-1
-    if (timelapseSegments.length > 0) {
-      const t0 = timelapseSegments[0]._timestamp
-      const tN = timelapseSegments[timelapseSegments.length - 1]._timestamp
+  // ---- STORY MODE: single route, ALL hops, chronological ----
+  _prepareStoryData(routeId) {
+    const allArcs = this._allArcs || []
+
+    // Find all segments belonging to this route
+    const routeSegments = allArcs.filter(seg =>
+      String(seg.routeId) === String(routeId)
+    )
+
+    if (routeSegments.length === 0) {
+      // Fallback: try to find the route in _allRoutes and use its segments
+      const route = (this._allRoutes || []).find(r =>
+        String(r.routeId || r.id) === String(routeId)
+      )
+      if (route && route.segments && route.segments.length > 0) {
+        console.log(`[Timelapse/Story] Route ${routeId}: using route.segments (${route.segments.length} hops)`)
+        const segments = route.segments.map(seg => ({
+          ...seg,
+          _routeIndex: 0,
+          _timestamp: new Date(seg.sourcePublishedAt || seg.publishedAt || 0).getTime()
+        }))
+        return this._normalizeTimestamps(segments)
+      }
+      console.warn(`[Timelapse/Story] Route ${routeId}: no segments found — aborting`)
+      return []
+    }
+
+    const storySegments = routeSegments.map(seg => ({
+      ...seg,
+      _routeIndex: 0,
+      _timestamp: new Date(seg.sourcePublishedAt || seg.publishedAt || 0).getTime()
+    }))
+
+    console.log(`[Timelapse/Story] Route ${routeId}: ${storySegments.length} hops found`)
+    return this._normalizeTimestamps(storySegments)
+  }
+
+  _normalizeTimestamps(segments) {
+    segments.sort((a, b) => a._timestamp - b._timestamp)
+
+    if (segments.length > 0) {
+      const t0 = segments[0]._timestamp
+      const tN = segments[segments.length - 1]._timestamp
       const range = tN - t0 || 1
-      timelapseSegments.forEach(seg => {
+      segments.forEach(seg => {
         seg._normalizedTime = (seg._timestamp - t0) / range
       })
     }
 
-    return timelapseSegments
+    return segments
   }
 
   _startTimelapse() {
     if (!this._globe) return
     if (this._journeyActive) return
 
-    const segments = this._prepareTimelapseData()
+    const ctx = this._timelapseContext
+    const segments = ctx.mode === 'story' && ctx.routeId
+      ? this._prepareStoryData(ctx.routeId)
+      : this._prepareExplorationData()
+
     if (segments.length === 0) return
+
+    // Story mode: slower pacing (15s) for focused narrative. Exploration: 12s.
+    const duration = ctx.mode === 'story' ? 15000 : 12000
+
+    console.log(`[Timelapse] Starting ${ctx.mode} mode — ${segments.length} segments, ${duration / 1000}s${ctx.routeId ? `, route: ${ctx.routeId}` : ''}`)
 
     this._timelapseState = {
       segments: segments,
@@ -1826,7 +1883,10 @@ export default class extends Controller {
       playing: true,
       revealedCount: 0,
       _pausedAt: null,
-      _latestArcId: null  // track which arc was most recently revealed
+      _latestArcId: null,
+      _duration: duration,
+      _mode: ctx.mode,
+      _routeId: ctx.routeId
     }
 
     // Save current state for clean restore
@@ -1845,8 +1905,7 @@ export default class extends Controller {
     if (this._packetGroup) this._packetGroup.visible = false
     this._globe.controls().autoRotate = false
 
-    // Set arc callbacks ONCE — they read dynamic properties from the data objects
-    // so we never need to re-register them. Only arcsData() is called per-reveal.
+    // Set arc callbacks ONCE
     this._applyTimelapseCallbacks()
 
     this._enterTimelapseMode()
@@ -1865,9 +1924,9 @@ export default class extends Controller {
     const state = this._timelapseState
     if (!state || !state.playing) return
 
-    const TIMELAPSE_DURATION_MS = 12000
+    const duration = state._duration || 12000
     const elapsed = performance.now() - state.startedAt
-    state.currentTime = Math.min(elapsed / TIMELAPSE_DURATION_MS, 1.0)
+    state.currentTime = Math.min(elapsed / duration, 1.0)
 
     // Reveal segments that should be visible at this time
     const newlyRevealed = []
@@ -2439,7 +2498,12 @@ export default class extends Controller {
   }
 
   _restartTimelapse() {
+    // Preserve the current context so replay uses the same mode/route
+    const ctx = this._timelapseState
+      ? { mode: this._timelapseState._mode, routeId: this._timelapseState._routeId }
+      : this._timelapseContext
     this._exitTimelapse()
+    this._timelapseContext = ctx
     setTimeout(() => this._startTimelapse(), 300)
   }
 
@@ -2467,6 +2531,24 @@ export default class extends Controller {
         this._timelapseOverlay = null
       }
     }, 600)
+  }
+
+  // Synchronous, instant exit — no fade animation. Used when switching
+  // from one timelapse mode directly into another (e.g. exploration → story).
+  _exitTimelapseImmediate() {
+    const state = this._timelapseState
+    if (state) state.playing = false
+    this._timelapseState = null
+
+    this._restoreTimelapseState()
+    if (this._timelapseOverlay) {
+      this._timelapseOverlay.remove()
+      this._timelapseOverlay = null
+    }
+
+    window.dispatchEvent(new CustomEvent("veritas:timelapseState", {
+      detail: { active: false }
+    }))
   }
 
   _endTimelapse() {

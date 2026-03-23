@@ -10,6 +10,10 @@ class Article < ApplicationRecord
   has_many :saved_articles, dependent: :destroy
   has_many :entity_mentions, dependent: :destroy
   has_many :entities, through: :entity_mentions
+  has_many :narrative_signature_articles, dependent: :destroy
+  has_many :narrative_signatures, through: :narrative_signature_articles
+  has_many :contradiction_logs_as_a, class_name: "ContradictionLog", foreign_key: :article_a_id, dependent: :destroy
+  has_many :contradiction_logs_as_b, class_name: "ContradictionLog", foreign_key: :article_b_id, dependent: :destroy
 
   after_create_commit :broadcast_sidebar_update
   after_create_commit :broadcast_to_globe
