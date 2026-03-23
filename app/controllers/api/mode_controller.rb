@@ -21,6 +21,9 @@ module Api
 
       new_mode = VeritasMode.toggle!
 
+      # Start the recurring fetch loop when switching to live
+      FetchArticlesJob.perform_later if new_mode == "live"
+
       # If we just hit the API limit, auto-fallback to demo
       if new_mode == "live" && VeritasMode.api_limit_reached?
         VeritasMode.set!("demo")
