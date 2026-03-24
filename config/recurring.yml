@@ -56,6 +56,15 @@ production:
     queue: default
     schedule: every hour
 
+  # GDELT Events job runs every 2 hours (offset by 30 min from GKG job).
+  # The Events table scans are larger (~500 MB - 1.5 GB per call) so we run
+  # less frequently than GKG to stay comfortably within the 1 TB/month free tier.
+  # Monthly estimate: ~1 GB × 12 calls/day × 30 days = ~360 GB/month from events alone.
+  fetch_gdelt_events:
+    class: FetchGdeltEventsJob
+    queue: default
+    schedule: every 2 hours at minute 30
+
 development:
   fetch_articles:
     class: FetchArticlesJob
@@ -98,3 +107,8 @@ development:
     class: FetchGdeltArticlesJob
     queue: default
     schedule: every hour
+
+  fetch_gdelt_events:
+    class: FetchGdeltEventsJob
+    queue: default
+    schedule: every 2 hours at minute 30

@@ -35,9 +35,15 @@ require "google/cloud/bigquery"
 
 class GdeltBigQueryService
   # HARD LIMITS — never exceed these
-  MAX_BYTES_PER_QUERY = 5_000_000_000   # 5 GB per single query
+  MAX_BYTES_PER_QUERY = 5_000_000_000   # 5 GB per single query (absolute backstop)
   MAX_BYTES_PER_DAY   = 35_000_000_000  # 35 GB per day (~1 TB / 30 days, with safety margin)
   DAILY_COUNTER_KEY   = "gdelt_bq_bytes_today"
+
+  # COST LOGGING THRESHOLDS — logged but do not block execution
+  # These are early-warning signals that a query is scanning more than expected.
+  # If you regularly see ALERT logs, investigate before costs accumulate.
+  QUERY_WARN_BYTES  = 500_000_000    # 500 MB — log warning
+  QUERY_ALERT_BYTES = 1_000_000_000  # 1 GB  — log error (monitor immediately)
 
   class QueryError < StandardError; end
   class QuotaExceededError < StandardError; end
@@ -55,11 +61,11 @@ class GdeltBigQueryService
   end
 
   # Executes a BigQuery SQL query with full cost protection.
-  # 1. Dry-run to estimate bytes
-  # 2. Reject if over per-query limit
-  # 3. Reject if daily budget would be exceeded
+  # 1. Dry-run to estimate bytes + log cost warnings
+  # 2. Reject if over per-query limit (5 GB hard stop)
+  # 3. Reject if daily budget would be exceeded (35 GB/day)
   # 4. Execute
-  # 5. Track actual bytes consumed
+  # 5. Log total_bytes_processed and track daily usage
   def execute_query(sql)
     # Step 1: ALWAYS dry-run first
     estimated_bytes = dry_run(sql)
@@ -67,6 +73,16 @@ class GdeltBigQueryService
     estimated_gb = (estimated_bytes / 1_000_000_000.0).round(4)
 
     Rails.logger.info "[BigQuery] Dry-run estimate: #{estimated_mb} MB (#{estimated_gb} GB)"
+
+    # Cost logging thresholds — early warning system
+    if estimated_bytes > QUERY_ALERT_BYTES
+      Rails.logger.error "[BigQuery] COST ALERT — query will scan #{estimated_gb} GB. " \
+                         "This is above the #{QUERY_ALERT_BYTES / 1_000_000} MB alert threshold. " \
+                         "Investigate query design immediately."
+    elsif estimated_bytes > QUERY_WARN_BYTES
+      Rails.logger.warn "[BigQuery] COST WARNING — query scanning #{estimated_mb} MB. " \
+                        "Above the #{QUERY_WARN_BYTES / 1_000_000} MB warning threshold. Monitor closely."
+    end
 
     # Step 2: Reject queries that are too large
     if estimated_bytes > MAX_BYTES_PER_QUERY
@@ -96,9 +112,13 @@ class GdeltBigQueryService
 
     results = job.query_results
 
-    # Step 5: Track actual bytes consumed
-    track_bytes(estimated_bytes)
-    Rails.logger.info "[BigQuery] Query executed — #{results.count} rows. " \
+    # Step 5: Log total_bytes_processed and track daily usage
+    actual_bytes = job.statistics&.dig("query", "totalBytesProcessed").to_i
+    actual_mb    = (actual_bytes / 1_000_000.0).round(2)
+    track_bytes(actual_bytes > 0 ? actual_bytes : estimated_bytes)
+
+    Rails.logger.info "[BigQuery] Query complete — #{results.count} rows, " \
+                      "#{actual_mb} MB processed. " \
                       "Daily total: #{((daily_total + estimated_bytes) / 1_000_000_000.0).round(2)} GB / " \
                       "#{MAX_BYTES_PER_DAY / 1_000_000_000} GB"
 
