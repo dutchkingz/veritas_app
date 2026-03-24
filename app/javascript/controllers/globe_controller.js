@@ -313,7 +313,6 @@ export default class extends Controller {
     this._globe.pointOfView({ lat: 20, lng: 10, altitude: 2.5 }, 0)
 
     await this._loadData()
-    this._maybeAutoTimelapse()
 
     this._resizeObserver = new ResizeObserver(() => {
       this._globe.width(container.clientWidth).height(container.clientHeight)
@@ -1762,18 +1761,6 @@ export default class extends Controller {
     if (this._timelapseState) this._exitTimelapseImmediate()
     this._timelapseContext = { mode: 'story', routeId: routeId }
     setTimeout(() => this._startTimelapse(), 150)
-  }
-
-  _maybeAutoTimelapse() {
-    if (sessionStorage.getItem('veritas_timelapse_shown')) return
-    setTimeout(() => {
-      this._timelapseContext = { mode: 'exploration', routeId: null }
-      const segments = this._prepareExplorationData()
-      if (segments.length >= 3) {
-        sessionStorage.setItem('veritas_timelapse_shown', 'true')
-        this._startTimelapse()
-      }
-    }, 2500)
   }
 
   // ---- EXPLORATION MODE: top 3 routes, multi-narrative overview ----
