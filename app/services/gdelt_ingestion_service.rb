@@ -15,6 +15,15 @@ class GdeltIngestionService
     TERROR ELECTION GOV_LEADER REBELLION CRISISLEX
   ].freeze
 
+  # GDELT V2Locations type codes → human-readable names
+  LOCATION_TYPES = {
+    "1" => "country",
+    "2" => "us_state",
+    "3" => "us_city",
+    "4" => "world_city",
+    "5" => "world_state"
+  }.freeze
+
   # Country centroid fallback for GDELT articles with valid country codes but
   # broken/missing coordinates. GDELT uses FIPS 10-4 country codes.
   # rubocop:disable Layout/HashAlignment
@@ -33,8 +42,8 @@ class GdeltIngestionService
   # rubocop:enable Layout/HashAlignment
 
   ParsedRow = Struct.new(
-    :url, :source_name, :themes, :country, :latitude, :longitude,
-    :location_name, :sentiment, :language, :published_at,
+    :url, :source_name, :themes, :themes_categorized, :country, :latitude, :longitude,
+    :location_name, :all_locations, :tone, :language, :published_at,
     keyword_init: true
   )
 
@@ -151,43 +160,73 @@ class GdeltIngestionService
   end
 
   # Parse a GDELT GKG row into a structured ParsedRow.
-  # Returns nil if the row lacks a usable URL.
+  # Returns nil if the row lacks a usable URL or valid coordinates.
   def parse_row(row)
     url = row[:DocumentIdentifier].to_s.strip
     return nil if url.blank? || !url.start_with?("http")
 
-    source_name   = row[:SourceCommonName].to_s.presence || "GDELT"
-    themes        = parse_themes(row[:V2Themes])
-    location      = parse_first_location(row[:V2Locations])
+    source_name          = row[:SourceCommonName].to_s.presence || "GDELT"
+    raw_themes           = parse_themes(row[:V2Themes])
+    themes_categorized   = categorize_themes(raw_themes)
+    location             = parse_first_location(row[:V2Locations])
     # Skip articles with no valid geospatial coordinates — we need location data
     return nil if location[:latitude].nil? || location[:longitude].nil?
 
-    sentiment     = parse_sentiment(row[:V2Tone])
-    language      = parse_language(row[:TranslationInfo])
-    published_at  = parse_date(row[:DATE])
+    all_locations        = parse_all_locations(row[:V2Locations])
+    tone                 = parse_tone(row[:V2Tone])
+    language             = parse_language(row[:TranslationInfo])
+    published_at         = parse_date(row[:DATE])
 
     ParsedRow.new(
-      url:           url,
-      source_name:   source_name,
-      themes:        themes,
-      country:       location[:country],
-      latitude:      location[:latitude],
-      longitude:     location[:longitude],
-      location_name: location[:name],
-      sentiment:     sentiment,
-      language:      language,
-      published_at:  published_at
+      url:                url,
+      source_name:        source_name,
+      themes:             raw_themes,
+      themes_categorized: themes_categorized,
+      country:            location[:country],
+      latitude:           location[:latitude],
+      longitude:          location[:longitude],
+      location_name:      location[:name],
+      all_locations:      all_locations,
+      tone:               tone,
+      language:           language,
+      published_at:       published_at
     )
   end
 
-  # V2Themes: semicolon-delimited. e.g. "MILITARY;DIPLOMACY;TAX_FNCACT"
+  # V2Themes: semicolon-delimited. e.g. "MILITARY;DIPLOMACY;GCAM_SML_POLARITY_NEGATIVE"
   def parse_themes(raw)
     raw.to_s.split(";").map(&:strip).reject(&:blank?)
   end
 
+  # Categorize raw themes into geopolitical, gcam, and other buckets.
+  # geopolitical: matches our GEOPOLITICAL_THEMES filter list
+  # gcam:         GCAM sentiment/cognitive analysis codes (prefix GCAM_)
+  # other:        all remaining topic/taxonomy themes
+  def categorize_themes(raw_themes)
+    geopolitical = []
+    gcam         = []
+    other        = []
+
+    raw_themes.each do |theme|
+      if GEOPOLITICAL_THEMES.any? { |g| theme.start_with?(g) }
+        geopolitical << theme
+      elsif theme.start_with?("GCAM_")
+        gcam << theme
+      else
+        other << theme
+      end
+    end
+
+    result = {}
+    result["geopolitical"] = geopolitical unless geopolitical.empty?
+    result["gcam"]         = gcam         unless gcam.empty?
+    result["other"]        = other        unless other.empty?
+    result
+  end
+
   # V2Locations: semicolon-delimited blocks, each #-delimited.
   # Format: Type#FullName#CountryCode#ADM1Code#Latitude#Longitude#FeatureID
-  # Returns the first entry with valid geographic coordinates.
+  # Returns the first entry with valid geographic coordinates (used as primary lat/lon).
   #
   # IMPORTANT: The FeatureID field can be a large integer (e.g. "65104") that
   # looks like a float but is NOT a coordinate. We MUST validate that parsed
@@ -212,7 +251,6 @@ class GdeltIngestionService
         fallback_name    = parts[1].presence
       end
 
-      # Parts 4 and 5 should be lat/lon — validate they look like real coordinates
       lat_str = parts[4].to_s.strip
       lon_str = parts[5].to_s.strip
       next if lat_str.blank? || lon_str.blank?
@@ -220,8 +258,6 @@ class GdeltIngestionService
       lat = lat_str.to_f
       lon = lon_str.to_f
 
-      # Strict geographic bounds validation — if outside these ranges the parser
-      # grabbed the wrong field (e.g. FeatureID) or the data is corrupt
       next unless lat.between?(-90.0, 90.0) && lon.between?(-180.0, 180.0)
       next if lat.zero? || lon.zero? # exact 0.0 = empty/missing GDELT field parsed as float
 
@@ -248,12 +284,55 @@ class GdeltIngestionService
     default
   end
 
-  # V2Tone: comma-delimited floats. First value = overall tone (-10 to +10).
-  # Normalize to -1..+1 for consistency with our schema.
-  def parse_sentiment(raw)
+  # Parse ALL valid locations from V2Locations into a structured array for raw_data.
+  # Unlike parse_first_location, this collects every entry with valid bounds —
+  # useful for multi-theatre stories (e.g. Iran + Israel + US all in one article).
+  # Entries with coordinates of exactly (0,0) are skipped (GDELT missing-data sentinel).
+  def parse_all_locations(raw)
+    return [] if raw.blank?
+
+    raw.to_s.split(";").filter_map do |block|
+      parts = block.split("#")
+      next unless parts.size >= 6
+
+      lat = parts[4].to_s.strip.to_f
+      lon = parts[5].to_s.strip.to_f
+      next unless lat.between?(-90.0, 90.0) && lon.between?(-180.0, 180.0)
+      next if lat.zero? && lon.zero?
+
+      {
+        "type"         => LOCATION_TYPES.fetch(parts[0].to_s, "unknown"),
+        "name"         => parts[1].presence,
+        "country_code" => parts[2].presence,
+        "lat"          => lat,
+        "lon"          => lon
+      }.compact
+    end
+  end
+
+  # V2Tone: 7 comma-delimited floats in this order:
+  #   overall tone, positive score, negative score, polarity,
+  #   activity reference density, self/group reference density, word count
+  #
+  # overall tone is normalized from GDELT's -10..+10 range to our -1..+1 scale
+  # to match the convention used elsewhere in the platform.
+  # The other sub-scores are stored as-is (their ranges vary; callers should
+  # treat them as relative indicators, not absolute values).
+  def parse_tone(raw)
     return nil if raw.blank?
-    tone = raw.to_s.split(",").first.to_f
-    (tone / 10.0).round(3).clamp(-1.0, 1.0)
+
+    parts = raw.to_s.split(",")
+    return nil if parts.empty?
+
+    {
+      "overall"               => (parts[0].to_f / 10.0).round(3).clamp(-1.0, 1.0),
+      "positive"              => parts[1]&.to_f&.round(3),
+      "negative"              => parts[2]&.to_f&.round(3),
+      "polarity"              => parts[3]&.to_f&.round(3),
+      "activity_ref_density"  => parts[4]&.to_f&.round(3),
+      "self_group_ref_density" => parts[5]&.to_f&.round(3),
+      "word_count"            => parts[6]&.to_i
+    }.compact
   rescue
     nil
   end
@@ -299,10 +378,15 @@ class GdeltIngestionService
       a.published_at      = data.published_at
       a.fetched_at        = Time.current
       a.raw_data          = {
-        gdelt_themes:   data.themes,
-        location_name:  data.location_name,
-        source:         "gdelt"
-      }
+        # Structured GDELT metadata — single source of truth for raw signal data.
+        # AI-triad (sentiment_label etc.) remains the authoritative sentiment source.
+        "source"             => "gdelt",
+        "location_name"      => data.location_name,
+        "gdelt_themes"       => data.themes,
+        "gdelt_themes_by_category" => data.themes_categorized,
+        "gdelt_locations"    => data.all_locations,
+        "gdelt_tone"         => data.tone
+      }.compact
     end.tap { |a| return nil unless a.previously_new_record? }
   end
 
