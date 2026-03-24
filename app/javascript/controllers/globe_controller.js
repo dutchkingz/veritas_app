@@ -785,9 +785,10 @@ export default class extends Controller {
       <div class="vt-route-choice-header">${route.routeName || "Narrative Route"}</div>
       <button class="vt-route-choice-btn vt-route-choice-btn--bloom" type="button">◉ BLOOM</button>
       <button class="vt-route-choice-btn vt-route-choice-btn--chronicle" type="button">▶ CHRONICLE</button>
+      <button class="vt-route-choice-btn vt-route-choice-btn--story" type="button">⏱ STORY</button>
     `
 
-    const [bloomButton, chronicleButton] = menu.querySelectorAll("button")
+    const [bloomButton, chronicleButton, storyButton] = menu.querySelectorAll("button")
     bloomButton?.addEventListener("click", (clickEvent) => {
       clickEvent.stopPropagation()
       this._startJourneyFromRoute(route, "bloom")
@@ -795,6 +796,11 @@ export default class extends Controller {
     chronicleButton?.addEventListener("click", (clickEvent) => {
       clickEvent.stopPropagation()
       this._startJourneyFromRoute(route, "chronicle")
+    })
+    storyButton?.addEventListener("click", (clickEvent) => {
+      clickEvent.stopPropagation()
+      this._hideRouteChoiceMenu()
+      this.startStoryTimelapse(route.routeId || route.id)
     })
 
     this.element.appendChild(menu)
@@ -2353,6 +2359,24 @@ export default class extends Controller {
       if (endEl) endEl.textContent = this._formatTimelapseDate(last._timestamp)
     }
 
+    // Set header text based on mode
+    const ctx = this._timelapseContext
+    const routeNameEl = document.getElementById('tl-route-name')
+    if (ctx.mode === 'story' && routeNameEl) {
+      // Find the route to display its headline
+      const route = (this._allRoutes || []).find(r =>
+        String(r.routeId || r.id) === String(ctx.routeId)
+      )
+      const headline = route?.headline || route?.sourceHeadline || `Route ${ctx.routeId}`
+      routeNameEl.textContent = headline
+      // Update the mode label
+      const headerEl = document.getElementById('tl-header')
+      if (headerEl) {
+        const modeLabel = headerEl.querySelector('div')
+        if (modeLabel) modeLabel.innerHTML = '&#9654; STORY MODE &#9664;'
+      }
+    }
+
     // Fade in overlay elements
     requestAnimationFrame(() => {
       ['tl-header', 'tl-event-card', 'tl-progress', 'tl-stats', 'tl-controls'].forEach(id => {
@@ -2557,7 +2581,14 @@ export default class extends Controller {
     if (state) state.playing = false
 
     const btn = document.getElementById('tl-btn-playpause')
-    if (btn) btn.textContent = 'Replay'
+    if (btn) {
+      btn.textContent = 'Replay'
+      // Replace the pause/play handler with a one-shot replay that preserves context
+      btn.onclick = () => {
+        btn.onclick = null
+        this._restartTimelapse()
+      }
+    }
   }
 
   _restoreTimelapseState() {
