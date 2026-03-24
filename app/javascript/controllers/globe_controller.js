@@ -1564,7 +1564,12 @@ export default class extends Controller {
       }
 
       const sourceColor = d.color || '#00ffcc'
-      const targetColor = this._getDriftTargetColor(framing, intensity)
+      let targetColor = this._getDriftTargetColor(framing, intensity)
+
+      // High-conflict override: Goldstein < -5 forces aggressive red regardless of framing
+      if (d.gdeltGoldsteinScale != null && d.gdeltGoldsteinScale < -5) {
+        targetColor = d.gdeltGoldsteinScale < -8 ? '#ff0000' : '#ff3300'
+      }
 
       // Apply perspective / selection dimming on the gradient
       if (this._selectedArcArticleId) {
@@ -1598,6 +1603,10 @@ export default class extends Controller {
       const sentimentShift = d.sentimentShift || 'N/A'
       const similarity = d.semanticSimilarity || 0
       const explanation = d.framingExplanation || ''
+      const gdeltActorSummary     = d.gdeltActorSummary     || null
+      const gdeltEventDescription = d.gdeltEventDescription || null
+      const gdeltGoldsteinScale   = d.gdeltGoldsteinScale   != null ? d.gdeltGoldsteinScale : null
+      const gdeltQuadClassLabel   = d.gdeltQuadClassLabel   || null
 
       const driftLevel = intensity > 0.7 ? 'CRITICAL' :
                          intensity > 0.4 ? 'SIGNIFICANT' :
@@ -1637,7 +1646,7 @@ export default class extends Controller {
             <span style="color:${framingColor};">${d.targetCountry || '?'}</span>
           </div>
           <div style="font-size:10px;color:#8090a0;margin-bottom:10px;">
-            ${d.sourceName || '?'} → ${d.targetSourceName || '?'}
+            ${d.sourceName || 'Unknown'} → ${d.targetSourceName || 'Unknown'}
           </div>
           ${headlines}
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
@@ -1669,6 +1678,17 @@ export default class extends Controller {
               <div style="width:${Math.round(intensity * 100)}%;height:100%;background:linear-gradient(90deg,#00ffcc,${driftLevelColor});border-radius:2px;"></div>
             </div>
           </div>
+          ${gdeltActorSummary ? `
+            <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,45,45,0.2);">
+              <div style="font-size:8px;text-transform:uppercase;letter-spacing:1px;color:#ff6060;margin-bottom:5px;">⚔ Conflict Intelligence</div>
+              <div style="font-size:11px;font-weight:600;color:#ff9090;margin-bottom:3px;">${gdeltActorSummary}</div>
+              ${gdeltEventDescription ? `<div style="font-size:10px;color:#c08080;">${gdeltEventDescription}</div>` : ''}
+              <div style="display:flex;gap:10px;margin-top:5px;">
+                ${gdeltQuadClassLabel ? `<span style="font-size:9px;color:#a06060;text-transform:uppercase;">${gdeltQuadClassLabel}</span>` : ''}
+                ${gdeltGoldsteinScale != null ? `<span style="font-size:9px;color:${gdeltGoldsteinScale < -7 ? '#ff2d2d' : '#ff8060'};">Goldstein: ${gdeltGoldsteinScale.toFixed(1)}</span>` : ''}
+              </div>
+            </div>
+          ` : ''}
         </div>
       `
     }

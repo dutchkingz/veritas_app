@@ -69,6 +69,7 @@ class NarrativeRoute < ApplicationRecord
     serialized_hops = build_serialized_hops
     route_name = name.presence || default_route_name(serialized_hops)
     segments = build_segments(serialized_hops, route_name)
+    enrich_segments_with_gdelt!(segments)
 
     {
       id: id,
@@ -115,6 +116,31 @@ class NarrativeRoute < ApplicationRecord
   end
 
   private
+
+  # Enrich segments in-place with linked GdeltEvent data.
+  # Batch-loads events for all article_ids to avoid N+1 queries.
+  # Each segment gets optional gdelt* fields — nil when no event is linked.
+  def enrich_segments_with_gdelt!(segments)
+    article_ids = segments.flat_map { |s| [ s[:articleId], s[:sourceArticleId] ] }.compact.uniq
+    return if article_ids.empty?
+
+    # Pick the most destabilizing event per article (lowest Goldstein scale)
+    events_by_article = GdeltEvent
+      .where(article_id: article_ids)
+      .order(goldstein_scale: :asc)
+      .group_by(&:article_id)
+
+    segments.each do |seg|
+      event = events_by_article[seg[:sourceArticleId]]&.first ||
+              events_by_article[seg[:articleId]]&.first
+      next unless event
+
+      seg[:gdeltActorSummary]      = event.actor_summary
+      seg[:gdeltEventDescription]  = event.event_description
+      seg[:gdeltGoldsteinScale]    = event.goldstein_scale
+      seg[:gdeltQuadClassLabel]    = event.quad_class_label
+    end
+  end
 
   def build_serialized_hops
     matched_articles = resolve_hop_articles
