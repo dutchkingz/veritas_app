@@ -53,7 +53,7 @@
 <div class="veritas-dashboard" data-controller="journey">
 
   <!-- LEFT SIDEBAR: Live Intelligence Feed -->
-  <aside class="veritas-feed-sidebar mobile-hidden">
+  <aside class="veritas-feed-sidebar mobile-hidden" data-controller="network-panel">
 
     <!-- Search Results Panel: hidden until a search fires veritas:search-results -->
     <div id="intel-search-panel" class="d-none">
@@ -68,9 +68,22 @@
       </div>
     </div>
 
+    <!-- Network Panel: shown when exploring an article's narrative network -->
+    <div id="network-panel" class="d-none">
+      <div class="veritas-panel-header" style="border-color: rgba(168,85,247,0.3);">
+        <span class="panel-icon" style="color: #a855f7;">&#9784;</span>
+        <span class="panel-title" id="network-panel-title" style="color: #a855f7;">NARRATIVE NETWORK</span>
+        <span class="panel-badge" id="network-panel-count" style="background: rgba(168,85,247,0.12); color: #a855f7;">0</span>
+      </div>
+      <div id="network-panel-meta" style="padding: 4px 12px 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #607080; display: flex; gap: 8px; flex-wrap: wrap;"></div>
+      <div id="network-panel-list" class="veritas-feed-list"
+           style="border-bottom: 1px solid rgba(168,85,247,0.12); margin-bottom: 6px; padding-bottom: 6px; max-height: 50vh; overflow-y: auto;">
+      </div>
+    </div>
+
     <div class="veritas-panel-header">
-      <span class="panel-icon">🔥</span>
-      <span class="panel-title">HIGH‑THREAT SIGNALS</span>
+      <span class="panel-icon">&#128293;</span>
+      <span class="panel-title">HIGH-THREAT SIGNALS</span>
       <span class="panel-badge"><%= @hot_articles.count %> HOT</span>
     </div>
 
@@ -84,6 +97,37 @@
 
   <!-- CENTER: 3D Globe (Globe.gl) -->
   <section class="veritas-globe-section" style="position: relative;" data-controller="map-toggle" data-journey-target="globeSection">
+
+    <!-- Cinematic search loading overlay — driven by search_intelligence_controller.js -->
+    <div id="intel-loading-overlay"
+         style="display:none; position:absolute; inset:0; z-index:200;
+                background:rgba(5,7,15,0.82); backdrop-filter:blur(6px);
+                flex-direction:column; align-items:center; justify-content:center;
+                pointer-events:none;">
+      <div style="text-align:center; max-width:340px;">
+        <div id="intel-loading-stage"
+             style="font-family:'JetBrains Mono',monospace; font-size:0.78rem;
+                    color:#00f0ff; letter-spacing:0.12em; line-height:1.7;
+                    text-shadow:0 0 12px rgba(0,240,255,0.6);
+                    min-height:2.4em;"></div>
+        <div style="margin-top:16px; display:flex; gap:6px; justify-content:center;">
+          <span class="intel-loading-dot" style="width:6px;height:6px;border-radius:50%;background:#00f0ff;opacity:0.3;animation:veritas-pulse 1.2s ease-in-out infinite;"></span>
+          <span class="intel-loading-dot" style="width:6px;height:6px;border-radius:50%;background:#00f0ff;opacity:0.3;animation:veritas-pulse 1.2s ease-in-out 0.4s infinite;"></span>
+          <span class="intel-loading-dot" style="width:6px;height:6px;border-radius:50%;background:#00f0ff;opacity:0.3;animation:veritas-pulse 1.2s ease-in-out 0.8s infinite;"></span>
+        </div>
+      </div>
+    </div>
+    <style>
+      @keyframes veritas-pulse {
+        0%,100% { opacity:0.2; transform:scale(1); }
+        50% { opacity:1; transform:scale(1.4); }
+      }
+      #intel-loading-overlay.is-visible { display:flex !important; }
+      #intel-loading-overlay.is-fading {
+        transition: opacity 0.6s ease;
+        opacity: 0;
+      }
+    </style>
 
     <!-- Search/All Intel view toggle — hidden until search is active -->
     <div id="intel-view-toggle"
@@ -135,6 +179,14 @@
               title="Toggle flat world map projection">
         <span class="vt-toggle-icon">◫</span>
         <span data-map-toggle-target="label">GLOBE</span>
+      </button>
+      <button class="vt-globe-toggle-btn vt-timelapse-toggle"
+              data-controller="timelapse-toggle"
+              data-timelapse-toggle-target="btn"
+              data-action="click->timelapse-toggle#toggle"
+              title="Cinematic narrative timelapse playback">
+        <span class="vt-toggle-icon">▶</span>
+        <span data-timelapse-toggle-target="label">TIMELAPSE</span>
       </button>
     </div>
 

@@ -411,6 +411,30 @@ $search-icon-color:   rgba(148, 180, 210, 0.55);
         }
     }
 
+    // Threat-level visual indicators — match arc colors on the globe
+    &.vt-threat-critical {
+        border-color: rgba(#ff3a5e, 0.4);
+        background: rgba(#ff3a5e, 0.06);
+        box-shadow: 0 0 12px rgba(#ff3a5e, 0.12);
+
+        &::before {
+            opacity: 1;
+            background: #ff3a5e;
+            width: 3px;
+        }
+    }
+
+    &.vt-threat-high {
+        border-color: rgba(#ff6b2b, 0.35);
+        background: rgba(#ff6b2b, 0.04);
+
+        &::before {
+            opacity: 1;
+            background: #ff6b2b;
+            width: 2px;
+        }
+    }
+
     .feed-card-open-link {
         font-family: 'JetBrains Mono', monospace;
         font-size: 0.7rem;

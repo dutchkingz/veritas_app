@@ -110,6 +110,16 @@ class IntelligenceSearchService
       return [false, "Using cached intelligence — daily API limit reached"]
     end
 
+    # Atomic cache lock — prevents concurrent searches from enqueuing duplicate jobs.
+    # NOTE: must NOT share the key with NewsApiService ("newsapi:search:...") which
+    # uses Rails.cache.fetch on that namespace to store raw API results — writing
+    # `true` there would poison the fetch cache and silently kill the API call.
+    cache_key = "intelligence_search:fetch_lock:#{@query.parameterize}:#{Date.current}"
+    unless Rails.cache.write(cache_key, true, expires_in: 6.hours, unless_exist: true)
+      Rails.logger.info "[IntelligenceSearchService] Fetch already in-flight for '#{@query}' — skipping duplicate enqueue"
+      return [true, nil]
+    end
+
     FreshIntelligenceJob.perform_later(query: @query, user_id: @user&.id)
     Rails.logger.info "[IntelligenceSearchService] Enqueued FreshIntelligenceJob for '#{@query}'"
     [true, nil]

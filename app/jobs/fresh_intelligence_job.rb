@@ -28,11 +28,36 @@ class FreshIntelligenceJob < ApplicationJob
 
     Rails.logger.info "[FreshIntelligenceJob] Got #{new_attrs.size} new article candidates"
 
-    # 2. Save articles individually — skip failures without aborting the batch
+    # 2. Geopolitical relevance filter — discard noise before hitting the DB
+    filter = GeopoliticalRelevanceFilter.new
+    relevant_attrs = new_attrs.select do |attrs|
+      headline    = attrs[:headline].to_s
+      description = attrs.dig(:raw_data, "description").to_s
+      result = filter.call(headline: headline, description: description)
+      result[:relevant]
+    end
+
+    Rails.logger.info "[FreshIntelligenceJob] #{relevant_attrs.size}/#{new_attrs.size} articles passed relevance filter"
+
+    if relevant_attrs.empty?
+      Rails.logger.info "[FreshIntelligenceJob] All articles filtered out for '#{query}'"
+      broadcast_completion(query, 0)
+      return
+    end
+
+    # 3. Save articles individually — skip failures without aborting the batch
     saved_articles = []
-    new_attrs.each do |attrs|
-      article = Article.create!(attrs)
-      saved_articles << article
+    relevant_attrs.each do |attrs|
+      url     = attrs[:source_url]
+      article = if url.present?
+                  Article.find_or_create_by(source_url: url) { |a| a.assign_attributes(attrs) }
+                else
+                  Article.create!(attrs)
+                end
+
+      saved_articles << article if article.previously_new_record?
+    rescue ActiveRecord::RecordNotUnique
+      Rails.logger.info "[FreshIntelligenceJob] Duplicate skipped (unique index): #{attrs[:source_url]}"
     rescue ActiveRecord::RecordInvalid => e
       Rails.logger.warn "[FreshIntelligenceJob] Skipping article '#{attrs[:source_url]}': #{e.message}"
     rescue StandardError => e
@@ -41,7 +66,7 @@ class FreshIntelligenceJob < ApplicationJob
 
     Rails.logger.info "[FreshIntelligenceJob] Saved #{saved_articles.size} articles"
 
-    # 3. Generate embeddings for each saved article
+    # 4. Generate embeddings for each saved article
     # Globe broadcast happens automatically via after_create_commit :broadcast_to_globe
     # Embeddings are required before route generation
     embedding_service = EmbeddingService.new
@@ -71,7 +96,7 @@ class FreshIntelligenceJob < ApplicationJob
 
     # 5. Broadcast route update to globe if any routes were created
     if routes_created > 0
-      ActionCable.server.broadcast("globe_channel", {
+      ActionCable.server.broadcast("globe", {
         type: "routes_updated",
         count: routes_created
       })
