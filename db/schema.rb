@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_21_231224) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_24_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -159,6 +159,43 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_21_231224) do
     t.index ["article_id"], name: "index_entity_mentions_on_article_id"
     t.index ["entity_id", "article_id"], name: "index_entity_mentions_on_entity_id_and_article_id", unique: true
     t.index ["entity_id"], name: "index_entity_mentions_on_entity_id"
+  end
+
+  create_table "gdelt_events", force: :cascade do |t|
+    t.string "action_geo_country_code"
+    t.string "action_geo_full_name"
+    t.float "action_geo_lat"
+    t.float "action_geo_long"
+    t.string "actor1_country_code"
+    t.string "actor1_name"
+    t.string "actor1_type1_code"
+    t.string "actor2_country_code"
+    t.string "actor2_name"
+    t.string "actor2_type1_code"
+    t.bigint "article_id"
+    t.float "avg_tone"
+    t.datetime "created_at", null: false
+    t.string "event_code"
+    t.date "event_date"
+    t.string "event_root_code"
+    t.bigint "globaleventid", null: false
+    t.float "goldstein_scale"
+    t.integer "num_articles"
+    t.integer "num_mentions"
+    t.integer "num_sources"
+    t.integer "quad_class"
+    t.jsonb "raw_data", default: {}
+    t.text "source_url"
+    t.string "source_url_normalized"
+    t.integer "sqldate"
+    t.datetime "updated_at", null: false
+    t.index ["action_geo_country_code"], name: "index_gdelt_events_on_action_geo_country_code"
+    t.index ["article_id"], name: "index_gdelt_events_on_article_id"
+    t.index ["event_date"], name: "index_gdelt_events_on_event_date"
+    t.index ["globaleventid"], name: "index_gdelt_events_on_globaleventid", unique: true
+    t.index ["goldstein_scale"], name: "index_gdelt_events_on_goldstein_scale"
+    t.index ["quad_class"], name: "index_gdelt_events_on_quad_class"
+    t.index ["source_url_normalized"], name: "index_gdelt_events_on_source_url_normalized"
   end
 
   create_table "intelligence_briefs", force: :cascade do |t|
