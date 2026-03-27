@@ -1873,17 +1873,17 @@ export default class extends Controller {
       const sourceColor = '#4a6070'
 
       let threatColor, baseOpacity
-      if (threat >= 7) { threatColor = '#ff4444'; baseOpacity = 0.95 }
-      else if (threat >= 5) { threatColor = '#ff8c00'; baseOpacity = 0.85 }
-      else if (threat >= 3) { threatColor = '#ffd700'; baseOpacity = 0.7 }
-      else { threatColor = '#6088a0'; baseOpacity = 0.5 }
+      if (threat >= 7) { threatColor = '#ff4444'; baseOpacity = 1.0 }
+      else if (threat >= 5) { threatColor = '#ff8c00'; baseOpacity = 0.95 }
+      else if (threat >= 3) { threatColor = '#ffd700'; baseOpacity = 0.85 }
+      else { threatColor = '#6088a0'; baseOpacity = 0.6 }
 
-      // Depth 2 arcs slightly dimmer, but still visible
-      const alpha = d.depth >= 2 ? Math.max(baseOpacity * 0.6, 0.35) : baseOpacity
+      // Depth 2 arcs slightly dimmer, but still clearly visible
+      const alpha = d.depth >= 2 ? Math.max(baseOpacity * 0.7, 0.5) : baseOpacity
 
       if (this._currentPerspective !== 'all') {
         const isActive = d.perspectiveSlug === this._currentPerspective
-        if (!isActive) return this._buildGradientStops(sourceColor, threatColor, 0.08)
+        if (!isActive) return this._buildGradientStops(sourceColor, threatColor, 0.1)
       }
 
       return this._buildGradientStops(sourceColor, threatColor, alpha)
@@ -1910,24 +1910,24 @@ export default class extends Controller {
 
       const sourceColor = '#4a6070'
 
-      // visibilityWeight modulates opacity — boosted floor so arcs pop on dark background
-      // High-threat arcs: 0.65–0.95, low-threat arcs: 0.30–0.50
-      const threatBoost = threat >= 5 ? 0.3 : (threat >= 3 ? 0.15 : 0)
-      const baseAlpha = Math.max(vis * 0.85 + threatBoost, 0.30)
+      // Opacity: high-threat arcs fully opaque, low-threat still clearly visible
+      // Threat >= 5: 0.85–1.0 | Threat >= 3: 0.65–0.85 | Low: 0.45–0.60
+      const threatBoost = threat >= 5 ? 0.5 : (threat >= 3 ? 0.3 : 0.1)
+      const baseAlpha = Math.min(vis * 0.85 + threatBoost, 1.0)
 
       // Apply perspective / selection dimming ON TOP of visibility
       if (this._selectedArcArticleId) {
-        return this._buildGradientStops(sourceColor, threatColor, 0.15)
+        return this._buildGradientStops(sourceColor, threatColor, 0.2)
       }
       if (this._currentPerspective !== 'all') {
         const isActive = d.perspectiveSlug === this._currentPerspective
         if (!isActive) {
-          const dimAlpha = d.perspectiveSlug === 'unclassified' ? 0.15 : 0.06
+          const dimAlpha = d.perspectiveSlug === 'unclassified' ? 0.2 : 0.08
           return this._buildGradientStops(sourceColor, threatColor, dimAlpha)
         }
       }
       if (d.tier === 2) {
-        return this._buildGradientStops(sourceColor, threatColor, Math.max(baseAlpha * 0.6, 0.25))
+        return this._buildGradientStops(sourceColor, threatColor, Math.max(baseAlpha * 0.7, 0.4))
       }
       return this._buildGradientStops(sourceColor, threatColor, baseAlpha)
     }
