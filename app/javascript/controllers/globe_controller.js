@@ -1870,21 +1870,20 @@ export default class extends Controller {
     // Network arcs: color from veritasThreatScore (ALWAYS, never goldstein_scale)
     if (d.connectionTypes) {
       const threat = d.veritasThreatScore || 0
-      const opacity = d.opacity || 0.7
       const sourceColor = '#4a6070'
 
-      let threatColor
-      if (threat >= 7) threatColor = '#ff4444'
-      else if (threat >= 5) threatColor = '#ff8c00'
-      else if (threat >= 3) threatColor = '#ffd700'
-      else threatColor = '#6088a0'
+      let threatColor, baseOpacity
+      if (threat >= 7) { threatColor = '#ff4444'; baseOpacity = 0.95 }
+      else if (threat >= 5) { threatColor = '#ff8c00'; baseOpacity = 0.85 }
+      else if (threat >= 3) { threatColor = '#ffd700'; baseOpacity = 0.7 }
+      else { threatColor = '#6088a0'; baseOpacity = 0.5 }
 
-      // Depth 2 arcs are dimmer
-      const alpha = d.depth >= 2 ? opacity * 0.5 : opacity
+      // Depth 2 arcs slightly dimmer, but still visible
+      const alpha = d.depth >= 2 ? Math.max(baseOpacity * 0.6, 0.35) : baseOpacity
 
       if (this._currentPerspective !== 'all') {
         const isActive = d.perspectiveSlug === this._currentPerspective
-        if (!isActive) return this._buildGradientStops(sourceColor, threatColor, 0.06)
+        if (!isActive) return this._buildGradientStops(sourceColor, threatColor, 0.08)
       }
 
       return this._buildGradientStops(sourceColor, threatColor, alpha)
@@ -1911,22 +1910,24 @@ export default class extends Controller {
 
       const sourceColor = '#4a6070'
 
-      // visibilityWeight modulates opacity — low-confidence or low-drift arcs fade
-      const baseAlpha = vis * 0.85  // 0.26 (min) to 0.85 (max)
+      // visibilityWeight modulates opacity — boosted floor so arcs pop on dark background
+      // High-threat arcs: 0.65–0.95, low-threat arcs: 0.30–0.50
+      const threatBoost = threat >= 5 ? 0.3 : (threat >= 3 ? 0.15 : 0)
+      const baseAlpha = Math.max(vis * 0.85 + threatBoost, 0.30)
 
       // Apply perspective / selection dimming ON TOP of visibility
       if (this._selectedArcArticleId) {
-        return this._buildGradientStops(sourceColor, threatColor, 0.12)
+        return this._buildGradientStops(sourceColor, threatColor, 0.15)
       }
       if (this._currentPerspective !== 'all') {
         const isActive = d.perspectiveSlug === this._currentPerspective
         if (!isActive) {
-          const dimAlpha = d.perspectiveSlug === 'unclassified' ? 0.15 : 0.04
+          const dimAlpha = d.perspectiveSlug === 'unclassified' ? 0.15 : 0.06
           return this._buildGradientStops(sourceColor, threatColor, dimAlpha)
         }
       }
       if (d.tier === 2) {
-        return this._buildGradientStops(sourceColor, threatColor, baseAlpha * 0.5)
+        return this._buildGradientStops(sourceColor, threatColor, Math.max(baseAlpha * 0.6, 0.25))
       }
       return this._buildGradientStops(sourceColor, threatColor, baseAlpha)
     }

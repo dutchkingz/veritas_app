@@ -112,13 +112,23 @@ class PagesController < ApplicationController
       articles.published_at DESC
     SQL
 
-    @hot_articles = Article
+    # Progressive time window: prefer recent articles, widen if too few
+    hot_base = Article
       .includes(:country, :region, :ai_analysis, narrative_arcs: :narrative_routes)
       .joins(:ai_analysis)
       .where.not(ai_analyses: { threat_level: nil })
       .where.not("headline LIKE '%— GDELT'")
-      .order(threat_order)
-      .limit(15)
+
+    @hot_articles = nil
+    [3.days, 7.days, 14.days].each do |window|
+      candidates = hot_base.where("articles.published_at >= ?", window.ago).order(threat_order).limit(15)
+      if candidates.size >= 5
+        @hot_articles = candidates
+        break
+      end
+    end
+    # Final fallback: no time filter (original behavior)
+    @hot_articles ||= hot_base.order(threat_order).limit(15)
     
     # Fallback: all articles ordered by date (if not enough hot articles)
     @articles = Article.includes(:country, :region).order(published_at: :desc).limit(50)
