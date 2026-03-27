@@ -71,15 +71,18 @@ class GeopoliticalRelevanceFilter
     Rails.cache.fetch(cache_key, expires_in: 24.hours) do
       text = normalize("#{headline} #{description}")
 
-      if rejection_match?(text)
-        log_decision(:reject, "keyword_reject", headline)
-        next build_result(false, "Not geopolitically relevant", :keyword_reject)
-      end
-
+      # Strong geopolitical keywords FIRST — if the article mentions iran, israel,
+      # nato, missiles etc. it passes regardless of any rejection keyword in the
+      # description (e.g. "stock market" impact of an airstrike).
       if strong_match?(text)
         topic = infer_topic(text)
         log_decision(:pass, "keyword_pass", headline)
         next build_result(true, topic, :keyword_pass)
+      end
+
+      if rejection_match?(text)
+        log_decision(:reject, "keyword_reject", headline)
+        next build_result(false, "Not geopolitically relevant", :keyword_reject)
       end
 
       llm_classify(headline, description)

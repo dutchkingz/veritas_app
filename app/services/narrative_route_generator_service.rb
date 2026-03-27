@@ -124,8 +124,9 @@ class NarrativeRouteGeneratorService
     hops = sorted_articles.map do |article|
       framing_result = detect_framing_shift(origin_article, article)
       {
+        'article_id' => article.id,
         'source_name' => article.source_name,
-        'source_country' => article.country&.name,
+        'source_country' => article.country&.name || country_from_domain(article.source_url),
         'lat' => article.latitude,
         'lng' => article.longitude,
         'published_at' => article.published_at&.iso8601,
@@ -254,5 +255,40 @@ class NarrativeRouteGeneratorService
   
   def generate_route_name(first, last)
     "Narrative Route: #{first.source_name} → #{last.source_name}"
+  end
+
+  # Infer country name from a URL's top-level domain when no other
+  # country data is available. Covers the most common ccTLDs seen in
+  # OSINT news sources. Returns nil for generic TLDs (.com, .org, .net).
+  DOMAIN_COUNTRY_MAP = {
+    "ru" => "Russia", "cn" => "China", "ir" => "Iran", "il" => "Israel",
+    "ua" => "Ukraine", "de" => "Germany", "fr" => "France", "uk" => "United Kingdom",
+    "jp" => "Japan", "kr" => "South Korea", "in" => "India", "br" => "Brazil",
+    "tr" => "Turkey", "sa" => "Saudi Arabia", "pk" => "Pakistan", "eg" => "Egypt",
+    "ng" => "Nigeria", "za" => "South Africa", "au" => "Australia", "ca" => "Canada",
+    "mx" => "Mexico", "ar" => "Argentina", "pl" => "Poland", "es" => "Spain",
+    "it" => "Italy", "nl" => "Netherlands", "se" => "Sweden", "no" => "Norway",
+    "fi" => "Finland", "dk" => "Denmark", "at" => "Austria", "ch" => "Switzerland",
+    "be" => "Belgium", "ie" => "Ireland", "pt" => "Portugal", "cz" => "Czechia",
+    "ro" => "Romania", "hu" => "Hungary", "gr" => "Greece", "tw" => "Taiwan",
+    "th" => "Thailand", "ph" => "Philippines", "my" => "Malaysia", "sg" => "Singapore",
+    "id" => "Indonesia", "vn" => "Vietnam", "qa" => "Qatar", "ae" => "UAE",
+    "ke" => "Kenya", "gh" => "Ghana", "et" => "Ethiopia", "tz" => "Tanzania",
+    "co" => "Colombia", "cl" => "Chile", "pe" => "Peru", "ve" => "Venezuela"
+  }.freeze
+
+  def country_from_domain(url)
+    return nil if url.blank?
+    host = URI.parse(url.strip).host.to_s.downcase
+    # Extract ccTLD: last segment unless it's a known generic TLD
+    tld = host.split(".").last
+    # Handle two-part ccTLDs like .co.uk, .com.au
+    if %w[uk au].include?(tld)
+      parts = host.split(".")
+      tld = parts[-1] if parts.length >= 3 && parts[-2].length <= 3
+    end
+    DOMAIN_COUNTRY_MAP[tld]
+  rescue URI::InvalidURIError
+    nil
   end
 end

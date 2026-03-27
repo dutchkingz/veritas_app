@@ -6,10 +6,12 @@ class GenerateEmbeddingJob < ApplicationJob
     article = Article.find_by(id: article_id)
     return unless article
     return if article.embedding.present?  # Already has embedding
-    
-    # Check if we have enough text
-    unless article.content.present? || article.ai_analysis&.summary.present?
-      Rails.logger.warn "[GenerateEmbeddingJob] Article ##{article_id} has no content or summary"
+
+    # Use .presence so empty strings ("") fall through to nil correctly.
+    # Without this, content: "" would be non-nil but useless, skipping the
+    # summary fallback and sending garbage text to the embedding API.
+    unless article.content.presence || article.ai_analysis&.summary.presence
+      Rails.logger.warn "[GenerateEmbeddingJob] Article ##{article_id} has no content or summary — skipping"
       return
     end
     

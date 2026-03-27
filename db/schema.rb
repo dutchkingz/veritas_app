@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_21_215032) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_21_231224) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -39,12 +39,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_21_215032) do
     t.text "content"
     t.bigint "country_id"
     t.datetime "created_at", null: false
+    t.string "data_source", default: "newsapi", null: false
     t.vector "embedding", limit: 1536
     t.datetime "fetched_at"
     t.string "geo_method", default: "unresolved"
     t.string "headline"
     t.float "latitude"
     t.float "longitude"
+    t.string "original_language"
     t.datetime "published_at"
     t.jsonb "raw_data"
     t.bigint "region_id"
@@ -58,6 +60,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_21_215032) do
     t.integer "telegram_views"
     t.datetime "updated_at", null: false
     t.index ["country_id"], name: "index_articles_on_country_id"
+    t.index ["data_source"], name: "index_articles_on_data_source"
     t.index ["region_id"], name: "index_articles_on_region_id"
     t.index ["source_type"], name: "index_articles_on_source_type"
     t.index ["source_url"], name: "index_articles_on_source_url_unique", unique: true, where: "(source_url IS NOT NULL)"

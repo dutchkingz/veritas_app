@@ -69,6 +69,7 @@ class NarrativeRoute < ApplicationRecord
     serialized_hops = build_serialized_hops
     route_name = name.presence || default_route_name(serialized_hops)
     segments = build_segments(serialized_hops, route_name)
+    enrich_segments_with_gdelt!(segments)
 
     {
       id: id,
@@ -116,6 +117,168 @@ class NarrativeRoute < ApplicationRecord
 
   private
 
+  # ──────────────────────────────────────────────────────────────────────────
+  # veritasThreatScore v3: Semantically correct arc scoring
+  #
+  # An arc represents a NARRATIVE RELATIONSHIP between articles.
+  # The score answers: "How concerning is this narrative propagation?"
+  #
+  # Three signal channels, weighted sum:
+  #   0.45 × threat_context    — WHAT is being discussed (topic severity)
+  #   0.40 × drift_effective   — HOW it transformed (modulated by context)
+  #   0.15 × gdelt_bonus       — real-world conflict confirmation (optional)
+  #
+  # v3 improvements over v2:
+  #   1. Drift is modulated by threat context — celebrity clickbait drift
+  #      doesn't produce red arcs (dampened by low threat relevance)
+  #   2. Framing direction: escalation (neutral→negative) amplifies drift,
+  #      de-escalation (negative→neutral) dampens it
+  #   3. No hard score floors — replaced by separate visibilityWeight
+  #   4. Arc confidence from semantic similarity + time proximity
+  #   5. Each segment exposes signal breakdown for explainability
+  # ──────────────────────────────────────────────────────────────────────────
+  THREAT_LEVEL_SCORES = {
+    "CRITICAL"   => 10.0,
+    "HIGH"       => 7.5,
+    "MODERATE"   => 5.0,
+    "LOW"        => 2.5,
+    "NEGLIGIBLE" => 1.0
+  }.freeze
+
+  SCORE_WEIGHT_THREAT = 0.45
+  SCORE_WEIGHT_DRIFT  = 0.40
+  SCORE_WEIGHT_GDELT  = 0.15
+
+  # Time proximity decays over 48 hours — narratives spreading within hours
+  # are more concerning than those spreading over days.
+  TIME_PROXIMITY_HALFLIFE = 48.hours.to_i  # seconds
+
+  def enrich_segments_with_gdelt!(segments)
+    # Batch-load GdeltEvents for all article_ids + route origin to avoid N+1
+    segment_article_ids = segments.flat_map { |s| [ s[:articleId], s[:sourceArticleId], s[:targetArticleId] ] }.compact.uniq
+    origin_id = origin_article&.id
+    all_article_ids = (segment_article_ids + [ origin_id ]).compact.uniq
+
+    events_by_article = if all_article_ids.any?
+      GdeltEvent.where(article_id: all_article_ids).order(goldstein_scale: :asc).group_by(&:article_id)
+    else
+      {}
+    end
+
+    route_event = events_by_article[origin_id]&.first
+
+    segments.each do |seg|
+      # --- GDELT enrichment (optional) ---
+      event = events_by_article[seg[:sourceArticleId]]&.first ||
+              events_by_article[seg[:articleId]]&.first ||
+              route_event
+
+      if event
+        seg[:gdeltActorSummary]      = event.actor_summary
+        seg[:gdeltEventDescription]  = event.event_description
+        seg[:gdeltGoldsteinScale]    = event.goldstein_scale
+        seg[:gdeltQuadClassLabel]    = event.quad_class_label
+        seg[:gdeltQuadClass]         = event.quad_class
+      end
+
+      # ── Channel 1: Threat Context (0–10) ──
+      # Average of source and target threat levels. An arc between CRITICAL
+      # and LOW is a mixed-severity arc (avg 6.25), not a CRITICAL arc (10).
+      source_threat = THREAT_LEVEL_SCORES[seg[:sourceThreatLevel].to_s] || 0.0
+      target_threat = THREAT_LEVEL_SCORES[seg[:targetThreatLevel].to_s] || 0.0
+      threat_context = if source_threat > 0 && target_threat > 0
+        (source_threat + target_threat) / 2.0
+      elsif source_threat > 0 || target_threat > 0
+        [ source_threat, target_threat ].max  # one side missing → use what we have
+      else
+        0.0  # no AI analysis on either side
+      end
+      threat_normalized = (threat_context / 10.0).clamp(0.0, 1.0)
+
+      # ── Channel 2: Drift Signal, modulated (0–10) ──
+      raw_drift = (seg[:driftIntensity].to_f * 10.0).clamp(0.0, 10.0)
+
+      # Dampening: drift matters proportionally to threat context.
+      # sqrt() curve: preserves high-threat drift (CRITICAL keeps ~100%),
+      # dampens low-threat noise harder (NEGLIGIBLE keeps ~32%).
+      #   CRITICAL (1.0) → keeps 100%     HIGH (0.75) → keeps 87%
+      #   MODERATE (0.50) → keeps 71%     LOW (0.25)  → keeps 50%
+      #   NEGLIGIBLE (0.1) → keeps 32%    No threat (0) → keeps 10%
+      # The 0.1 base prevents zero-multiplication (some drift is always visible).
+      threat_dampening = 0.1 + 0.9 * Math.sqrt(threat_normalized)
+      drift_dampened = raw_drift * threat_dampening
+
+      # Framing direction: escalation (sentiment moving negative) amplifies concern,
+      # de-escalation (sentiment moving positive) dampens it.
+      # sentimentDelta = target - source. Negative delta = escalation (getting worse).
+      sentiment_delta = seg[:sentimentDelta].to_f  # -4 to +4 range
+      # Map to multiplier: escalation → up to 1.2x, de-escalation → down to 0.8x
+      # Sigmoid-like: tanh squashes extreme values smoothly.
+      direction_multiplier = 1.0 - (0.2 * Math.tanh(sentiment_delta * 0.5))
+      # Result: delta=-2 → 1.15x (escalation), delta=+2 → 0.85x (de-escalation)
+
+      drift_effective = (drift_dampened * direction_multiplier).clamp(0.0, 10.0)
+
+      # ── Channel 3: GDELT Bonus (0–10) ──
+      # Optional conflict confirmation from real-world events.
+      gdelt_bonus = 0.0
+      if event
+        goldstein_threat = event.goldstein_scale ? (-event.goldstein_scale).clamp(0.0, 10.0) : 0.0
+        quad_bump = case event.quad_class
+                    when 4 then 3.0   # Material Conflict (real-world action)
+                    when 3 then 1.5   # Verbal Conflict (rhetoric)
+                    else 0.0
+                    end
+        gdelt_bonus = (goldstein_threat + quad_bump).clamp(0.0, 10.0)
+      end
+
+      # ── Weighted composition ──
+      raw_score = (SCORE_WEIGHT_THREAT * threat_context) +
+                  (SCORE_WEIGHT_DRIFT  * drift_effective) +
+                  (SCORE_WEIGHT_GDELT  * gdelt_bonus)
+
+      # ── Arc confidence (0–1) ──
+      # How trustworthy is this narrative link? Weak/coincidental links get dampened.
+      # Based on data already computed per segment:
+      semantic_sim = (seg[:confidenceScore] || 0.5).to_f.clamp(0.0, 1.0)
+      delay = (seg[:delaySeconds] || 0).to_i.abs
+      # Time proximity: exponential decay over TIME_PROXIMITY_HALFLIFE.
+      # 0 hours → 1.0, 24 hours → 0.71, 48 hours → 0.50, 96 hours → 0.25
+      time_proximity = Math.exp(-0.693 * delay.to_f / TIME_PROXIMITY_HALFLIFE)
+      confidence = (0.7 * semantic_sim + 0.3 * time_proximity).clamp(0.0, 1.0)
+
+      # Final score: raw score dampened by link confidence
+      final_score = (raw_score * confidence).clamp(0.0, 10.0).round(1)
+
+      # ── Visibility weight (separate from score) ──
+      # Controls arc opacity/thickness. Even a low-scoring arc on a high-threat
+      # topic should be somewhat visible — the topic matters even if drift is low.
+      # But the COLOR (from score) correctly reflects that no manipulation occurred.
+      visibility = (0.3 + 0.7 * threat_normalized).clamp(0.3, 1.0).round(2)
+
+      # ── Edge case handling ──
+      # No AI analysis AND no drift AND no GDELT → score 0, visibility minimum
+      has_any_signal = threat_context > 0 || raw_drift > 0.5 || gdelt_bonus > 0
+
+      seg[:veritasThreatScore] = has_any_signal ? final_score : 0.0
+      seg[:visibilityWeight]   = has_any_signal ? visibility : 0.3
+      seg[:arcConfidence]      = confidence.round(2)
+
+      # ── Signal breakdown for explainability / debug tooltip ──
+      seg[:signalBreakdown] = {
+        threatContext:       threat_context.round(1),
+        driftRaw:            raw_drift.round(1),
+        driftEffective:      drift_effective.round(1),
+        driftDampening:      threat_dampening.round(2),
+        directionMultiplier: direction_multiplier.round(2),
+        gdeltBonus:          gdelt_bonus.round(1),
+        rawScore:            raw_score.round(1),
+        confidence:          confidence.round(2),
+        finalScore:          final_score
+      }
+    end
+  end
+
   def build_serialized_hops
     matched_articles = resolve_hop_articles
     current_score = DEFAULT_MANIPULATION_SCORE
@@ -131,7 +294,10 @@ class NarrativeRoute < ApplicationRecord
       classifier = SourceClassifierService.classify(source_name.to_s)
       raw_sentiment = article&.ai_analysis&.sentiment_label.to_s
       confidence = normalize_confidence(raw_hop["confidence_score"])
-      country_name = raw_hop["source_country"].presence || article&.country&.name || fallback_country_name(index)
+      country_name = raw_hop["source_country"].presence ||
+                     article&.country&.name ||
+                     country_from_source_url(article&.source_url) ||
+                     fallback_country_name(index)
 
       {
         index: index,
@@ -158,6 +324,7 @@ class NarrativeRoute < ApplicationRecord
         rawSentimentLabel: raw_sentiment.presence || "Unknown",
         sentimentColor: article&.ai_analysis&.sentiment_color || sentiment_color_for_label(raw_sentiment),
         trustScore: article&.ai_analysis&.trust_score&.round(1),
+        threatLevel: article&.ai_analysis&.threat_label,
         perspectiveSlug: classifier[:slug],
         perspectiveLabel: SourceClassifierService.display_name(classifier[:slug]),
         perspectiveColor: perspective_color(classifier[:slug]),
@@ -172,7 +339,10 @@ class NarrativeRoute < ApplicationRecord
     thickness = [(manipulation_score || 0.5) * 0.8, 0.2].max.round(2)
     origin_score = serialized_hops.first[:manipulationScore]
 
-    serialized_hops.each_cons(2).with_index.map do |(source_hop, target_hop), index|
+    serialized_hops.each_cons(2).with_index.filter_map do |(source_hop, target_hop), index|
+      # Skip degenerate segments (same point or null island)
+      next if degenerate_segment?(source_hop, target_hop)
+
       {
         id: "#{id}-#{index}",
         routeId: id,
@@ -215,6 +385,14 @@ class NarrativeRoute < ApplicationRecord
         targetTrustScore: target_hop[:trustScore],
         sourceSentimentLabel: source_hop[:sentimentLabel],
         targetSentimentLabel: target_hop[:sentimentLabel],
+        sentimentShift: build_sentiment_shift(source_hop[:rawSentimentLabel], target_hop[:rawSentimentLabel]),
+        sentimentDelta: compute_sentiment_delta(source_hop[:rawSentimentLabel], target_hop[:rawSentimentLabel]),
+        driftIntensity: compute_drift_intensity(
+          target_hop[:framingShift],
+          source_hop[:rawSentimentLabel],
+          target_hop[:rawSentimentLabel],
+          target_hop[:confidenceScore]
+        ),
         sourcePerspectiveSlug: source_hop[:perspectiveSlug],
         targetPerspectiveSlug: target_hop[:perspectiveSlug],
         sourcePerspectiveLabel: source_hop[:perspectiveLabel],
@@ -223,7 +401,9 @@ class NarrativeRoute < ApplicationRecord
         targetPerspectiveColor: target_hop[:perspectiveColor],
         perspectiveSlug: target_hop[:perspectiveSlug],
         perspectiveLabel: target_hop[:perspectiveLabel],
-        perspectiveColor: target_hop[:perspectiveColor]
+        perspectiveColor: target_hop[:perspectiveColor],
+        sourceThreatLevel: source_hop[:threatLevel],
+        targetThreatLevel: target_hop[:threatLevel]
       }
     end
   end
@@ -342,6 +522,17 @@ class NarrativeRoute < ApplicationRecord
 
   def origin_article
     @origin_article ||= narrative_arc&.article
+  end
+
+  # TLD-based country inference for source URLs without country data.
+  # Reuses the same mapping as NarrativeRouteGeneratorService::DOMAIN_COUNTRY_MAP.
+  def country_from_source_url(url)
+    return nil if url.blank?
+    host = URI.parse(url.strip).host.to_s.downcase
+    tld = host.split(".").last
+    NarrativeRouteGeneratorService::DOMAIN_COUNTRY_MAP[tld]
+  rescue URI::InvalidURIError
+    nil
   end
 
   def fallback_country_name(index)
@@ -486,5 +677,68 @@ class NarrativeRoute < ApplicationRecord
 
   def segment_color(framing_shift)
     FRAMING_SHIFT_COLORS[framing_shift.to_s] || "#6b7280"
+  end
+
+  def degenerate_segment?(source_hop, target_hop)
+    s_lat = source_hop[:lat]
+    s_lng = source_hop[:lng]
+    e_lat = target_hop[:lat]
+    e_lng = target_hop[:lng]
+
+    # Any nil coordinate = degenerate
+    return true if [s_lat, s_lng, e_lat, e_lng].any?(&:nil?)
+    # Null island (within 1° of 0,0)
+    return true if (s_lat.to_f.abs < 1.0 && s_lng.to_f.abs < 1.0) || (e_lat.to_f.abs < 1.0 && e_lng.to_f.abs < 1.0)
+    # Too close (within 2°) = spike/needle
+    return true if (s_lat.to_f - e_lat.to_f).abs < 2.0 && (s_lng.to_f - e_lng.to_f).abs < 2.0
+
+    false
+  end
+
+  # --- Drift metrics helpers ---
+
+  SENTIMENT_VALUES = {
+    "very positive" => 2.0, "positive" => 1.0, "bullish" => 1.0,
+    "neutral" => 0.0, "mixed" => 0.0,
+    "negative" => -1.0, "bearish" => -1.0, "hostile" => -1.5,
+    "very negative" => -2.0
+  }.freeze
+
+  def sentiment_numeric(raw_label)
+    label = raw_label.to_s.downcase.strip
+    return 0.0 if label.blank? || label == "unknown"
+
+    SENTIMENT_VALUES.each do |key, value|
+      return value if label.include?(key)
+    end
+    0.0
+  end
+
+  def build_sentiment_shift(source_label, target_label)
+    src = normalized_sentiment_label(source_label.to_s)
+    tgt = normalized_sentiment_label(target_label.to_s)
+    return "Unknown" if src == "NEUTRAL" && tgt == "NEUTRAL" && source_label.blank? && target_label.blank?
+
+    "#{src.capitalize} → #{tgt.capitalize}"
+  end
+
+  def compute_sentiment_delta(source_label, target_label)
+    (sentiment_numeric(target_label) - sentiment_numeric(source_label)).round(2)
+  end
+
+  def compute_drift_intensity(framing_shift, source_sentiment, target_sentiment, confidence_score)
+    framing_weight = case framing_shift.to_s
+                     when "original"    then 0.0
+                     when "neutralized" then 0.3
+                     when "amplified"   then 0.5
+                     when "distorted"   then 1.0
+                     else 0.0
+                     end
+
+    sentiment_weight = (compute_sentiment_delta(source_sentiment, target_sentiment).abs / 2.0).clamp(0.0, 1.0)
+
+    semantic_distance = 1.0 - (confidence_score || 1.0).to_f.clamp(0.0, 1.0)
+
+    ((framing_weight * 0.5) + (sentiment_weight * 0.3) + (semantic_distance * 0.2)).clamp(0.0, 1.0).round(3)
   end
 end
