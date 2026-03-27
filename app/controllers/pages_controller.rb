@@ -1,6 +1,6 @@
 class PagesController < ApplicationController
   DEFAULT_ARC_COLOR = "#00f0ff".freeze
-  skip_before_action :authenticate_user!, only: [:welcome, :home, :globe_data, :search, :aware, :aware_narration, :narrative_dna, :tribunal, :article_preview, :entity_nexus, :entity_nexus_detail]
+  skip_before_action :authenticate_user!, only: [:welcome, :home, :globe_data, :search, :aware, :aware_narration, :narrative_dna, :tribunal, :article_preview, :entity_nexus, :entity_nexus_detail, :article_network]
 
   def welcome
     redirect_to dashboard_path if user_signed_in?
@@ -439,6 +439,60 @@ class PagesController < ApplicationController
     render json: { error: "Internal error" }, status: :internal_server_error
   end
 
+  # GET /api/article_network/:article_id — Network graph around an article
+  #
+  # Params:
+  #   depth       — 1 or 2 (default 2)
+  #   time_window — hours (default 48)
+  #   mode        — "network" (single article) or "global" (top threat articles)
+  def article_network
+    if params[:article_id] == "global"
+      # Global View: top threat articles + connections between them
+      top_articles = Article
+        .includes(:country, :ai_analysis, :entities)
+        .joins(:ai_analysis)
+        .where.not(ai_analyses: { threat_level: [nil, "NEGLIGIBLE", "LOW"] })
+        .where.not(latitude: nil)
+        .where.not(longitude: nil)
+        .order(Arel.sql(<<~SQL.squish))
+          CASE ai_analyses.threat_level
+            WHEN 'CRITICAL' THEN 5 WHEN 'HIGH' THEN 4 WHEN 'MODERATE' THEN 3 ELSE 1
+          END DESC, articles.published_at DESC
+        SQL
+        .limit(25)
+        .to_a
+
+      data = ArticleNetworkService.new.connections_between(top_articles, time_window: 72.hours)
+      return render json: data
+    end
+
+    # Search mode: find articles by query, then compute network connections
+    if params[:article_id] == "search"
+      search_query = params[:search_query].to_s.strip
+      return render json: { articles: [], arcs: [], meta: { total_connections: 0 } } if search_query.blank?
+
+      search_articles = find_articles_for_network_search(search_query)
+      return render json: { articles: [], arcs: [], meta: { total_connections: 0 } } if search_articles.empty?
+
+      data = ArticleNetworkService.new.connections_between(search_articles, time_window: 72.hours)
+
+      # Cap arcs at 25 for search (already sorted by strength from service)
+      data[:arcs] = data[:arcs].first(25) if data[:arcs]
+      data[:meta][:rendered_connections] = data[:arcs]&.size || 0
+
+      return render json: data
+    end
+
+    article = Article.find_by(id: params[:article_id])
+    return render json: { error: "Not found" }, status: :not_found unless article
+
+    depth = (params[:depth] || 2).to_i.clamp(1, 3)
+    time_window = (params[:time_window] || 48).to_i.hours
+
+    data = ArticleNetworkService.new.network_for_article(article, depth: depth, time_window: time_window)
+    render json: data
+  end
+
   # GET /api/narrative_dna/:article_id — Graph JSON for Narrative DNA panel
   def narrative_dna
     article = Article.find_by(id: params[:article_id])
@@ -539,6 +593,38 @@ class PagesController < ApplicationController
       neutral:  (neutral  / total * 100).round,
       negative: (negative / total * 100).round
     }
+  end
+
+  # Search helper for article_network search mode.
+  # Mirrors the search logic from globe_data (demo: ILIKE, live: pgvector).
+  def find_articles_for_network_search(search_query)
+    scope = Article.includes(:country, :ai_analysis, :entities)
+                   .where.not(latitude: nil)
+                   .where.not(longitude: nil)
+
+    if VeritasMode.demo?
+      scope = scope.where("headline ILIKE ?", "%#{search_query}%")
+                   .or(scope.where("content ILIKE ?", "%#{search_query}%"))
+    else
+      begin
+        vector = OpenRouterClient.new.embed(search_query)
+        if vector.present?
+          similar_ids = Article.nearest_neighbors(:embedding, vector, distance: "cosine")
+                               .limit(50)
+                               .pluck(:id)
+          scope = scope.where(id: similar_ids)
+        else
+          scope = scope.where("headline ILIKE ?", "%#{search_query}%")
+                       .or(scope.where("content ILIKE ?", "%#{search_query}%"))
+        end
+      rescue StandardError => e
+        Rails.logger.warn "[article_network/search] Semantic search failed: #{e.message}"
+        scope = scope.where("headline ILIKE ?", "%#{search_query}%")
+                     .or(scope.where("content ILIKE ?", "%#{search_query}%"))
+      end
+    end
+
+    scope.order(published_at: :desc).limit(50).to_a
   end
 
   def build_route_segments(filtered_articles, perspective, to_time)
