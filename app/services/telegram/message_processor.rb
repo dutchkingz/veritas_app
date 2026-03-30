@@ -12,25 +12,33 @@ module Telegram
 
     def call
       return unless @channel&.monitoring_active?
-      
+
       # 1. Check for duplicates
       message_id = @message_data["message_id"].to_s
       return if Article.exists?(source_type: :telegram, telegram_channel_id: @channel_id, telegram_message_id: message_id)
 
-      # 2. Create Article
+      # 2. Geopolitical relevance check
+      text = @message_data["text"] || @message_data["caption"] || ""
+      headline = text.truncate(100).presence || "Telegram Post from #{@channel.title}"
+      relevance = GeopoliticalRelevanceFilter.call(headline: headline, description: text.truncate(500))
+      unless relevance[:relevant]
+        Rails.logger.info "[Telegram::MessageProcessor] 🚫 Filtered (#{relevance[:method]}): #{headline}"
+        return nil
+      end
+
+      # 3. Create Article (nil coordinates — AnalysisPipeline resolves geo later)
       article = Article.create!(
         source_type: :telegram,
         telegram_channel_id: @channel_id,
         telegram_message_id: message_id,
-        content: @message_data["text"] || @message_data["caption"],
-        headline: @message_data["text"]&.truncate(100) || "Telegram Post from #{@channel.title}",
+        content: text,
+        headline: headline,
         source_name: "Telegram: #{@channel.title}",
         published_at: Time.at(@message_data["date"]),
         telegram_views: @message_data["views"],
         telegram_forwards: @message_data["forwards"],
-        # Default coordinates for global/unknown (to be refined by AnalysisPipeline)
-        latitude: 0,
-        longitude: 0,
+        latitude: nil,
+        longitude: nil,
         region_id: @channel.topic.present? ? find_region_by_topic(@channel.topic) : default_region_id
       )
 

@@ -1,0 +1,148 @@
+# CAMEO (Conflict and Mediation Event Observations) Code Lookup
+# Used by GdeltEvent#event_description and GdeltEvent#quad_class_label
+# Source: CAMEO v1.1b3 Codebook
+#
+# We include all root codes and the most analytically relevant sub-codes,
+# with emphasis on conflict codes (quad_class 3/4) used in our query filter.
+
+quad_classes:
+  "1": "Verbal Cooperation"
+  "2": "Material Cooperation"
+  "3": "Verbal Conflict"
+  "4": "Material Conflict"
+
+root_codes:
+  "01": "Make Public Statement"
+  "02": "Appeal"
+  "03": "Express Intent to Cooperate"
+  "04": "Consult"
+  "05": "Engage in Diplomatic Cooperation"
+  "06": "Engage in Material Cooperation"
+  "07": "Provide Aid"
+  "08": "Yield"
+  "09": "Investigate"
+  "10": "Demand"
+  "11": "Disapprove"
+  "12": "Reject"
+  "13": "Threaten"
+  "14": "Protest"
+  "15": "Exhibit Force Posture"
+  "16": "Reduce Relations"
+  "17": "Coerce"
+  "18": "Assault"
+  "19": "Fight"
+  "20": "Engage in Unconventional Mass Violence"
+
+codes:
+  # --- Demand (10) ---
+  "100": "Demand"
+  "101": "Demand political reform"
+  "102": "Demand policy change"
+  "103": "Demand rights"
+  "104": "Demand change in leadership"
+  "105": "Demand mediation"
+  "106": "Demand withdrawal"
+
+  # --- Disapprove (11) ---
+  "110": "Criticize or denounce"
+  "111": "Criticize or denounce leadership"
+  "112": "Criticize or denounce policy"
+  "113": "Criticize or denounce human rights"
+  "114": "Accuse of crime / corruption"
+
+  # --- Reject (12) ---
+  "120": "Reject"
+  "121": "Reject proposal"
+  "122": "Refuse to allow"
+  "123": "Reject mediation"
+  "124": "Refuse to cooperate"
+  "125": "Break agreement"
+  "1251": "Impose sanctions"
+  "1252": "Embargo / boycott"
+  "1253": "Halt negotiations"
+  "1254": "Halt aid"
+  "1255": "Expel diplomat"
+
+  # --- Threaten (13) ---
+  "130": "Threaten"
+  "131": "Threaten with political power"
+  "1311": "Threaten to impose sanctions"
+  "1312": "Threaten military attack"
+  "1313": "Threaten embargo"
+  "132": "Threaten with non-military force"
+  "133": "Threaten with military force"
+  "134": "Threaten with mass destruction weapons"
+  "135": "Threaten with nuclear weapons"
+  "136": "Threaten ultimatum"
+
+  # --- Protest (14) ---
+  "140": "Protest peacefully"
+  "141": "Demonstrate or rally"
+  "142": "Conduct hunger strike"
+  "143": "Conduct strike or boycott"
+  "144": "Obstruct passage"
+  "145": "Protest violently / riot"
+
+  # --- Exhibit Force Posture (15) ---
+  "150": "Increase military alert status"
+  "151": "Mobilize or increase military forces"
+  "152": "Mobilize armed forces (non-state)"
+  "153": "Conduct military exercises"
+  "154": "Conduct weapons test"
+
+  # --- Reduce Relations (16) ---
+  "160": "Reduce relations"
+  "161": "Reduce diplomatic contact"
+  "162": "Decrease military cooperation"
+  "163": "Reduce or break economic relations"
+  "164": "Expel government officials"
+  "165": "Accuse of espionage"
+  "166": "Halt negotiations"
+
+  # --- Coerce (17) ---
+  "170": "Coerce"
+  "171": "Seize or damage property"
+  "172": "Impose administrative sanctions"
+  "173": "Arrest, detain, or charge"
+  "174": "Expel or deport"
+  "175": "Use tactics of social control"
+  "176": "Impose curfew"
+  "177": "Impose state of emergency"
+
+  # --- Assault (18) — Material Conflict begins here ---
+  "180": "Use unconventional violence"
+  "181": "Abduct, kidnap, or take hostage"
+  "182": "Sexually assault"
+  "183": "Torture"
+  "184": "Kill by physical assault"
+  "185": "Attempt to assassinate"
+  "186": "Assassinate"
+
+  # --- Fight (19) ---
+  "190": "Use conventional military force"
+  "191": "Impose blockade or restriction"
+  "192": "Occupy territory"
+  "193": "Fight with small arms"
+  "194": "Fight with artillery / aircraft"
+  "1941": "Conduct airstrike"
+  "1942": "Conduct drone strike"
+  "195": "Employ air weapons"
+  "196": "Violate ceasefire"
+
+  # --- Unconventional Mass Violence (20) ---
+  "200": "Engage in unconventional mass violence"
+  "201": "Engage in ethnic cleansing"
+  "202": "Conduct mass expulsion"
+  "203": "Conduct mass killings"
+  "204": "Conduct mass destruction"
+  "2041": "Use chemical / biological weapons"
+  "2042": "Use nuclear weapons"
+
+  # --- Cooperation codes (included for context / arc direction) ---
+  "036": "Express intent to meet or negotiate"
+  "046": "Engage in negotiation"
+  "057": "Sign formal agreement"
+  "070": "Provide military aid"
+  "071": "Provide economic aid"
+  "074": "Grant amnesty"
+  "075": "Release hostages or prisoners"

@@ -1,6 +1,11 @@
 <% journey_data = article.best_journey_data %>
 
-<div class="veritas-feed-card <%= 'new-entry' if local_assigns[:is_new] %>"
+<% threat_class = case article.ai_analysis&.threat_label
+                   when 'CRITICAL' then 'vt-threat-critical'
+                   when 'HIGH'     then 'vt-threat-high'
+                   else ''
+                   end %>
+<div class="veritas-feed-card <%= 'new-entry' if local_assigns[:is_new] %> <%= threat_class %>"
      id="<%= dom_id(article) %>"
      data-controller="feed-card"
      data-feed-card-lat-value="<%= article.latitude %>"
@@ -17,7 +22,7 @@
     <div class="d-flex align-items-center gap-2">
       <% if article.ai_analysis&.threat_level %>
         <span class="feed-threat" style="color: <%= article.ai_analysis.threat_color %>; font-size: 0.6rem;">
-          THREAT <%= article.ai_analysis.threat_level %>
+          THREAT <%= article.ai_analysis.threat_label %>
         </span>
       <% end %>
       <span class="feed-time" style="font-size: 0.6rem; color: #64748b;"><%= time_ago_in_words(article.published_at) %> ago</span>

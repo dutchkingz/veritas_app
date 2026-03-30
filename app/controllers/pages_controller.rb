@@ -1,6 +1,6 @@
 class PagesController < ApplicationController
   DEFAULT_ARC_COLOR = "#00f0ff".freeze
-  skip_before_action :authenticate_user!, only: [:welcome, :home, :globe_data, :search, :aware, :aware_narration, :narrative_dna, :tribunal, :article_preview, :entity_nexus, :entity_nexus_detail]
+  skip_before_action :authenticate_user!, only: [:welcome, :home, :globe_data, :search, :aware, :aware_narration, :narrative_dna, :tribunal, :article_preview, :entity_nexus, :entity_nexus_detail, :article_network]
 
   def welcome
     redirect_to dashboard_path if user_signed_in?
@@ -92,12 +92,43 @@ class PagesController < ApplicationController
   end
 
   def home
-    # Hot articles: highest threat level first, then trust score (lower = more suspicious)
-    @hot_articles = Article
+    # Hot articles: surface the most geopolitically interesting, best-analyzed
+    # articles. Prioritize by threat severity, narrative richness, then suspicion.
+    # Exclude GDELT articles that still have placeholder headlines (not yet scraped).
+    #
+    # NOTE: threat_level is a string (CRITICAL/HIGH/MODERATE/LOW/NEGLIGIBLE),
+    # NOT a number — alphabetical sort puts NEGLIGIBLE first! Use CASE WHEN.
+    threat_order = Arel.sql(<<~SQL.squish)
+      CASE ai_analyses.threat_level
+        WHEN 'CRITICAL'   THEN 5
+        WHEN 'HIGH'       THEN 4
+        WHEN 'MODERATE'   THEN 3
+        WHEN 'LOW'        THEN 2
+        WHEN 'NEGLIGIBLE' THEN 1
+        ELSE 3
+      END DESC,
+      (SELECT COUNT(*) FROM narrative_arcs WHERE narrative_arcs.article_id = articles.id) DESC,
+      ai_analyses.trust_score ASC,
+      articles.published_at DESC
+    SQL
+
+    # Progressive time window: prefer recent articles, widen if too few
+    hot_base = Article
       .includes(:country, :region, :ai_analysis, narrative_arcs: :narrative_routes)
-      .where.not(ai_analysis: { threat_level: nil })
-      .order('ai_analysis.threat_level DESC, ai_analysis.trust_score ASC, articles.published_at DESC')
-      .limit(15)
+      .joins(:ai_analysis)
+      .where.not(ai_analyses: { threat_level: nil })
+      .where.not("headline LIKE '%— GDELT'")
+
+    @hot_articles = nil
+    [3.days, 7.days, 14.days].each do |window|
+      candidates = hot_base.where("articles.published_at >= ?", window.ago).order(threat_order).limit(15)
+      if candidates.size >= 5
+        @hot_articles = candidates
+        break
+      end
+    end
+    # Final fallback: no time filter (original behavior)
+    @hot_articles ||= hot_base.order(threat_order).limit(15)
     
     # Fallback: all articles ordered by date (if not enough hot articles)
     @articles = Article.includes(:country, :region).order(published_at: :desc).limit(50)
@@ -136,6 +167,21 @@ class PagesController < ApplicationController
     search_query = params[:search_query]
     topic        = params[:topic].presence
 
+    # Cache key incorporates all query params + latest article timestamp.
+    # Auto-invalidates when any article is created/updated.
+    # Search queries skip the cache (semantic search is already fast + personalised).
+    cache_key = if search_query.blank?
+                  latest = Article.maximum(:updated_at)&.to_i
+                  "globe_data:#{to_time&.to_i}:#{view_mode}:#{topic}:#{latest}"
+                end
+
+    if cache_key
+      cached = Rails.cache.read(cache_key)
+      if cached
+        return render json: cached
+      end
+    end
+
     scope  = Article.includes(:country, :region, :ai_analysis)
     scope  = scope.where("published_at <= ?", to_time) if to_time
     scope  = scope.order(published_at: :desc)
@@ -173,6 +219,8 @@ class PagesController < ApplicationController
 
     points = filtered_articles.first(200).filter_map do |a|
       next if a.latitude.blank? || a.longitude.blank?
+      next if null_island?(a.latitude, a.longitude)
+      next unless valid_coordinates?(a.latitude, a.longitude)
 
       sentiment_color  = a.ai_analysis&.sentiment_color || "#00f0ff"
       perspective_slug = SourceClassifierService.classify(a.source_name)[:slug]
@@ -192,7 +240,15 @@ class PagesController < ApplicationController
     arcs = if view_mode == "segments"
              route_payload = build_route_segments(filtered_articles, nil, to_time)
              routes = route_payload[:routes]
-             route_payload[:segments].any? ? route_payload[:segments] : build_globe_arcs(filtered_articles, nil, to_time)
+             # If default view (no search/topic) returns few segments, inject top narratives
+             if route_payload[:segments].size < 5 && search_query.blank? && topic.blank?
+               top_payload = build_top_narrative_segments(to_time)
+               routes = (routes + top_payload[:routes]).uniq { |r| r[:id] }
+               all_segments = (route_payload[:segments] + top_payload[:segments]).uniq { |s| s[:id] }
+               all_segments.any? ? all_segments : build_globe_arcs(filtered_articles, nil, to_time)
+             else
+               route_payload[:segments].any? ? route_payload[:segments] : build_globe_arcs(filtered_articles, nil, to_time)
+             end
            else
              build_globe_arcs(filtered_articles, nil, to_time)
            end
@@ -265,6 +321,7 @@ class PagesController < ApplicationController
     # Base weight 0.4 ensures even unevaluated articles show up on the thermal layer.
     heatmap = filtered_articles.first(200).filter_map do |a|
       next if a.latitude.blank? || a.longitude.blank?
+      next if null_island?(a.latitude, a.longitude)
 
       threat = a.ai_analysis&.threat_level.to_f   # 0–10 (nil → 0)
       trust  = a.ai_analysis&.trust_score.to_f    # 0–100 (nil → 0, treated as unknown)
@@ -280,11 +337,15 @@ class PagesController < ApplicationController
       { lat: a.latitude, lng: a.longitude, weight: weight }
     end
 
-    render json: {
+    payload = {
       points: points, arcs: arcs, routes: routes, regions: regions,
       heatmap: heatmap, heatmapClusters: heatmap_clusters,
       mode: VeritasMode.current
     }
+
+    Rails.cache.write(cache_key, payload, expires_in: 5.minutes) if cache_key
+
+    render json: payload
   end
 
   # GET /api/article_preview/:article_id — Lightweight article card for DNA node click
@@ -386,6 +447,60 @@ class PagesController < ApplicationController
   rescue StandardError => e
     Rails.logger.error "[EntityNexusDetail] ##{params[:entity_id]}: #{e.class} #{e.message}"
     render json: { error: "Internal error" }, status: :internal_server_error
+  end
+
+  # GET /api/article_network/:article_id — Network graph around an article
+  #
+  # Params:
+  #   depth       — 1 or 2 (default 2)
+  #   time_window — hours (default 48)
+  #   mode        — "network" (single article) or "global" (top threat articles)
+  def article_network
+    if params[:article_id] == "global"
+      # Global View: top threat articles + connections between them
+      top_articles = Article
+        .includes(:country, :ai_analysis, :entities)
+        .joins(:ai_analysis)
+        .where.not(ai_analyses: { threat_level: [nil, "NEGLIGIBLE", "LOW"] })
+        .where.not(latitude: nil)
+        .where.not(longitude: nil)
+        .order(Arel.sql(<<~SQL.squish))
+          CASE ai_analyses.threat_level
+            WHEN 'CRITICAL' THEN 5 WHEN 'HIGH' THEN 4 WHEN 'MODERATE' THEN 3 ELSE 1
+          END DESC, articles.published_at DESC
+        SQL
+        .limit(25)
+        .to_a
+
+      data = ArticleNetworkService.new.connections_between(top_articles, time_window: 72.hours)
+      return render json: data
+    end
+
+    # Search mode: find articles by query, then compute network connections
+    if params[:article_id] == "search"
+      search_query = params[:search_query].to_s.strip
+      return render json: { articles: [], arcs: [], meta: { total_connections: 0 } } if search_query.blank?
+
+      search_articles = find_articles_for_network_search(search_query)
+      return render json: { articles: [], arcs: [], meta: { total_connections: 0 } } if search_articles.empty?
+
+      data = ArticleNetworkService.new.connections_between(search_articles, time_window: 72.hours)
+
+      # Cap arcs at 25 for search (already sorted by strength from service)
+      data[:arcs] = data[:arcs].first(25) if data[:arcs]
+      data[:meta][:rendered_connections] = data[:arcs]&.size || 0
+
+      return render json: data
+    end
+
+    article = Article.find_by(id: params[:article_id])
+    return render json: { error: "Not found" }, status: :not_found unless article
+
+    depth = (params[:depth] || 2).to_i.clamp(1, 3)
+    time_window = (params[:time_window] || 48).to_i.hours
+
+    data = ArticleNetworkService.new.network_for_article(article, depth: depth, time_window: time_window)
+    render json: data
   end
 
   # GET /api/narrative_dna/:article_id — Graph JSON for Narrative DNA panel
@@ -490,6 +605,38 @@ class PagesController < ApplicationController
     }
   end
 
+  # Search helper for article_network search mode.
+  # Mirrors the search logic from globe_data (demo: ILIKE, live: pgvector).
+  def find_articles_for_network_search(search_query)
+    scope = Article.includes(:country, :ai_analysis, :entities)
+                   .where.not(latitude: nil)
+                   .where.not(longitude: nil)
+
+    if VeritasMode.demo?
+      scope = scope.where("headline ILIKE ?", "%#{search_query}%")
+                   .or(scope.where("content ILIKE ?", "%#{search_query}%"))
+    else
+      begin
+        vector = OpenRouterClient.new.embed(search_query)
+        if vector.present?
+          similar_ids = Article.nearest_neighbors(:embedding, vector, distance: "cosine")
+                               .limit(50)
+                               .pluck(:id)
+          scope = scope.where(id: similar_ids)
+        else
+          scope = scope.where("headline ILIKE ?", "%#{search_query}%")
+                       .or(scope.where("content ILIKE ?", "%#{search_query}%"))
+        end
+      rescue StandardError => e
+        Rails.logger.warn "[article_network/search] Semantic search failed: #{e.message}"
+        scope = scope.where("headline ILIKE ?", "%#{search_query}%")
+                     .or(scope.where("content ILIKE ?", "%#{search_query}%"))
+      end
+    end
+
+    scope.order(published_at: :desc).limit(50).to_a
+  end
+
   def build_route_segments(filtered_articles, perspective, to_time)
     filtered_ids = filtered_articles.map(&:id)
 
@@ -549,10 +696,46 @@ class PagesController < ApplicationController
       )
 
       route_data[:segments].each do |segment|
+        next if degenerate_arc?(segment)
         segments << segment.merge(
           strength: strength,
           tier: tier
         )
+      end
+    end
+
+    { segments: segments, routes: routes }
+  end
+
+  # Top narrative routes by manipulation score — used to populate the default homepage view
+  # so users see the most interesting intelligence immediately rather than an empty globe.
+  def build_top_narrative_segments(to_time)
+    scope = NarrativeRoute
+      .joins(narrative_arc: :article)
+      .includes(narrative_arc: { article: :ai_analysis })
+      .where.not(hops: nil)
+      .where("narrative_routes.total_hops >= ?", 2)
+      .where("narrative_routes.created_at >= ?", 7.days.ago)
+      .order(manipulation_score: :desc, total_reach_countries: :desc)
+
+    scope = scope.where("articles.published_at <= ?", to_time) if to_time
+
+    segments = []
+    routes = []
+
+    scope.limit(25).each_with_index do |route, index|
+      route_data = route.as_journey_data
+      next unless route_data[:segments]&.any?
+
+      tier = index < 5 ? 1 : 2
+      confidences = route.hops.filter_map { |h| h["confidence_score"]&.to_f }
+      strength = confidences.any? ? (confidences.sum / confidences.size.to_f).round(3) : 0.5
+
+      routes << route_data.merge(strength: strength, tier: tier)
+
+      route_data[:segments].each do |segment|
+        next if degenerate_arc?(segment)
+        segments << segment.merge(strength: strength, tier: tier)
       end
     end
 
@@ -579,7 +762,8 @@ class PagesController < ApplicationController
               end
 
     # Return only real narrative arcs to keep the intelligence layer focused.
-    db_arcs.first(100)
+    # Filter degenerate arcs (same start/end point = hedgehog needles)
+    db_arcs.reject { |arc| degenerate_arc?(arc) }.first(100)
   end
 
   def build_article_flow_arcs(filtered_articles, perspective)
@@ -657,6 +841,37 @@ class PagesController < ApplicationController
     else
       nil
     end
+  end
+
+  # Returns true for arcs where start ≈ end (hedgehog needles / spikes).
+  def degenerate_arc?(arc)
+    s_lat = arc[:startLat]
+    s_lng = arc[:startLng]
+    e_lat = arc[:endLat]
+    e_lng = arc[:endLng]
+
+    # Any nil coordinate = degenerate
+    return true if [s_lat, s_lng, e_lat, e_lng].any?(&:nil?)
+
+    # Out-of-range coordinates (GDELT parsing bug) = degenerate
+    return true unless valid_coordinates?(s_lat, s_lng) && valid_coordinates?(e_lat, e_lng)
+
+    return true if null_island?(s_lat, s_lng) || null_island?(e_lat, e_lng)
+
+    # Too close (within 2°) = spike/needle regardless of country
+    lat_diff = (s_lat.to_f - e_lat.to_f).abs
+    lng_diff = (s_lng.to_f - e_lng.to_f).abs
+    return true if lat_diff < 2.0 && lng_diff < 2.0
+
+    false
+  end
+
+  def null_island?(lat, lng)
+    lat.to_f.abs < 1.0 && lng.to_f.abs < 1.0
+  end
+
+  def valid_coordinates?(lat, lng)
+    lat.to_f.between?(-90.0, 90.0) && lng.to_f.between?(-180.0, 180.0)
   end
 
   def brighten_hex(hex_color, factor)

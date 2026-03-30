@@ -32,14 +32,14 @@ class FetchArticleContentJob < ApplicationJob
         
         Rails.logger.info "[FetchArticleContentJob] ✅ Content saved for Article ##{article_id} (#{cleaned_content.length} chars)"
         
-        # Queue AI analysis if not already done
+        # Queue AI analysis if not already done.
+        # The AnalysisPipeline handles embedding generation in Phase 4 AFTER
+        # the TRIAD agents complete — do NOT enqueue GenerateEmbeddingJob here
+        # or it will race ahead of the analysis and fail with no summary text.
         if article.ai_analysis.blank?
           AnalyzeArticleJob.perform_later(article.id)
           Rails.logger.info "[FetchArticleContentJob] ✅ AI analysis queued for Article ##{article_id}"
         end
-        
-        # Queue embedding generation
-        GenerateEmbeddingJob.perform_later(article.id) if article.embedding.blank?
       else
         Rails.logger.warn "[FetchArticleContentJob] ⚠️ No content extracted for Article ##{article_id}"
       end

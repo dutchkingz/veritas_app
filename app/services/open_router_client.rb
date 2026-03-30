@@ -2,16 +2,20 @@ require 'net/http'
 require 'json'
 
 class OpenRouterClient
+  # Raised on HTTP 429 — caller can retry_on this with exponential backoff.
+  class RateLimitError < StandardError; end
+
   API_URL = "https://openrouter.ai/api/v1/chat/completions".freeze
   CREDIT_LIMIT_ERROR_PATTERN = /requires more credits|fewer max_tokens|can only afford/i.freeze
 
   DEFAULT_MODELS = {
-    analyst:          "google/gemini-2.0-flash-001",
-    sentinel:         "openai/gpt-4o-mini",
-    arbiter:          "anthropic/claude-3.5-haiku",
-    briefing:         "anthropic/claude-3.5-haiku",
-    voice:            "anthropic/claude-3.5-haiku",
-    entity_extractor: "google/gemini-2.0-flash-001"
+    analyst:           "google/gemini-2.0-flash-001",
+    sentinel:          "openai/gpt-4o-mini",
+    arbiter:           "anthropic/claude-3.5-haiku",
+    briefing:          "anthropic/claude-3.5-haiku",
+    voice:             "anthropic/claude-3.5-haiku",
+    entity_extractor:  "google/gemini-2.0-flash-001",
+    relevance_filter:  "google/gemini-2.0-flash-001"
   }.freeze
 
   MAX_TOKENS = {
@@ -20,7 +24,8 @@ class OpenRouterClient
     arbiter:          900,
     briefing:         600,
     voice:            200,
-    entity_extractor: 400
+    entity_extractor: 400,
+    relevance_filter: 60
   }.freeze
 
   def initialize(user: nil)
@@ -127,6 +132,8 @@ class OpenRouterClient
 
     response = http.request(request)
     return response if response.is_a?(Net::HTTPSuccess)
+
+    raise RateLimitError, "OpenRouter rate limit (429): #{response.body}" if response.code.to_i == 429
 
     if response.code.to_i == 402 && response.body.match?(CREDIT_LIMIT_ERROR_PATTERN) && max_tokens > 250
       reduced_max_tokens = [max_tokens - 200, 250].max

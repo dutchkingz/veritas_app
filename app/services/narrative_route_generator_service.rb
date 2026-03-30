@@ -4,9 +4,10 @@ class NarrativeRouteGeneratorService
   # 0.65 → only connect articles with ≥65% semantic similarity (was 0.45 — far too loose).
   SIMILARITY_THRESHOLD = 0.65
   MAX_HOPS_PER_ROUTE = 8
-  
+
   def initialize(logger: Rails.logger)
     @logger = logger
+    @framing_service = FramingAnalysisService.new
   end
   
   # Targeted route generation for a single article against its nearest neighbors.
@@ -121,13 +122,17 @@ class NarrativeRouteGeneratorService
     
     # Build hops array
     hops = sorted_articles.map do |article|
+      framing_result = detect_framing_shift(origin_article, article)
       {
+        'article_id' => article.id,
         'source_name' => article.source_name,
-        'source_country' => article.country&.name,
+        'source_country' => article.country&.name || country_from_domain(article.source_url),
         'lat' => article.latitude,
         'lng' => article.longitude,
         'published_at' => article.published_at&.iso8601,
-        'framing_shift' => detect_framing_shift(origin_article, article),
+        'framing_shift' => framing_result[:framing],
+        'framing_explanation' => framing_result[:explanation],
+        'framing_confidence' => framing_result[:confidence],
         'confidence_score' => calculate_confidence(origin_article, article),
         'delay_from_previous' => 0 # Will be calculated after sorting
       }
@@ -175,14 +180,21 @@ class NarrativeRouteGeneratorService
     route
   end
   
-  # Determine framing shift based on article similarity and source type
+  # Determine framing shift via LLM-based comparative content analysis.
+  # Returns a Hash: { framing: String, confidence: Float, explanation: String }
   def detect_framing_shift(origin, target)
-    return 'original' if origin.id == target.id
-    
-    # Simple heuristics based on source patterns
+    @framing_service.analyze(origin, target)
+  end
+
+  # Legacy hardcoded framing detection — kept for comparison and regression testing.
+  # DO NOT use in production: assigns framing labels based on source name alone,
+  # which bakes in confirmation bias (RT is always "amplified", Reuters always "neutralized").
+  def detect_framing_shift_legacy(origin, target)
+    return { framing: 'original', confidence: 1.0, explanation: 'Same article.' } if origin.id == target.id
+
     source_name = target.source_name.to_s.downcase
-    
-    if source_name.include?('rt') || source_name.include?('sputnik') || source_name.include?('xinhua')
+
+    framing = if source_name.include?('rt') || source_name.include?('sputnik') || source_name.include?('xinhua')
       'amplified'
     elsif source_name.include?('breitbart') || source_name.include?('daily wire')
       'amplified'
@@ -193,6 +205,8 @@ class NarrativeRouteGeneratorService
     else
       'neutralized'
     end
+
+    { framing: framing, confidence: 0.5, explanation: "(legacy: classified by source name)" }
   end
   
   # Very basic confidence calculation based on embedding similarity
@@ -241,5 +255,40 @@ class NarrativeRouteGeneratorService
   
   def generate_route_name(first, last)
     "Narrative Route: #{first.source_name} → #{last.source_name}"
+  end
+
+  # Infer country name from a URL's top-level domain when no other
+  # country data is available. Covers the most common ccTLDs seen in
+  # OSINT news sources. Returns nil for generic TLDs (.com, .org, .net).
+  DOMAIN_COUNTRY_MAP = {
+    "ru" => "Russia", "cn" => "China", "ir" => "Iran", "il" => "Israel",
+    "ua" => "Ukraine", "de" => "Germany", "fr" => "France", "uk" => "United Kingdom",
+    "jp" => "Japan", "kr" => "South Korea", "in" => "India", "br" => "Brazil",
+    "tr" => "Turkey", "sa" => "Saudi Arabia", "pk" => "Pakistan", "eg" => "Egypt",
+    "ng" => "Nigeria", "za" => "South Africa", "au" => "Australia", "ca" => "Canada",
+    "mx" => "Mexico", "ar" => "Argentina", "pl" => "Poland", "es" => "Spain",
+    "it" => "Italy", "nl" => "Netherlands", "se" => "Sweden", "no" => "Norway",
+    "fi" => "Finland", "dk" => "Denmark", "at" => "Austria", "ch" => "Switzerland",
+    "be" => "Belgium", "ie" => "Ireland", "pt" => "Portugal", "cz" => "Czechia",
+    "ro" => "Romania", "hu" => "Hungary", "gr" => "Greece", "tw" => "Taiwan",
+    "th" => "Thailand", "ph" => "Philippines", "my" => "Malaysia", "sg" => "Singapore",
+    "id" => "Indonesia", "vn" => "Vietnam", "qa" => "Qatar", "ae" => "UAE",
+    "ke" => "Kenya", "gh" => "Ghana", "et" => "Ethiopia", "tz" => "Tanzania",
+    "co" => "Colombia", "cl" => "Chile", "pe" => "Peru", "ve" => "Venezuela"
+  }.freeze
+
+  def country_from_domain(url)
+    return nil if url.blank?
+    host = URI.parse(url.strip).host.to_s.downcase
+    # Extract ccTLD: last segment unless it's a known generic TLD
+    tld = host.split(".").last
+    # Handle two-part ccTLDs like .co.uk, .com.au
+    if %w[uk au].include?(tld)
+      parts = host.split(".")
+      tld = parts[-1] if parts.length >= 3 && parts[-2].length <= 3
+    end
+    DOMAIN_COUNTRY_MAP[tld]
+  rescue URI::InvalidURIError
+    nil
   end
 end
