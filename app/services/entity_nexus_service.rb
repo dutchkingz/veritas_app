@@ -200,15 +200,15 @@ class EntityNexusService
         ON em1.article_id = em2.article_id
        AND em1.entity_id  < em2.entity_id
       LEFT JOIN ai_analyses ai ON ai.article_id = em1.article_id
-      WHERE em1.entity_id IN (#{entity_ids.join(',')})
-        AND em2.entity_id IN (#{entity_ids.join(',')})
+      WHERE em1.entity_id IN (?)
+        AND em2.entity_id IN (?)
       GROUP BY em1.entity_id, em2.entity_id
       HAVING COUNT(*) >= 1
       ORDER BY weight DESC
-      LIMIT #{MAX_EDGES}
+      LIMIT ?
     SQL
 
-    rows = ActiveRecord::Base.connection.execute(sql)
+    rows = EntityMention.find_by_sql([sql, entity_ids, entity_ids, MAX_EDGES])
 
     rows.map do |row|
       avg_threat = row["avg_threat"].to_f
