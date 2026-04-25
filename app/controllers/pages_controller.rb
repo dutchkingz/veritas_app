@@ -404,17 +404,14 @@ class PagesController < ApplicationController
     # Top connected entities via raw SQL — avoids COUNT(*) pluck issues
     article_ids = entity.article_ids.first(50)
     connected = if article_ids.any?
-      rows = ActiveRecord::Base.connection.execute(<<~SQL)
-        SELECT e.id, e.name, e.entity_type, COUNT(*) AS shared_count
-        FROM entity_mentions em
-        JOIN entities e ON e.id = em.entity_id
-        WHERE em.article_id IN (#{article_ids.map(&:to_i).join(',')})
-          AND em.entity_id != #{entity.id.to_i}
-        GROUP BY e.id, e.name, e.entity_type
-        ORDER BY shared_count DESC
-        LIMIT 5
-      SQL
-      rows.map { |r| { id: r["id"].to_i, name: r["name"], entity_type: r["entity_type"], shared_articles: r["shared_count"].to_i } }
+      rows = Entity.joins(:entity_mentions)
+                   .where(entity_mentions: { article_id: article_ids })
+                   .where.not(id: entity.id)
+                   .group(:id, :name, :entity_type)
+                   .order(Arel.sql("COUNT(*) DESC"))
+                   .limit(5)
+                   .select("entities.id, entities.name, entities.entity_type, COUNT(*) AS shared_count")
+      rows.map { |r| { id: r.id.to_i, name: r.name, entity_type: r.entity_type, shared_articles: r.shared_count.to_i } }
     else
       []
     end

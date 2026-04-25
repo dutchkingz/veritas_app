@@ -1,21 +1,22 @@
 require "test_helper"
 
 class PagesControllerTest < ActionDispatch::IntegrationTest
-  test "non admin users see regional analysis as locked" do
+  test "logged in users can trigger regional analysis" do
     Region.create!(name: "Europe")
     sign_in build_user(role: "user")
 
-    get root_path
+    get dashboard_path
 
     assert_response :success
-    assert_includes response.body, "LOCKED"
+    assert_includes response.body, "RUN"
+    assert_not_includes response.body, "LOCKED"
   end
 
   test "admin users can run regional analysis" do
     Region.create!(name: "Europe")
     sign_in build_user(role: "admin")
 
-    get root_path
+    get dashboard_path
 
     assert_response :success
     assert_includes response.body, "RUN"
@@ -40,10 +41,10 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
       )
     end
 
-    get root_path
+    get dashboard_path
 
     assert_response :success
-    assert_includes response.body, "3 SIGNALS"
+    assert_includes response.body, "3 signals"
   end
 
   test "globe data applies perspective filtering to points and arcs" do
@@ -96,12 +97,23 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
     AiAnalysis.create!(article: old_article, analysis_status: "complete", sentiment_color: "#123456")
     AiAnalysis.create!(article: new_article, analysis_status: "complete", sentiment_color: "#654321")
 
+    NarrativeArc.create!(
+      article: old_article,
+      origin_lat: old_article.latitude,
+      origin_lng: old_article.longitude,
+      target_lat: new_article.latitude,
+      target_lng: new_article.longitude,
+      origin_country: "China",
+      target_country: "Germany",
+      arc_color: "#123456"
+    )
+
     get "/api/globe_data", params: { perspective_id: china_filter.id }, as: :json
 
     assert_response :success
     body = JSON.parse(response.body)
-    assert_equal 2, body["points"].length
-    assert_equal ["Global Times", "Xinhua"].sort, body["points"].map { |point| point["source"] }.sort
+    assert_equal 3, body["points"].length
+    assert_equal ["Global Times", "Reuters", "Xinhua"].sort, body["points"].map { |point| point["source"] }.sort
     assert body["arcs"].any?
     assert_equal "#123456", body["arcs"].first["color"].first
     assert_not_equal body["arcs"].first["color"].first, body["arcs"].first["color"].last

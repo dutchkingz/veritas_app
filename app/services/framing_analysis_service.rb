@@ -12,7 +12,11 @@ class FramingAnalysisService
     - "amplified"   — Same core narrative but with heightened emotional language,
                       selective emphasis, exaggerated claims, or expanded reach
     - "distorted"   — Key facts changed, context removed, misleading framing,
-                      contradictory spin, or disinformation indicators
+                      contradictory spin, or disinformation indicators.
+                      Do NOT classify as 'distorted' simply because the target
+                      is shorter, uses a different headline, or omits minor
+                      details. 'distorted' MUST involve a factual contradiction
+                      or severe manipulative context removal.
     - "neutralized" — Actively corrects, contextualises, or provides a balanced
                       counter-perspective to the origin article
 
@@ -89,7 +93,7 @@ class FramingAnalysisService
   end
 
   # Headline-overlap heuristic — used in demo mode or when no API key is set.
-  # Replaces the old hardcoded source-name logic with content-based signals.
+  # Safely defaults to "original" rather than falsely flagging distortion.
   def heuristic_fallback(origin, target)
     jaccard = headline_jaccard(origin.headline, target.headline)
 
@@ -97,11 +101,11 @@ class FramingAnalysisService
       { framing: 'original', confidence: 0.6,
         explanation: "Headlines are highly similar (#{(jaccard * 100).round}% word overlap)." }
     elsif jaccard >= 0.3
-      { framing: 'amplified', confidence: 0.5,
-        explanation: "Headlines share partial overlap (#{(jaccard * 100).round}%); possible selective emphasis." }
+      { framing: 'original', confidence: 0.4,
+        explanation: "Headlines share partial overlap (#{(jaccard * 100).round}%); lacking LLM for deeper analysis." }
     else
-      { framing: 'distorted', confidence: 0.45,
-        explanation: "Headlines have low overlap (#{(jaccard * 100).round}%); framing may differ significantly." }
+      { framing: 'original', confidence: 0.2,
+        explanation: "Headlines have low overlap (#{(jaccard * 100).round}%); lacking LLM to classify true shift." }
     end
   end
 

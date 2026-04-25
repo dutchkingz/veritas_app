@@ -1,8 +1,8 @@
 class NarrativeRouteGeneratorService
   # Similarity threshold for considering articles as part of the same narrative.
   # cosine_distance = 1 - cosine_similarity, so max_distance = 1 - SIMILARITY_THRESHOLD.
-  # 0.65 → only connect articles with ≥65% semantic similarity (was 0.45 — far too loose).
-  SIMILARITY_THRESHOLD = 0.65
+  # 0.85 → only connect articles with ≥85% semantic similarity (was 0.65 — still too loose for text embeddings).
+  SIMILARITY_THRESHOLD = 0.85
   MAX_HOPS_PER_ROUTE = 8
 
   def initialize(logger: Rails.logger)
@@ -75,39 +75,25 @@ class NarrativeRouteGeneratorService
     # Note: cosine distance = 1 - cosine_similarity, so we want distance < (1 - threshold)
     max_distance = 1 - SIMILARITY_THRESHOLD
     
-    # Direct SQL query to get distances
-    sql = <<~SQL
-      SELECT id, headline, source_name, published_at, latitude, longitude,
-             embedding <=> '#{article.embedding.to_json}'::vector AS distance
-      FROM articles 
-      WHERE id != #{article.id}
-        AND embedding IS NOT NULL
-        AND published_at >= '#{article.published_at - 30.days}'
-        AND published_at <= '#{article.published_at + 7.days}'
-      ORDER BY embedding <=> '#{article.embedding.to_json}'::vector
-      LIMIT #{max_results}
-    SQL
+    # Use pgvector's cosine distance through the neighbor gem
+    max_distance = 1 - SIMILARITY_THRESHOLD
     
-    results = ActiveRecord::Base.connection.execute(sql)
-    
-    # Convert to Article objects with distance
-    similar = []
-    results.each do |row|
-      article_obj = Article.find(row['id'])
-      article_obj.instance_variable_set(:@neighbor_distance, row['distance'].to_f)
-      similar << article_obj
-    end
+    similar = Article.where.not(id: article.id)
+                     .where.not(embedding: nil)
+                     .where(published_at: (article.published_at - 30.days)..(article.published_at + 7.days))
+                     .nearest_neighbors(:embedding, article.embedding, distance: "cosine")
+                     .limit(max_results)
     
     # Debug logging
     @logger.debug "[NarrativeRouteGenerator] Article ##{article.id} '#{article.headline[0..50]}...' found #{similar.count} neighbors"
     if similar.any?
-      distances = similar.map { |a| a.instance_variable_get(:@neighbor_distance) }
+      distances = similar.map(&:neighbor_distance)
       @logger.debug "[NarrativeRouteGenerator] Distances: #{distances.map { |d| d.round(3) }}"
       @logger.debug "[NarrativeRouteGenerator] Within threshold #{SIMILARITY_THRESHOLD}? #{distances.any? { |d| d < max_distance }}"
     end
     
     # Filter by threshold
-    similar.select { |a| a.instance_variable_get(:@neighbor_distance) < max_distance }
+    similar.select { |a| a.neighbor_distance < max_distance }
   end
   
   # Create a narrative route from an article chain

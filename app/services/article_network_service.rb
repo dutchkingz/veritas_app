@@ -19,8 +19,8 @@ class ArticleNetworkService
     shared_entities:    0.3
   }.freeze
 
-  # Similarity threshold for pgvector expansion (same as NarrativeRouteGeneratorService)
-  EMBEDDING_THRESHOLD = 0.65
+  # Similarity threshold for pgvector expansion
+  EMBEDDING_THRESHOLD = 0.85
   # Max cosine distance = 1 - similarity
   MAX_COSINE_DISTANCE = 1.0 - EMBEDDING_THRESHOLD
 
@@ -277,18 +277,14 @@ class ArticleNetworkService
 
     # Batch: one pgvector query per article (unavoidable for nearest-neighbor)
     # but we limit to 5 neighbors each to keep it fast
+    # Single query via Active Record's neighbor gem
     articles_with_embeddings.each do |article|
-      sql = <<~SQL
-        SELECT id, embedding <=> '#{article.embedding.to_json}'::vector AS distance
-        FROM articles
-        WHERE id != #{article.id}
-          AND embedding IS NOT NULL
-          AND published_at BETWEEN '#{time_range.begin.iso8601}' AND '#{time_range.end.iso8601}'
-        ORDER BY embedding <=> '#{article.embedding.to_json}'::vector
-        LIMIT 8
-      SQL
-
-      results = ActiveRecord::Base.connection.execute(sql)
+      results = Article.where.not(id: article.id)
+                       .where.not(embedding: nil)
+                       .where(published_at: time_range)
+                       .nearest_neighbors(:embedding, article.embedding, distance: "cosine")
+                       .limit(8)
+                       .select("articles.id, embedding <=> '#{article.embedding.to_json}'::vector AS distance")
 
       results.each do |row|
         target_id = row["id"].to_i
@@ -327,16 +323,11 @@ class ArticleNetworkService
       other_ids = (article_ids - [article.id])
       next if other_ids.empty?
 
-      sql = <<~SQL
-        SELECT id, embedding <=> '#{article.embedding.to_json}'::vector AS distance
-        FROM articles
-        WHERE id IN (#{other_ids.join(',')})
-          AND embedding IS NOT NULL
-        ORDER BY embedding <=> '#{article.embedding.to_json}'::vector
-        LIMIT 10
-      SQL
-
-      results = ActiveRecord::Base.connection.execute(sql)
+      results = Article.where(id: other_ids)
+                       .where.not(embedding: nil)
+                       .nearest_neighbors(:embedding, article.embedding, distance: "cosine")
+                       .limit(10)
+                       .select("articles.id, embedding <=> '#{article.embedding.to_json}'::vector AS distance")
 
       results.each do |row|
         target_id = row["id"].to_i
@@ -376,15 +367,17 @@ class ArticleNetworkService
       JOIN entity_mentions em2 ON em1.entity_id = em2.entity_id
                                AND em1.article_id < em2.article_id
       JOIN entities e ON e.id = em1.entity_id
-      WHERE em1.article_id IN (#{article_ids.join(',')})
-        AND em2.article_id IN (#{article_ids.join(',')})
+      WHERE em1.article_id IN (?)
+        AND em2.article_id IN (?)
       GROUP BY em1.article_id, em2.article_id
       HAVING COUNT(DISTINCT em1.entity_id) >= 2
       ORDER BY shared_count DESC
       LIMIT 100
     SQL
 
-    results = ActiveRecord::Base.connection.execute(sql)
+    results = ActiveRecord::Base.connection.select_all(
+      ActiveRecord::Base.send(:sanitize_sql_array, [sql, article_ids, article_ids])
+    )
 
     results.filter_map do |row|
       source_id = row["source_id"].to_i
@@ -633,7 +626,15 @@ class ArticleNetworkService
       gdelt_bonus += 1.0
     end
 
-    score = (threat_context * 0.6 + type_bonus + gdelt_bonus).clamp(0.0, 10.0).round(1)
+    # Framing shift contextual bonus/penalty
+    framing_bonus = case conn[:framing_shift]
+                    when 'distorted' then 2.0
+                    when 'amplified' then 1.0
+                    when 'neutralized' then -1.0
+                    else 0.0
+                    end
+
+    score = (threat_context * 0.6 + type_bonus + gdelt_bonus + framing_bonus).clamp(0.0, 10.0).round(1)
     score
   end
 
