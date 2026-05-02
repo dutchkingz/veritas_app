@@ -84,11 +84,23 @@
             <button class="p-1 hover:bg-slate-800 rounded transition-colors" data-action="click->timeline#rewind">
               <span class="text-slate-400">❮</span>
             </button>
+            <button class="p-1 hover:bg-slate-800 rounded transition-colors"
+                    data-timeline-target="playBtn"
+                    data-action="click->timeline#togglePlay"
+                    title="Play/Pause DVR">
+              <span class="text-slate-400">▶</span>
+            </button>
             <input type="range"
                    class="w-64 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                    min="0" max="100" value="100"
                    data-timeline-target="scrubber"
                    data-action="input->timeline#scrub">
+            <button class="p-1 hover:bg-slate-800 rounded transition-colors"
+                    data-timeline-target="speedBtn"
+                    data-action="click->timeline#cycleSpeed"
+                    title="Playback speed">
+              <span class="text-slate-400">1x</span>
+            </button>
             <button class="p-1 hover:bg-slate-800 rounded transition-colors"
                     data-timeline-target="liveBtn"
                     data-action="click->timeline#goLive">

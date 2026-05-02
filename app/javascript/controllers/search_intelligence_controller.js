@@ -26,6 +26,7 @@ export default class extends Controller {
   connect() {
     this._subscription    = null
     this._currentQuery    = null
+    this._narrativeIntel  = null
     this._loadingTimers   = []
     this._loadingTimeout  = null
     // Keep the full-search link href in sync with what's typed
@@ -92,6 +93,7 @@ export default class extends Controller {
 
   clear() {
     this._currentQuery = null
+    this._narrativeIntel = null
     this.inputTarget.value = ""
 
     this._unsubscribeFromChannel()
@@ -113,6 +115,7 @@ export default class extends Controller {
     this._updateBadge(data.total_cached, 0)
     if (this.hasClearBtnTarget) this.clearBtnTarget.classList.remove("d-none")
 
+    this._narrativeIntel = data.narrative_intel || null
     this._renderSearchPanel(data.cached_results || [], data.query)
     this._globeGlow(true)
 
@@ -124,10 +127,11 @@ export default class extends Controller {
     // Tell view toggle + any other listeners
     window.dispatchEvent(new CustomEvent("veritas:search-results", {
       detail: {
-        query:         data.query,
+        query:          data.query,
         cached_results: data.cached_results,
-        total_cached:  data.total_cached,
-        fetching_fresh: data.fetching_fresh
+        total_cached:   data.total_cached,
+        fetching_fresh: data.fetching_fresh,
+        narrative_intel: data.narrative_intel
       }
     }))
   }
@@ -151,6 +155,7 @@ export default class extends Controller {
         })
         if (response.ok) {
           const freshData = await response.json()
+          this._narrativeIntel = freshData.narrative_intel || null
           this._renderSearchPanel(freshData.cached_results || [], freshData.query)
           this._updateBadge(freshData.total_cached, newCount)
         }
@@ -230,7 +235,10 @@ export default class extends Controller {
     // Rank articles: relevance (position order) × threat × recency
     const ranked = this._rankSearchResults(articles)
 
-    list.innerHTML = ranked.slice(0, 8).map(a => this._cardHTML(a)).join("") + `
+    // Build narrative intelligence summary if available
+    const intelSummary = this._buildNarrativeIntelHTML()
+
+    list.innerHTML = intelSummary + ranked.slice(0, 8).map(a => this._cardHTML(a)).join("") + `
       <div style="padding: 8px 4px 4px;">
         <a href="/search?q=${encodeURIComponent(query)}" target="_blank"
            style="font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
@@ -274,6 +282,128 @@ export default class extends Controller {
     }).sort((a, b) => b._rankScore - a._rankScore)
   }
 
+  // ─── Narrative Intelligence Display ─────────────────────────────────────────
+
+  _buildNarrativeIntelHTML() {
+    const intel = this._narrativeIntel
+    if (!intel || intel.relationship_count === 0) return ""
+
+    const parts = []
+
+    // Framing clusters — show how articles are framing the same narrative
+    const clusters = intel.framing_clusters || {}
+    const framingItems = []
+    const framingColors = { distorted: "#ef4444", amplified: "#f59e0b", neutralized: "#3b82f6" }
+    const framingIcons  = { distorted: "⚠", amplified: "▲", neutralized: "◉" }
+
+    for (const [type, items] of Object.entries(clusters)) {
+      if (items && items.length > 0) {
+        const color = framingColors[type] || "#64748b"
+        const icon  = framingIcons[type] || "●"
+        framingItems.push(
+          `<span style="color:${color};font-size:0.65rem;">${icon} ${items.length} ${type.toUpperCase()}</span>`
+        )
+      }
+    }
+
+    if (framingItems.length > 0) {
+      parts.push(`
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="color:#475569;font-size:0.6rem;letter-spacing:0.08em;">FRAMING:</span>
+          ${framingItems.join(" ")}
+        </div>`)
+    }
+
+    // Contradictions
+    const contradictions = intel.contradictions || []
+    if (contradictions.length > 0) {
+      parts.push(`
+        <div style="display:flex;align-items:center;gap:4px;">
+          <span style="color:#ef4444;font-size:0.65rem;">⚡ ${contradictions.length} CONTRADICTION${contradictions.length > 1 ? "S" : ""} DETECTED</span>
+        </div>`)
+    }
+
+    // Narrative signatures
+    const sigs = intel.signatures || []
+    if (sigs.length > 0) {
+      const sigLabels = sigs.slice(0, 3).map(s =>
+        `<span style="color:#a78bfa;font-size:0.6rem;border:1px solid rgba(167,139,250,0.25);padding:1px 4px;border-radius:3px;">${this._esc(s.label || "pattern")} (${s.match_count})</span>`
+      ).join(" ")
+      parts.push(`
+        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+          <span style="color:#475569;font-size:0.6rem;letter-spacing:0.08em;">PATTERNS:</span>
+          ${sigLabels}
+        </div>`)
+    }
+
+    // Route connections
+    const routes = intel.route_connections || []
+    if (routes.length > 0) {
+      parts.push(`
+        <div style="display:flex;align-items:center;gap:4px;">
+          <span style="color:#00d4ff;font-size:0.65rem;">⟁ ${routes.length} NARRATIVE ROUTE${routes.length > 1 ? "S" : ""}</span>
+        </div>`)
+    }
+
+    // Entity connections
+    const entities = intel.entity_connections || []
+    if (entities.length > 0) {
+      // Collect unique entity names across all connections
+      const allEntities = new Set()
+      entities.forEach(e => (e.entities || []).forEach(n => allEntities.add(n)))
+      const topEntities = [...allEntities].slice(0, 4).map(n => this._esc(n)).join(", ")
+      parts.push(`
+        <div style="display:flex;align-items:center;gap:4px;">
+          <span style="color:#22c55e;font-size:0.65rem;">◈ ${entities.length} ENTITY LINK${entities.length > 1 ? "S" : ""}</span>
+          <span style="color:#475569;font-size:0.58rem;">${topEntities}</span>
+        </div>`)
+    }
+
+    if (parts.length === 0) return ""
+
+    return `
+      <div style="padding:8px 6px 6px;margin-bottom:4px;border-bottom:1px solid rgba(0,240,255,0.1);
+                  display:flex;flex-direction:column;gap:4px;">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:0.58rem;color:#00d4ff;
+                    letter-spacing:0.12em;margin-bottom:2px;">NARRATIVE INTELLIGENCE</div>
+        ${parts.join("")}
+      </div>`
+  }
+
+  // Build per-article relationship indicators for the card
+  _getArticleRelationshipTags(articleId) {
+    const intel = this._narrativeIntel
+    if (!intel) return ""
+
+    const tags = []
+
+    // Check if this article is in a framing cluster
+    const clusters = intel.framing_clusters || {}
+    for (const [type, items] of Object.entries(clusters)) {
+      const match = (items || []).find(i => i.article_id === articleId)
+      if (match) {
+        const colors = { distorted: "#ef4444", amplified: "#f59e0b", neutralized: "#3b82f6" }
+        tags.push(`<span style="font-size:0.55rem;color:${colors[type] || '#64748b'};border:1px solid ${colors[type] || '#64748b'}30;padding:0 3px;border-radius:2px;" title="${this._esc(match.explanation || type)}">${type.toUpperCase()}</span>`)
+      }
+    }
+
+    // Check if this article is in a contradiction
+    const contradictions = intel.contradictions || []
+    const inContradiction = contradictions.find(c => c.article_a_id === articleId || c.article_b_id === articleId)
+    if (inContradiction) {
+      tags.push(`<span style="font-size:0.55rem;color:#ef4444;border:1px solid #ef444430;padding:0 3px;border-radius:2px;" title="${this._esc(inContradiction.description || 'Contradicts another result')}">CONTRADICTS</span>`)
+    }
+
+    // Check if this article has route connections
+    const routes = intel.route_connections || []
+    const inRoute = routes.find(r => r.source_id === articleId || r.target_id === articleId)
+    if (inRoute) {
+      tags.push(`<span style="font-size:0.55rem;color:#00d4ff;border:1px solid #00d4ff30;padding:0 3px;border-radius:2px;" title="${this._esc(inRoute.route_name || 'Part of narrative chain')}">LINKED</span>`)
+    }
+
+    return tags.join(" ")
+  }
+
   _clearSearchPanel() {
     const panel = document.getElementById("intel-search-panel")
     const list  = document.getElementById("intel-search-results")
@@ -310,6 +440,11 @@ export default class extends Controller {
                 data-action="click->feed-card#openChronicle"
                 title="Step through the narrative route hop by hop">▶ CHRONICLE</button>` : ""
 
+    // Per-article narrative relationship tags
+    const relTags = this._getArticleRelationshipTags(a.id)
+    const relRow = relTags ? `
+        <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:2px;">${relTags}</div>` : ""
+
     return `
       <div class="veritas-feed-card"
            style="border-left: 2px solid ${color}30;"
@@ -334,7 +469,7 @@ export default class extends Controller {
         </div>
         <p class="feed-headline" style="font-size:0.78rem; -webkit-line-clamp:2;">
           ${this._esc(a.headline || "No headline")}
-        </p>
+        </p>${relRow}
         <div class="d-flex justify-content-between align-items-center">
           <span class="feed-location">
             <i class="fa fa-map-marker-alt me-1"></i>${country}${geoTag}

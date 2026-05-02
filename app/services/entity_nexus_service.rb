@@ -99,7 +99,7 @@ class EntityNexusService
 
     result = Hash.new { |h, k| h[k] = [] }
     rows.each do |(eid, region_name, threat)|
-      result[eid] << { region: region_name, threat: threat.to_i }
+      result[eid] << { region: region_name, threat: threat_to_numeric(threat) }
     end
     result
   end
@@ -237,6 +237,15 @@ class EntityNexusService
     nodes.group_by { |n| n[:entity_type] }
          .max_by { |_, ns| ns.size }
          &.first || "person"
+  end
+
+  THREAT_NUMERIC_MAP = {
+    "CRITICAL" => 9, "HIGH" => 7, "MODERATE" => 4, "LOW" => 2, "NEGLIGIBLE" => 1
+  }.freeze
+
+  def threat_to_numeric(val)
+    return THREAT_NUMERIC_MAP[val.to_s.upcase] || 1 unless val.is_a?(Numeric)
+    val.clamp(1, 10)
   end
 
   def empty_result

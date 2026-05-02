@@ -237,12 +237,20 @@
          data-timeline-max-value="<%= @timeline_max %>">
       <span class="timeline-label">TIMELINE</span>
       <button class="timeline-btn" data-action="click->timeline#rewind" title="Jump to oldest">◄◄</button>
+      <button class="timeline-btn"
+              data-timeline-target="playBtn"
+              data-action="click->timeline#togglePlay"
+              title="Play/Pause DVR">▶</button>
       <input type="range"
              class="timeline-scrubber"
              data-timeline-target="scrubber"
              data-action="input->timeline#scrub"
              min="0" max="100" value="100">
       <span class="timeline-date" data-timeline-target="date">LIVE</span>
+      <button class="timeline-btn"
+              data-timeline-target="speedBtn"
+              data-action="click->timeline#cycleSpeed"
+              title="Playback speed">1x</button>
       <button class="timeline-btn"
               data-timeline-target="liveBtn"
               data-action="click->timeline#goLive">LIVE</button>

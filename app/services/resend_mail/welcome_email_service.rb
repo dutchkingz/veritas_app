@@ -1,36 +1,53 @@
-require 'sendgrid-ruby'
-
-module Sendgrid
+module ResendMail
   class WelcomeEmailService
-    include SendGrid
-
     def self.call(user)
       new(user).call
     end
 
     def initialize(user)
       @user = user
-      @api_key = ENV['SENDGRID_API_KEY'] || Rails.application.credentials.dig(:sendgrid, :api_key)
-      @from_email = ENV['SENDGRID_FROM_EMAIL'] || Rails.application.credentials.dig(:sendgrid, :from_email)
+      @api_key = ENV['RESEND_API_KEY'] || Rails.application.credentials.dig(:resend, :api_key)
+      @from_email = ENV['RESEND_FROM_EMAIL'] || Rails.application.credentials.dig(:resend, :from_email)
     end
 
     def call
       return false unless valid_configuration?
 
-      mail = build_mail
-      send_request(mail)
+      send_email
     end
 
     private
 
-    def build_mail
-      from    = Email.new(email: @from_email, name: 'VERITAS Intelligence')
-      to      = Email.new(email: @user.email)
-      subject = 'VERITAS — Access Granted'
+    def send_email
+      Resend.api_key = @api_key
 
+      params = {
+        from: "VERITAS Intelligence <#{@from_email}>",
+        to: [@user.email],
+        subject: "VERITAS — Access Granted",
+        html: html_content
+      }
+
+      begin
+        response = Resend::Emails.send(params)
+
+        if response[:id].present?
+          Rails.logger.info("Welcome email successfully sent to #{@user.email}.")
+          true
+        else
+          Rails.logger.error("Resend API Error for #{@user.email} - Response: #{response}")
+          false
+        end
+      rescue StandardError => e
+        Rails.logger.error("Exception during Resend delivery to #{@user.email}: #{e.message}")
+        false
+      end
+    end
+
+    def html_content
       username = @user.email.split('@').first
 
-      html_content = <<~HTML
+      <<~HTML
         <!DOCTYPE html>
         <html lang="en">
         <head>
@@ -81,7 +98,7 @@ module Sendgrid
                       <table cellpadding="0" cellspacing="0" border="0">
                         <tr>
                           <td style="background-color:#00d4ff;border-radius:3px;">
-                            <a href="https://veritas-app-314a53c53525.herokuapp.com/" style="display:inline-block;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:3px;color:#09090f;text-decoration:none;text-transform:uppercase;">
+                            <a href="https://www.veritas-intelligence.org/" style="display:inline-block;padding:14px 32px;font-size:13px;font-weight:700;letter-spacing:3px;color:#09090f;text-decoration:none;text-transform:uppercase;">
                               ENTER VERITAS &#x2192;
                             </a>
                           </td>
@@ -118,34 +135,11 @@ module Sendgrid
         </body>
         </html>
       HTML
-
-      content = Content.new(type: 'text/html', value: html_content)
-
-      Mail.new(from, subject, to, content)
-    end
-
-    def send_request(mail)
-      sg_client = SendGrid::API.new(api_key: @api_key)
-      
-      begin
-        response = sg_client.client.mail._('send').post(request_body: mail.to_json)
-        
-        if response.status_code.to_s.start_with?('2')
-          Rails.logger.info("Welcome email successfully sent to #{@user.email}.")
-          true
-        else
-          Rails.logger.error("SendGrid API Error for #{@user.email} - Status: #{response.status_code}, Body: #{response.body}")
-          false
-        end
-      rescue StandardError => e
-        Rails.logger.error("Exception during SendGrid delivery to #{@user.email}: #{e.message}")
-        false
-      end
     end
 
     def valid_configuration?
       if @api_key.blank? || @from_email.blank?
-        Rails.logger.error("SendGrid configuration is missing. API Key or From Email is blank.")
+        Rails.logger.error("Resend configuration is missing. API Key or From Email is blank.")
         false
       else
         true

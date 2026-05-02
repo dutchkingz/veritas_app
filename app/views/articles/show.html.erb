@@ -321,13 +321,7 @@
             </div>
           <% end %>
 
-          <!-- Lightbox overlay — scoped to this card, covers strip + inline images -->
-          <div class="lightbox-overlay" data-lightbox-target="overlay" data-action="click->lightbox#backdropClick">
-            <button class="lightbox-close" data-action="click->lightbox#close">&#10005;</button>
-            <img class="lightbox-img" data-lightbox-target="img" src="" alt=""
-                 data-action="click->lightbox#close">
-            <p class="lightbox-caption" data-lightbox-target="caption"></p>
-          </div>
+          <!-- Lightbox created dynamically by lightbox_controller.js on document.body -->
 
         </div>
       </div>

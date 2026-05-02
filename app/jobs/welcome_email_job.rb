@@ -13,11 +13,11 @@ class WelcomeEmailJob < ApplicationJob
     end
 
     Rails.logger.info("[WelcomeEmailJob] Sending welcome email to #{user.email}...")
-    success = Sendgrid::WelcomeEmailService.call(user)
+    success = ResendMail::WelcomeEmailService.call(user)
 
     unless success
       Rails.logger.error("[WelcomeEmailJob] FAILED to send welcome email to #{user.email}. Will retry.")
-      raise "SendGrid delivery failed for user ##{user_id} (#{user.email})"
+      raise "Resend delivery failed for user ##{user_id} (#{user.email})"
     end
 
     Rails.logger.info("[WelcomeEmailJob] Welcome email delivered to #{user.email}.")
