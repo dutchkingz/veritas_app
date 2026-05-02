@@ -142,7 +142,7 @@ class NarrativeSurgeDetectorService
                         .limit(10)
                end
     coords   = derive_coordinates(convergence, articles)
-    next unless coords  # Skip alerts with unresolvable geography
+    return unless coords  # Skip alerts with unresolvable geography
     region   = find_region_for(coords)
     briefing = generate_briefing(convergence, articles)
     severity = map_severity(convergence.dominant_threat_level)
