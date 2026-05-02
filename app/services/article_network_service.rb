@@ -268,85 +268,104 @@ class ArticleNetworkService
 
   # ── 3. Embedding Similarity connections ──
   # pgvector nearest neighbors — EXPANDS the network, doesn't define it.
+  # Uses a single CROSS JOIN LATERAL query instead of O(N) individual queries.
   def find_embedding_connections(articles, time_range, excluded_ids = Set.new)
-    articles_with_embeddings = articles.select { |a| a.embedding.present? }
-    return [] if articles_with_embeddings.empty?
+    source_ids = articles.select { |a| a.embedding.present? }.map(&:id)
+    return [] if source_ids.empty?
 
-    connections = []
-    already_found = Set.new
+    sql = <<~SQL
+      SELECT source_id, target_id, distance
+      FROM (
+        SELECT sa.id AS source_id,
+               neighbor.id AS target_id,
+               sa.embedding <=> neighbor.embedding AS distance
+        FROM articles sa
+        CROSS JOIN LATERAL (
+          SELECT id, embedding
+          FROM articles
+          WHERE id != sa.id
+            AND embedding IS NOT NULL
+            AND published_at BETWEEN ? AND ?
+          ORDER BY embedding <=> sa.embedding
+          LIMIT 8
+        ) neighbor
+        WHERE sa.id = ANY(?)
+          AND sa.embedding IS NOT NULL
+      ) ranked
+      WHERE distance < ?
+      ORDER BY source_id, distance
+    SQL
 
-    # Batch: one pgvector query per article (unavoidable for nearest-neighbor)
-    # but we limit to 5 neighbors each to keep it fast
-    # Single query via Active Record's neighbor gem
-    articles_with_embeddings.each do |article|
-      results = Article.where.not(id: article.id)
-                       .where.not(embedding: nil)
-                       .where(published_at: time_range)
-                       .nearest_neighbors(:embedding, article.embedding, distance: "cosine")
-                       .limit(8)
-                       .select("articles.id, embedding <=> '#{article.embedding.to_json}'::vector AS distance")
+    rows = ActiveRecord::Base.connection.select_all(
+      ActiveRecord::Base.send(:sanitize_sql_array, [
+        sql, time_range.begin, time_range.end, source_ids, MAX_COSINE_DISTANCE
+      ])
+    )
 
-      results.each do |row|
-        target_id = row["id"].to_i
-        distance = row["distance"].to_f
-        next if distance >= MAX_COSINE_DISTANCE
-        next if excluded_ids.include?(target_id) && excluded_ids.include?(article.id)
-
-        pair = [article.id, target_id].sort
-        next if already_found.include?(pair)
-        already_found << pair
-
-        similarity = ((1.0 - distance) * 100).round
-        connections << {
-          source_article_id: pair[0],
-          target_article_id: pair[1],
-          connection_types: [:embedding_similarity],
-          type_strengths: { embedding_similarity: WEIGHTS[:embedding_similarity] * (1.0 - distance) },
-          semantic_similarity: similarity
-        }
-      end
-    end
-
-    connections
+    build_embedding_connections_from_rows(rows, excluded_ids)
   end
 
-  # Variant for connections_between: only find similarities within the given set
+  # Variant for connections_between: only find similarities within the given set.
+  # Single query instead of O(N) individual pgvector queries.
   def find_embedding_connections_within(articles, article_ids)
-    articles_with_embeddings = articles.select { |a| a.embedding.present? }
-    return [] if articles_with_embeddings.size < 2
+    source_ids = articles.select { |a| a.embedding.present? }.map(&:id)
+    return [] if source_ids.size < 2
 
+    sql = <<~SQL
+      SELECT source_id, target_id, distance
+      FROM (
+        SELECT sa.id AS source_id,
+               neighbor.id AS target_id,
+               sa.embedding <=> neighbor.embedding AS distance
+        FROM articles sa
+        CROSS JOIN LATERAL (
+          SELECT id, embedding
+          FROM articles
+          WHERE id != sa.id
+            AND id = ANY(?)
+            AND embedding IS NOT NULL
+          ORDER BY embedding <=> sa.embedding
+          LIMIT 10
+        ) neighbor
+        WHERE sa.id = ANY(?)
+          AND sa.embedding IS NOT NULL
+      ) ranked
+      WHERE distance < ?
+      ORDER BY source_id, distance
+    SQL
+
+    rows = ActiveRecord::Base.connection.select_all(
+      ActiveRecord::Base.send(:sanitize_sql_array, [
+        sql, article_ids, source_ids, MAX_COSINE_DISTANCE
+      ])
+    )
+
+    build_embedding_connections_from_rows(rows)
+  end
+
+  def build_embedding_connections_from_rows(rows, excluded_ids = Set.new)
     connections = []
     already_found = Set.new
 
-    # Single batch query: all-vs-all within the set
-    articles_with_embeddings.each do |article|
-      other_ids = (article_ids - [article.id])
-      next if other_ids.empty?
+    rows.each do |row|
+      source_id = row["source_id"].to_i
+      target_id = row["target_id"].to_i
+      distance = row["distance"].to_f
 
-      results = Article.where(id: other_ids)
-                       .where.not(embedding: nil)
-                       .nearest_neighbors(:embedding, article.embedding, distance: "cosine")
-                       .limit(10)
-                       .select("articles.id, embedding <=> '#{article.embedding.to_json}'::vector AS distance")
+      next if excluded_ids.include?(source_id) && excluded_ids.include?(target_id)
 
-      results.each do |row|
-        target_id = row["id"].to_i
-        distance = row["distance"].to_f
-        next if distance >= MAX_COSINE_DISTANCE
+      pair = [source_id, target_id].sort
+      next if already_found.include?(pair)
+      already_found << pair
 
-        pair = [article.id, target_id].sort
-        next if already_found.include?(pair)
-        already_found << pair
-
-        similarity = ((1.0 - distance) * 100).round
-        connections << {
-          source_article_id: pair[0],
-          target_article_id: pair[1],
-          connection_types: [:embedding_similarity],
-          type_strengths: { embedding_similarity: WEIGHTS[:embedding_similarity] * (1.0 - distance) },
-          semantic_similarity: similarity
-        }
-      end
+      similarity = ((1.0 - distance) * 100).round
+      connections << {
+        source_article_id: pair[0],
+        target_article_id: pair[1],
+        connection_types: [:embedding_similarity],
+        type_strengths: { embedding_similarity: WEIGHTS[:embedding_similarity] * (1.0 - distance) },
+        semantic_similarity: similarity
+      }
     end
 
     connections
@@ -508,8 +527,10 @@ class ArticleNetworkService
     color = threat_score_to_color(threat_score)
 
     # Thickness: score × confidence × connection_strength
-    confidence = conn[:confidence].to_f.clamp(0.1, 1.0)
-    confidence = 0.7 if confidence < 0.1 # default confidence
+    # If confidence is missing/zero, use a low default (0.3) so the arc renders
+    # visibly but doesn't masquerade as high-confidence data.
+    raw_confidence = conn[:confidence].to_f
+    confidence = raw_confidence > 0.0 ? raw_confidence.clamp(0.1, 1.0) : 0.3
     thickness = (threat_score / 10.0 * confidence * conn[:strength]).clamp(0.2, 2.0).round(2)
 
     # Opacity from confidence

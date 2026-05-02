@@ -26,8 +26,8 @@ export default class extends Controller {
 
       // Use a clearer daylight texture
       this._globe = Globe()(container)
-        .globeImageUrl("//unpkg.com/three-globe/example/img/earth-blue-marble.jpg")
-        .bumpImageUrl("//unpkg.com/three-globe/example/img/earth-topology.png")
+        .globeImageUrl("/globe/earth-blue-marble.jpg")
+        .bumpImageUrl("/globe/earth-topology.png")
         .backgroundColor("rgba(0,0,0,0)") 
         .showAtmosphere(true)
         .atmosphereColor("#00f0ff")

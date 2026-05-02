@@ -90,7 +90,7 @@ export default class extends Controller {
   async _loadGeoJson() {
     try {
       // High-quality low-res world boundaries
-      const data = await d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")
+      const data = await d3.json("/globe/countries-110m.json")
       const countries = topojson.feature(data, data.objects.countries)
       
       this.landLayer.selectAll("path")

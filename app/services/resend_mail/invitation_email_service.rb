@@ -1,35 +1,52 @@
-require 'sendgrid-ruby'
-
-module Sendgrid
+module ResendMail
   class InvitationEmailService
-    include SendGrid
-
     def self.call(email)
       new(email).call
     end
 
     def initialize(email)
       @email = email
-      @api_key = ENV['SENDGRID_API_KEY'] || Rails.application.credentials.dig(:sendgrid, :api_key)
-      @from_email = ENV['SENDGRID_FROM_EMAIL'] || Rails.application.credentials.dig(:sendgrid, :from_email)
-      @app_url = "https://veritas-app-314a53c53525.herokuapp.com/" # Matching existing service pattern
+      @api_key = ENV['RESEND_API_KEY'] || Rails.application.credentials.dig(:resend, :api_key)
+      @from_email = ENV['RESEND_FROM_EMAIL'] || Rails.application.credentials.dig(:resend, :from_email)
+      @app_url = "https://www.veritas-intelligence.org/"
     end
 
     def call
       return false unless valid_configuration?
 
-      mail = build_mail
-      send_request(mail)
+      send_email
     end
 
     private
 
-    def build_mail
-      from    = Email.new(email: @from_email, name: 'VERITAS Intelligence')
-      to      = Email.new(email: @email)
-      subject = 'URGENT: Access Authorized for VERITAS Intelligence Platform'
+    def send_email
+      Resend.api_key = @api_key
 
-      html_content = <<~HTML
+      params = {
+        from: "VERITAS Intelligence <#{@from_email}>",
+        to: [@email],
+        subject: "URGENT: Access Authorized for VERITAS Intelligence Platform",
+        html: html_content
+      }
+
+      begin
+        response = Resend::Emails.send(params)
+
+        if response[:id].present?
+          Rails.logger.info("Invitation email successfully sent to #{@email}.")
+          true
+        else
+          Rails.logger.error("Resend API Error for #{@email} - Response: #{response}")
+          false
+        end
+      rescue StandardError => e
+        Rails.logger.error("Exception during Resend invitation delivery to #{@email}: #{e.message}")
+        false
+      end
+    end
+
+    def html_content
+      <<~HTML
         <!DOCTYPE html>
         <html lang="en">
         <head>
@@ -73,19 +90,19 @@ module Sendgrid
                   <tr>
                     <td style="padding:36px 40px;">
                       <p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#c8d0e0;">
-                        You have been granted high-level clearance to join the <strong>Veritas Intelligence signaling network</strong>. 
+                        You have been granted high-level clearance to join the <strong>Veritas Intelligence signaling network</strong>.
                       </p>
                       <p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#c8d0e0;">
                         Our platform provides real-time narrative tracking, semantic threat analysis, and global convergence detection. Your node has been identified as a critical point for intelligence ingestion.
                       </p>
-                      
+
                       <!-- Why Join Us -->
                       <div style="background-color:rgba(0, 212, 255, 0.05);padding:20px;border-radius:4px;margin:20px 0 32px;">
                         <p style="margin:0 0 12px;font-size:12px;color:#00d4ff;letter-spacing:2px;font-weight:bold;">SYSTEM CAPABILITIES:</p>
-                        <p style="margin:0 0 8px;font-size:14px;color:#c8d0e0;">● Real-time Semantic Threat Analysis</p>
-                        <p style="margin:0 0 8px;font-size:14px;color:#c8d0e0;">● Global Narrative Arc Tracking</p>
-                        <p style="margin:0 0 8px;font-size:14px;color:#c8d0e0;">● Advanced War Room Visualization</p>
-                        <p style="margin:0 0 0;font-size:14px;color:#c8d0e0;">● AI-Driven Convergence Detection</p>
+                        <p style="margin:0 0 8px;font-size:14px;color:#c8d0e0;">&#x25CF; Real-time Semantic Threat Analysis</p>
+                        <p style="margin:0 0 8px;font-size:14px;color:#c8d0e0;">&#x25CF; Global Narrative Arc Tracking</p>
+                        <p style="margin:0 0 8px;font-size:14px;color:#c8d0e0;">&#x25CF; Advanced War Room Visualization</p>
+                        <p style="margin:0 0 0;font-size:14px;color:#c8d0e0;">&#x25CF; AI-Driven Convergence Detection</p>
                       </div>
 
                       <!-- CTA -->
@@ -135,34 +152,11 @@ module Sendgrid
         </body>
         </html>
       HTML
-
-      content = Content.new(type: 'text/html', value: html_content)
-
-      Mail.new(from, subject, to, content)
-    end
-
-    def send_request(mail)
-      sg_client = SendGrid::API.new(api_key: @api_key)
-      
-      begin
-        response = sg_client.client.mail._('send').post(request_body: mail.to_json)
-        
-        if response.status_code.to_s.start_with?('2')
-          Rails.logger.info("Invitation email successfully sent to #{@email}.")
-          true
-        else
-          Rails.logger.error("SendGrid API Error for #{@email} - Status: #{response.status_code}, Body: #{response.body}")
-          false
-        end
-      rescue StandardError => e
-        Rails.logger.error("Exception during SendGrid invitation delivery to #{@email}: #{e.message}")
-        false
-      end
     end
 
     def valid_configuration?
       if @api_key.blank? || @from_email.blank?
-        Rails.logger.error("SendGrid configuration is missing for Invitations.")
+        Rails.logger.error("Resend configuration is missing for Invitations.")
         false
       else
         true

@@ -80,7 +80,7 @@ end
 
 gem "ruby-readability", "~> 0.7.3"
 
-gem "sendgrid-ruby", "~> 6.7"
+gem "resend", "~> 0.17"
 
 gem "neighbor", "~> 0.6.0"
 

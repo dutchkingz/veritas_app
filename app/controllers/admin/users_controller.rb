@@ -53,9 +53,9 @@ class Admin::UsersController < ApplicationController
     email = params[:email].to_s.strip
     
     if email.present? && email.match?(URI::MailTo::EMAIL_REGEXP)
-      success = Sendgrid::InvitationEmailService.call(email)
+      success = ResendMail::InvitationEmailService.call(email)
       if success
-        redirect_to admin_users_path, notice: "Invitation sent to #{email} via SendGrid."
+        redirect_to admin_users_path, notice: "Invitation sent to #{email}."
       else
         redirect_to admin_users_path, alert: "Failed to deliver invitation to #{email}. Check system logs."
       end

@@ -23,7 +23,8 @@ module Api
         total_cached:    result[:total_cached],
         fetching_fresh:  result[:fetching_fresh],
         query:           result[:query],
-        notice:          result[:notice]
+        notice:          result[:notice],
+        narrative_intel:  result[:narrative_intel]
       }
     end
 

@@ -139,10 +139,50 @@ export default class extends Controller {
 
   _key(k) { return this._keys.has(k) }
 
+  // ── Mountain generation (procedural, seeded once per game) ──
+
+  _generateMountains() {
+    // Jagged mountain range — sharp peaks with valleys between them
+    const points = []
+    const numPeaks = 8
+    const peakAngles = []
+
+    // Place peaks at semi-random intervals around the ring
+    for (let i = 0; i < numPeaks; i++) {
+      peakAngles.push((Math.PI * 2 * i) / numPeaks + (Math.sin(i * 3.7) * 0.15))
+    }
+
+    // For each peak, generate: valley → steep climb → sharp tip → steep drop → valley
+    peakAngles.forEach((peakA, i) => {
+      const nextA = peakAngles[(i + 1) % numPeaks] + (i === numPeaks - 1 ? Math.PI * 2 : 0)
+      const span = nextA - peakA
+      const peakH = 18 + Math.abs(Math.sin(i * 2.3 + 0.7)) * 20 // 18–38 height
+      const valleyH = 2 + Math.abs(Math.sin(i * 1.4)) * 4       // 2–6 low valleys
+
+      // Rising slope (2 points)
+      points.push({ angle: peakA, height: valleyH })
+      points.push({ angle: peakA + span * 0.15, height: valleyH + (peakH - valleyH) * 0.3 })
+      // Sharp peak
+      points.push({ angle: peakA + span * 0.3, height: peakH })
+      // Falling slope (2 points)
+      points.push({ angle: peakA + span * 0.45, height: valleyH + (peakH - valleyH) * 0.25 })
+      points.push({ angle: peakA + span * 0.6, height: valleyH })
+      // Minor sub-peak for variety
+      const subH = valleyH + (peakH - valleyH) * 0.35
+      points.push({ angle: peakA + span * 0.75, height: subH })
+      points.push({ angle: peakA + span * 0.9, height: valleyH })
+    })
+
+    // Sort by angle for correct drawing order
+    points.sort((a, b) => a.angle - b.angle)
+    this._mountainPoints = points
+  }
+
   // ── Game state init ──
 
   _initGame() {
     this._fireQueued = false
+    this._generateMountains()
     this._player = { x: 0, z: 0, rot: 0, cooldown: 0, lives: 3, invuln: 0 }
     this._enemies     = []
     this._bullets      = []
@@ -386,6 +426,7 @@ export default class extends Controller {
     ctx.stroke()
     ctx.shadowBlur = 0
 
+    this._renderMountains(ctx, w, h)
     this._renderGround(ctx)
     this._renderBullets(ctx)
     this._renderEnemies(ctx)
@@ -545,6 +586,42 @@ export default class extends Controller {
       y: behind.y + (infront.y - behind.y) * t,
       z: NEAR_CLIP
     }
+  }
+
+  // ── Mountains (wireframe horizon range) ──
+
+  _renderMountains(ctx, w, h) {
+    if (!this._mountainPoints) return
+    const dist = 260
+
+    ctx.strokeStyle = "rgba(0,212,255,0.2)"
+    ctx.lineWidth = 1
+    ctx.shadowColor = C.cyan
+    ctx.shadowBlur = 3
+
+    // Project all visible points
+    const projected = []
+    this._mountainPoints.forEach(pt => {
+      const wx = Math.sin(pt.angle) * dist
+      const wz = Math.cos(pt.angle) * dist
+      const p = this._project(wx, pt.height, wz)
+      if (p && p.sx > -100 && p.sx < w + 100) {
+        projected.push(p)
+      }
+    })
+
+    // Draw as line segments, breaking on large screen gaps (prevents box artifact)
+    ctx.beginPath()
+    for (let i = 0; i < projected.length; i++) {
+      const p = projected[i]
+      if (i === 0 || Math.abs(p.sx - projected[i - 1].sx) > w * 0.4) {
+        ctx.moveTo(p.sx, p.sy)
+      } else {
+        ctx.lineTo(p.sx, p.sy)
+      }
+    }
+    ctx.stroke()
+    ctx.shadowBlur = 0
   }
 
   // ── Bullets ──

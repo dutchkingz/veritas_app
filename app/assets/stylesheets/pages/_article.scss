@@ -53,59 +53,75 @@
   }
 }
 
-// ━━━ Lightbox ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ━━━ Lightbox (dynamic, portaled to body) ━━━━━━━━━━━━━━━━━━━━━━━━
 
-.lightbox-overlay {
-  display: none;
+.vt-lightbox-overlay {
   position: fixed;
   inset: 0;
-  z-index: 9999;
-  background: rgba(0, 0, 0, 0.92);
+  z-index: 99999;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
   align-items: center;
   justify-content: center;
-  flex-direction: column;
-  padding: 40px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  cursor: zoom-out;
 
-  &.lightbox--open {
-    display: flex;
+  &.vt-lightbox--open {
+    opacity: 1;
   }
 }
 
-.lightbox-close {
+.vt-lightbox-container {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: default;
+}
+
+.vt-lightbox-close {
   position: absolute;
-  top: 20px;
-  right: 24px;
-  background: none;
+  top: -12px;
+  right: -12px;
+  background: rgba(9, 9, 15, 0.9);
   border: 1px solid rgba(56, 189, 248, 0.4);
   color: #38BDF8;
-  font-size: 1.1rem;
-  width: 36px;
-  height: 36px;
-  border-radius: 3px;
+  font-size: 0.9rem;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
   cursor: pointer;
   line-height: 1;
+  z-index: 1;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
   &:hover {
-    background: rgba(56, 189, 248, 0.1);
+    background: rgba(56, 189, 248, 0.15);
     border-color: #00d4ff;
   }
 }
 
-.lightbox-img {
+// Image displays at its natural size, capped at viewport bounds.
+// Small images stay small. Large images scale down to fit.
+.vt-lightbox-img {
   max-width: 90vw;
-  max-height: 80vh;
-  object-fit: contain;
+  max-height: 85vh;
+  width: auto;
+  height: auto;
   border: 1px solid rgba(56, 189, 248, 0.2);
   border-radius: 4px;
   box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
   cursor: zoom-out;
 }
 
-.lightbox-caption {
-  margin-top: 14px;
+.vt-lightbox-caption {
+  margin-top: 10px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: #64748b;
   text-align: center;
   max-width: 600px;

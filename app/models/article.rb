@@ -16,6 +16,8 @@ class Article < ApplicationRecord
   has_many :contradiction_logs_as_b, class_name: "ContradictionLog", foreign_key: :article_b_id, dependent: :destroy
   has_many :gdelt_events, dependent: :nullify
 
+  before_validation :nullify_null_island_coordinates
+
   after_create_commit :broadcast_sidebar_update
   after_create_commit :broadcast_to_globe
   after_create_commit :enqueue_content_fetch
@@ -90,5 +92,17 @@ class Article < ApplicationRecord
         source:   source_name
       }
     })
+  end
+
+  # Null Island protection: coordinates at [0,0] (Gulf of Guinea) are almost
+  # certainly unresolved geolocations, not real article origins. Convert them
+  # to nil so the globe doesn't plot phantom points in the Atlantic.
+  def nullify_null_island_coordinates
+    if latitude.present? && longitude.present? && latitude.abs < 0.1 && longitude.abs < 0.1
+      Rails.logger.info "[Article] Null Island coordinates detected for '#{headline&.truncate(50)}' — clearing to nil"
+      self.latitude = nil
+      self.longitude = nil
+      self.geo_method = "unresolved" if respond_to?(:geo_method=)
+    end
   end
 end

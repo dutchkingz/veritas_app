@@ -142,6 +142,7 @@ class NarrativeSurgeDetectorService
                         .limit(10)
                end
     coords   = derive_coordinates(convergence, articles)
+    next unless coords  # Skip alerts with unresolvable geography
     region   = find_region_for(coords)
     briefing = generate_briefing(convergence, articles)
     severity = map_severity(convergence.dominant_threat_level)
@@ -184,7 +185,8 @@ class NarrativeSurgeDetectorService
     region = Region.joins(:countries)
                    .where(countries: { name: convergence.countries.first })
                    .first
-    { lat: region&.latitude || 0.0, lng: region&.longitude || 0.0 }
+    return nil unless region&.latitude && region&.longitude
+    { lat: region.latitude, lng: region.longitude }
   end
 
   def find_region_for(coords)
