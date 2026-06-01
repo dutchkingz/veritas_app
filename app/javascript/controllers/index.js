@@ -6,3 +6,6 @@ eagerLoadControllersFrom("controllers", application)
 // Explicit registration for controllers that eagerLoad misses
 import BreakingAlertController from "controllers/breaking_alert_controller"
 application.register("breaking-alert", BreakingAlertController)
+
+import FeedModeController from "controllers/feed_mode_controller"
+application.register("feed-mode", FeedModeController)

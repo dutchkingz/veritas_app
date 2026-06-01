@@ -2,7 +2,7 @@ class PagesController < ApplicationController
   include GeoValidation
   include ArcColorHelper
 
-  skip_before_action :authenticate_user!, only: [:welcome, :home, :globe_data, :search, :aware, :aware_narration, :narrative_dna, :tribunal, :article_preview, :entity_nexus, :entity_nexus_detail, :article_network]
+  skip_before_action :authenticate_user!, only: [:welcome, :home, :globe_data, :search, :aware, :aware_narration, :narrative_dna, :tribunal, :article_preview, :entity_nexus, :entity_nexus_detail, :article_network, :feed_articles]
 
   def welcome
     redirect_to dashboard_path if user_signed_in?
@@ -121,17 +121,12 @@ class PagesController < ApplicationController
       .where.not(ai_analyses: { threat_level: nil })
       .where.not("headline LIKE '%— GDELT'")
 
-    @hot_articles = nil
-    [3.days, 7.days, 14.days].each do |window|
-      candidates = hot_base.where("articles.published_at >= ?", window.ago).order(threat_order).limit(15)
-      if candidates.size >= 5
-        @hot_articles = candidates
-        break
-      end
-    end
-    # Final fallback: no time filter (original behavior)
-    @hot_articles ||= hot_base.order(threat_order).limit(15)
-    
+    # Hot articles: threat-ranked, all of them (capped at 200)
+    @hot_articles = hot_base.order(threat_order).limit(200)
+
+    # All articles for "Recent" / "All" mode (newest first, capped at 200)
+    @recent_articles = hot_base.order(published_at: :desc).limit(200)
+
     # Fallback: all articles ordered by date (if not enough hot articles)
     @articles = Article.includes(:country, :region).order(published_at: :desc).limit(50)
     @signal_count        = Article.count
@@ -315,6 +310,54 @@ class PagesController < ApplicationController
     else
       @results = []
     end
+  end
+
+  # GET /api/feed_articles?mode=hot|recent|all&page=1
+  def feed_articles
+    page = [params[:page].to_i, 1].max
+    per_page = 15
+    offset = (page - 1) * per_page
+    mode = params[:mode] || "hot"
+
+    base = Article
+      .includes(:country, :region, :ai_analysis, narrative_arcs: :narrative_routes)
+      .joins(:ai_analysis)
+      .where.not(ai_analyses: { threat_level: nil })
+      .where.not("headline LIKE '%— GDELT'")
+
+    articles = case mode
+    when "hot"
+      threat_order = Arel.sql(<<~SQL.squish)
+        CASE ai_analyses.threat_level
+          WHEN 'CRITICAL'   THEN 5
+          WHEN 'HIGH'       THEN 4
+          WHEN 'MODERATE'   THEN 3
+          WHEN 'LOW'        THEN 2
+          WHEN 'NEGLIGIBLE' THEN 1
+          ELSE 3
+        END DESC,
+        (SELECT COUNT(*) FROM narrative_arcs WHERE narrative_arcs.article_id = articles.id) DESC,
+        ai_analyses.trust_score ASC,
+        articles.published_at DESC
+      SQL
+      base.order(threat_order)
+    when "recent"
+      base.order(published_at: :desc)
+    when "all"
+      base.order(published_at: :desc)
+    end
+
+    total = articles.count(:all)
+    articles = articles.offset(offset).limit(per_page)
+
+    html = articles.map { |a| render_to_string(partial: "articles/sidebar_item", locals: { article: a }) }.join
+
+    render json: {
+      html: html,
+      page: page,
+      total: total,
+      has_more: (offset + per_page) < total
+    }
   end
 
   private

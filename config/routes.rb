@@ -21,6 +21,7 @@ Rails.application.routes.draw do
   get  "api/article_network/:article_id",   to: "pages#article_network", as: :article_network
   get  "api/entity_nexus",                  to: "pages#entity_nexus"
   get  "api/entity_nexus/:entity_id",       to: "pages#entity_nexus_detail", as: :entity_nexus_detail
+  get  "api/feed_articles",                 to: "pages#feed_articles"
   get  "api/trending_topics",               to: "api/trending_topics#index"
   get  "api/search_suggestions",            to: "api/search_suggestions#index"
   post "api/search",                        to: "api/search#create"

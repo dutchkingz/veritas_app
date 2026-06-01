@@ -100,9 +100,9 @@ class ArticlesController < ApplicationController
       sanitized_content = helpers.sanitized_article_content(parsed.at('body')&.inner_html || doc.content)
       @article.update!(content: sanitized_content)
     rescue OpenURI::HTTPError => e
-      if e.message.include?('403') || e.message.include?('503') || e.message.include?('429')
-        fallback_text = @article.raw_data['description'] || @article.raw_data['content'] || 'Content protected.'
+      fallback_text = @article.raw_data['description'] || @article.raw_data['content'] || 'Content protected.'
 
+      if e.message.include?('403') || e.message.include?('503') || e.message.include?('429')
         fallback_html = <<-HTML
             <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; padding: 15px; border-radius: 4px; font-family: 'Rajdhani', sans-serif;">
               <i class="fa fa-shield-alt me-2"></i>
@@ -112,8 +112,26 @@ class ArticlesController < ApplicationController
             <p style="margin-top: 20px; font-size: 1.2rem;">#{fallback_text}</p>
         HTML
         @article.update!(content: helpers.sanitized_article_content(fallback_html))
+      elsif e.message.include?('451')
+        fallback_html = <<-HTML
+            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; padding: 15px; border-radius: 4px; font-family: 'Rajdhani', sans-serif;">
+              <i class="fa fa-gavel me-2"></i>
+              <strong>CONTENT RESTRICTED — LEGAL BLOCK (HTTP 451).</strong>
+              <br>Source has geo-restricted or legally blocked this content. Falling back to intercepted transmission summary...
+            </div>
+            <p style="margin-top: 20px; font-size: 1.2rem;">#{fallback_text}</p>
+        HTML
+        @article.update!(content: helpers.sanitized_article_content(fallback_html))
       else
-        @article.update!(content: "<p class='text-danger'>[SYSTEM WARNING] HTTP Error: #{e.message}. Access Original Source manually.</p>")
+        fallback_html = <<-HTML
+            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; padding: 15px; border-radius: 4px; font-family: 'Rajdhani', sans-serif;">
+              <i class="fa fa-exclamation-triangle me-2"></i>
+              <strong>SOURCE UNREACHABLE (Status: #{e.message}).</strong>
+              <br>Falling back to intercepted transmission summary...
+            </div>
+            <p style="margin-top: 20px; font-size: 1.2rem;">#{fallback_text}</p>
+        HTML
+        @article.update!(content: helpers.sanitized_article_content(fallback_html))
       end
     rescue StandardError => e
       @article.update!(content: "<p class='text-danger'>[SYSTEM WARNING] Could not parse document stream: #{e.message}. Access Original Source manually.</p>")

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_24_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_03_154409) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -502,6 +502,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_24_120000) do
     t.jsonb "sentiment_distribution", default: {}
     t.string "source_name", null: false
     t.jsonb "topic_distribution", default: {}
+    t.float "trust_score_variance", default: 0.0, null: false
     t.datetime "updated_at", null: false
     t.index ["credibility_grade"], name: "index_source_credibilities_on_credibility_grade"
     t.index ["rolling_trust_score"], name: "index_source_credibilities_on_rolling_trust_score"

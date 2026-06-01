@@ -48,7 +48,7 @@ class PerspectiveFilter < ApplicationRecord
   # Short label for compact display
   def short_label
     case slug
-    when "western_mainstream" then "NEUTRAL"
+    when "western_mainstream" then "WIRE"
     when "us_liberal"         then "US-LEFT"
     when "us_conservative"    then "US-RIGHT"
     when "china_state"        then "CHINA"

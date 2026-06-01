@@ -106,15 +106,18 @@ class NarrativeRouteGeneratorService
     
     return nil if sorted_articles.length < 2
     
-    # Build hops array
-    hops = sorted_articles.map do |article|
+    # Build hops array — only include articles with valid coordinates
+    hops = sorted_articles.filter_map do |article|
+      lat, lng = resolve_coordinates(article)
+      next nil unless lat && lng  # Skip articles we can't place on the globe
+
       framing_result = detect_framing_shift(origin_article, article)
       {
         'article_id' => article.id,
         'source_name' => article.source_name,
         'source_country' => article.country&.name || country_from_domain(article.source_url),
-        'lat' => article.latitude,
-        'lng' => article.longitude,
+        'lat' => lat,
+        'lng' => lng,
         'published_at' => article.published_at&.iso8601,
         'framing_shift' => framing_result[:framing],
         'framing_explanation' => framing_result[:explanation],
@@ -123,6 +126,8 @@ class NarrativeRouteGeneratorService
         'delay_from_previous' => 0 # Will be calculated after sorting
       }
     end
+
+    return nil if hops.length < 2
     
     # Calculate delays between hops
     hops.each_with_index do |hop, index|
@@ -276,5 +281,60 @@ class NarrativeRouteGeneratorService
     DOMAIN_COUNTRY_MAP[tld]
   rescue URI::InvalidURIError
     nil
+  end
+
+  # Resolve valid coordinates for an article. Returns [lat, lng] or nil.
+  # Priority: article's own coords → country centroid → source HQ via GeolocatorService
+  def resolve_coordinates(article)
+    lat = article.latitude
+    lng = article.longitude
+
+    # Already has valid, non-ocean coordinates
+    if lat && lng && valid_land_coordinates?(lat, lng)
+      return [lat, lng]
+    end
+
+    # Try the article's country centroid
+    if article.country&.latitude && article.country&.longitude
+      return [article.country.latitude, article.country.longitude]
+    end
+
+    # Try GeolocatorService source fallback (maps source name → country HQ)
+    geo = GeolocatorService.new(
+      title: article.headline,
+      description: "",
+      source_name: article.source_name
+    ).call
+    if geo[:latitude] && geo[:longitude] && geo[:geo_method] != "unresolved"
+      return [geo[:latitude], geo[:longitude]]
+    end
+
+    nil
+  end
+
+  # Basic land validation — reject coordinates that are clearly in open ocean.
+  # Not a perfect land mask, but catches the worst offenders.
+  def valid_land_coordinates?(lat, lng)
+    # Reject null island area
+    return false if lat.abs < 1.0 && lng.abs < 1.0
+
+    # South Atlantic Ocean (roughly -5 to -60 lat, -50 to 20 lng — no major landmasses)
+    if lat < -5 && lat > -60 && lng > -50 && lng < 20
+      return false
+    end
+
+    # Central Pacific (far from any land)
+    if lat.abs < 30 && lng < -100 && lng > -170
+      return false
+    end
+
+    # North Atlantic (mid-ocean, no land between 20-60N, -20 to -50W roughly)
+    if lat > 20 && lat < 60 && lng > -50 && lng < -20
+      # Allow Greenland/Iceland area (lat > 55)
+      return true if lat > 55
+      return false
+    end
+
+    true
   end
 end

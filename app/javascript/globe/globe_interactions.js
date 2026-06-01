@@ -129,10 +129,19 @@ export class GlobeInteractions {
     document.querySelectorAll('.veritas-feed-card').forEach(card => {
       card.classList.remove('is-active')
     })
-    const card = document.querySelector(`.veritas-feed-card[data-article-id="${articleId}"]`)
-    if (card) {
-      card.classList.add('is-active')
-      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    }
+
+    // Dispatch event to feed-mode controller to reveal the card if hidden
+    window.dispatchEvent(new CustomEvent("veritas:revealArticle", {
+      detail: { articleId: String(articleId) }
+    }))
+
+    // Small delay to let the feed-mode controller render before scrolling
+    setTimeout(() => {
+      const card = document.querySelector(`.veritas-feed-card[data-article-id="${articleId}"]`)
+      if (card) {
+        card.classList.add('is-active')
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }
+    }, 50)
   }
 }

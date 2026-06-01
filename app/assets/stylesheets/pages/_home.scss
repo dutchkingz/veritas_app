@@ -303,6 +303,75 @@ $search-icon-color:   rgba(148, 180, 210, 0.55);
     }
 }
 
+// --- Feed Mode Toggle Buttons ---
+.vt-threat-filter-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    background: none;
+    border: none;
+    color: $veritas-cyan;
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.2s ease, text-shadow 0.2s ease;
+
+    &:hover {
+        text-shadow: 0 0 8px currentColor;
+    }
+}
+
+.vt-feed-mode-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.55rem;
+    padding: 2px 8px;
+    border: 1px solid rgba($veritas-cyan, 0.25);
+    border-radius: 2px;
+    background: transparent;
+    color: rgba($veritas-cyan, 0.6);
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: all 0.2s ease;
+
+    &:hover {
+        border-color: rgba($veritas-cyan, 0.5);
+        color: $veritas-cyan;
+    }
+
+    &.active {
+        background: rgba($veritas-cyan, 0.15);
+        border-color: $veritas-cyan;
+        color: $veritas-cyan;
+        box-shadow: 0 0 6px rgba($veritas-cyan, 0.2);
+    }
+}
+
+.vt-load-more-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    padding: 8px 12px;
+    border: 1px solid rgba($veritas-cyan, 0.2);
+    border-radius: 2px;
+    background: rgba($veritas-cyan, 0.05);
+    color: rgba($veritas-cyan, 0.7);
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    transition: all 0.2s ease;
+
+    &:hover {
+        background: rgba($veritas-cyan, 0.12);
+        border-color: rgba($veritas-cyan, 0.4);
+        color: $veritas-cyan;
+    }
+
+    &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+}
+
 // --- LEFT SIDEBAR: Feed ---
 .veritas-feed-sidebar {
     display: flex;

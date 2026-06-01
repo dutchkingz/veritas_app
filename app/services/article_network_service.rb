@@ -289,7 +289,7 @@ class ArticleNetworkService
           ORDER BY embedding <=> sa.embedding
           LIMIT 8
         ) neighbor
-        WHERE sa.id = ANY(?)
+        WHERE sa.id IN (#{source_ids.map(&:to_i).join(',')})
           AND sa.embedding IS NOT NULL
       ) ranked
       WHERE distance < ?
@@ -298,7 +298,7 @@ class ArticleNetworkService
 
     rows = ActiveRecord::Base.connection.select_all(
       ActiveRecord::Base.send(:sanitize_sql_array, [
-        sql, time_range.begin, time_range.end, source_ids, MAX_COSINE_DISTANCE
+        sql, time_range.begin, time_range.end, MAX_COSINE_DISTANCE
       ])
     )
 
@@ -322,12 +322,12 @@ class ArticleNetworkService
           SELECT id, embedding
           FROM articles
           WHERE id != sa.id
-            AND id = ANY(?)
+            AND id IN (#{article_ids.map(&:to_i).join(',')})
             AND embedding IS NOT NULL
           ORDER BY embedding <=> sa.embedding
           LIMIT 10
         ) neighbor
-        WHERE sa.id = ANY(?)
+        WHERE sa.id IN (#{source_ids.map(&:to_i).join(',')})
           AND sa.embedding IS NOT NULL
       ) ranked
       WHERE distance < ?
@@ -336,7 +336,7 @@ class ArticleNetworkService
 
     rows = ActiveRecord::Base.connection.select_all(
       ActiveRecord::Base.send(:sanitize_sql_array, [
-        sql, article_ids, source_ids, MAX_COSINE_DISTANCE
+        sql, MAX_COSINE_DISTANCE
       ])
     )
 

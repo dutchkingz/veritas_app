@@ -11,6 +11,26 @@ module GeoValidation
     lat.to_f.between?(-90.0, 90.0) && lng.to_f.between?(-180.0, 180.0)
   end
 
+  # Reject coordinates that fall in open ocean (no significant landmass)
+  def ocean_coordinates?(lat, lng)
+    lat = lat.to_f
+    lng = lng.to_f
+
+    # South Atlantic Ocean (-5 to -60 lat, -50 to 20 lng)
+    return true if lat < -5 && lat > -60 && lng > -50 && lng < 20
+
+    # Central/South Pacific (far from any land)
+    return true if lat.abs < 30 && lng < -100 && lng > -170
+
+    # Mid-North Atlantic (no land between 20-55N, -20 to -50W)
+    return true if lat > 20 && lat < 55 && lng > -50 && lng < -20
+
+    # Southern Indian Ocean (-30 to -60 lat, 20 to 100 lng — south of Africa/India)
+    return true if lat < -30 && lat > -60 && lng > 20 && lng < 100
+
+    false
+  end
+
   def degenerate_arc?(arc)
     s_lat = arc[:startLat]
     s_lng = arc[:startLng]
@@ -20,6 +40,7 @@ module GeoValidation
     return true if [s_lat, s_lng, e_lat, e_lng].any?(&:nil?)
     return true unless valid_coordinates?(s_lat, s_lng) && valid_coordinates?(e_lat, e_lng)
     return true if null_island?(s_lat, s_lng) || null_island?(e_lat, e_lng)
+    return true if ocean_coordinates?(s_lat, s_lng) || ocean_coordinates?(e_lat, e_lng)
 
     lat_diff = (s_lat.to_f - e_lat.to_f).abs
     lng_diff = (s_lng.to_f - e_lng.to_f).abs

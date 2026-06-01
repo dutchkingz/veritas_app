@@ -33,10 +33,18 @@ class SourceCredibility < ApplicationRecord
     self.last_analyzed_at = Time.current
     self.first_analyzed_at ||= Time.current
 
-    # Exponential moving average for trust (alpha = 0.1 — slow to change, hard to game)
-    alpha = 0.1
+    # Exponential moving average for trust (alpha = 0.15 — responsive but stable)
+    alpha = articles_analyzed <= 5 ? 0.4 : 0.15
     new_trust = ai_analysis.trust_score.to_f
     self.rolling_trust_score = (alpha * new_trust) + ((1 - alpha) * rolling_trust_score)
+
+    # Track trust score variance (for consistency scoring)
+    # Using Welford's online algorithm for running variance
+    old_mean = rolling_trust_score
+    delta = new_trust - old_mean
+    new_mean = old_mean + (delta / articles_analyzed)
+    delta2 = new_trust - new_mean
+    self.trust_score_variance = ((trust_score_variance * (articles_analyzed - 1)) + (delta * delta2)) / articles_analyzed if articles_analyzed > 1
 
     # Track threat distribution
     threat = ai_analysis.threat_level.to_s.upcase
@@ -71,14 +79,20 @@ class SourceCredibility < ApplicationRecord
   private
 
   def recompute_grade!
-    # Composite: 50% trust, 25% inverse anomaly rate, 25% threat balance
-    trust_component   = rolling_trust_score  # trust is already 0-100 scale
+    # Composite credibility grade:
+    #   60% — rolling trust score (rubric-based, auditable)
+    #   25% — inverse anomaly rate (manipulation frequency)
+    #   15% — scoring consistency (low variance = predictable quality)
+    trust_component   = rolling_trust_score
     anomaly_component = (1 - anomaly_rate) * 100
-    threat_ratio      = articles_analyzed > 0 ? (low_threat_count.to_f / articles_analyzed) : 0.5
-    threat_component  = threat_ratio * 100
+
+    # Consistency: sources with wildly varying trust scores are less predictable
+    # Std dev of 0 = perfect consistency (100), std dev of 30+ = poor consistency (0)
+    std_dev = trust_score_variance.to_f > 0 ? Math.sqrt(trust_score_variance) : 0
+    consistency_component = [[100 - (std_dev * 3.33), 0].max, 100].min
 
     self.credibility_grade = [
-      (trust_component * 0.5) + (anomaly_component * 0.25) + (threat_component * 0.25),
+      (trust_component * 0.60) + (anomaly_component * 0.25) + (consistency_component * 0.15),
       100
     ].min.round(1)
   end

@@ -1,5 +1,5 @@
 class IntelligenceBrief < ApplicationRecord
-  TYPES = %w[daily weekly alert].freeze
+  TYPES = %w[daily weekly alert periodic].freeze
 
   validates :brief_type, inclusion: { in: TYPES }
   validates :title, presence: true

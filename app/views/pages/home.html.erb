@@ -81,17 +81,56 @@
       </div>
     </div>
 
-    <div class="veritas-panel-header">
-      <span class="panel-icon">&#128293;</span>
-      <span class="panel-title">HIGH-THREAT SIGNALS</span>
-      <span class="panel-badge"><%= @hot_articles.count %> HOT</span>
-    </div>
+    <div data-controller="feed-mode" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+      <div class="veritas-panel-header" style="flex-wrap: wrap; gap: 6px; flex-shrink: 0;">
+        <div class="d-flex align-items-center gap-2">
+          <span class="panel-icon">&#128293;</span>
+          <button class="panel-title vt-threat-filter-btn"
+                  data-feed-mode-target="threatLabel"
+                  data-action="click->feed-mode#cycleThreat"
+                  title="Click to filter by threat level">ALL SIGNALS</button>
+          <span class="panel-badge" data-feed-mode-target="badge"><%= @hot_articles.count %> HOT</span>
+        </div>
+        <div class="d-flex gap-1">
+          <button class="vt-feed-mode-btn active"
+                  data-feed-mode-target="btn"
+                  data-mode="hot"
+                  data-action="click->feed-mode#switch">Hot</button>
+          <button class="vt-feed-mode-btn"
+                  data-feed-mode-target="btn"
+                  data-mode="recent"
+                  data-action="click->feed-mode#switch">Recent</button>
+          <button class="vt-feed-mode-btn"
+                  data-feed-mode-target="btn"
+                  data-mode="all"
+                  data-action="click->feed-mode#switch">All</button>
+        </div>
+      </div>
 
-    <%= turbo_stream_from "hot_articles" %>
-    <div class="veritas-feed-list" id="hot-articles-feed" data-controller="sidebar-limit" data-journey-target="feedList">
-      <% @hot_articles.each do |article| %>
-        <%= render partial: "articles/sidebar_item", locals: { article: article } %>
-      <% end %>
+      <%= turbo_stream_from "hot_articles" %>
+      <div class="veritas-feed-list" id="hot-articles-feed" data-feed-mode-target="list" data-journey-target="feedList">
+        <%# HOT articles — shown by default %>
+        <% @hot_articles.each do |article| %>
+          <div data-feed-mode-target="card" data-feed-set="hot" data-threat="<%= article.ai_analysis&.threat_label %>" data-article-id="<%= article.id %>">
+            <%= render partial: "articles/sidebar_item", locals: { article: article } %>
+          </div>
+        <% end %>
+
+        <%# RECENT/ALL articles — hidden initially, revealed by mode switch %>
+        <% @recent_articles.each do |article| %>
+          <div data-feed-mode-target="card" data-feed-set="recent" data-threat="<%= article.ai_analysis&.threat_label %>" data-article-id="<%= article.id %>" style="display: none;">
+            <%= render partial: "articles/sidebar_item", locals: { article: article } %>
+          </div>
+        <% end %>
+
+        <div class="text-center" style="padding: 8px 0;" data-feed-mode-target="loadMoreWrap">
+          <button class="vt-load-more-btn"
+                  data-feed-mode-target="loadMore"
+                  data-action="click->feed-mode#loadMore">
+            LOAD MORE SIGNALS
+          </button>
+        </div>
+      </div>
     </div>
   </aside>
 

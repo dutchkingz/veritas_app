@@ -307,8 +307,8 @@ class NarrativeRoute < ApplicationRecord
         country: country_name,
         countryCode: article&.country&.iso_code,
         city: raw_hop["source_city"].presence || extract_city(article) || country_name || "Unknown",
-        lat: raw_hop["lat"] || article&.latitude || fallback_lat(index),
-        lng: raw_hop["lng"] || article&.longitude || fallback_lng(index),
+        lat: resolve_hop_lat(raw_hop, article, index),
+        lng: resolve_hop_lng(raw_hop, article, index),
         publishedAt: published_at&.iso8601,
         timestampMs: published_at&.to_i.to_i * 1000,
         delaySeconds: raw_hop["delay_from_previous"].to_i,
@@ -540,12 +540,74 @@ class NarrativeRoute < ApplicationRecord
     target_country.presence || origin_country
   end
 
+  def resolve_hop_lat(raw_hop, article, index)
+    # Prefer raw hop coords if they're on land
+    raw_lat = raw_hop["lat"]
+    raw_lng = raw_hop["lng"]
+    if raw_lat && raw_lng && !ocean_point?(raw_lat, raw_lng)
+      return raw_lat
+    end
+
+    # Prefer article coords if valid
+    if article&.latitude && article&.longitude && !ocean_point?(article.latitude, article.longitude)
+      return article.latitude
+    end
+
+    # Try article's country centroid
+    if article&.country&.latitude && article&.country&.longitude
+      return article.country.latitude
+    end
+
+    fallback_lat(index)
+  end
+
+  def resolve_hop_lng(raw_hop, article, index)
+    raw_lat = raw_hop["lat"]
+    raw_lng = raw_hop["lng"]
+    if raw_lat && raw_lng && !ocean_point?(raw_lat, raw_lng)
+      return raw_lng
+    end
+
+    if article&.latitude && article&.longitude && !ocean_point?(article.latitude, article.longitude)
+      return article.longitude
+    end
+
+    if article&.country&.latitude && article&.country&.longitude
+      return article.country.longitude
+    end
+
+    fallback_lng(index)
+  end
+
   def fallback_lat(index)
-    index.zero? ? origin_lat : target_lat
+    if index.zero?
+      origin_lat
+    else
+      # Only use target_lat if it's valid (not ocean)
+      lat = target_lat
+      lng = target_lng
+      (lat && lng && !ocean_point?(lat, lng)) ? lat : nil
+    end
   end
 
   def fallback_lng(index)
-    index.zero? ? origin_lng : target_lng
+    if index.zero?
+      origin_lng
+    else
+      lat = target_lat
+      lng = target_lng
+      (lat && lng && !ocean_point?(lat, lng)) ? lng : nil
+    end
+  end
+
+  def ocean_point?(lat, lng)
+    lat = lat.to_f
+    lng = lng.to_f
+    return true if lat.abs < 1.0 && lng.abs < 1.0
+    return true if lat < -5 && lat > -60 && lng > -50 && lng < 20
+    return true if lat.abs < 30 && lng < -100 && lng > -170
+    return true if lat > 20 && lat < 55 && lng > -50 && lng < -20
+    false
   end
 
   def next_hop_score(current_score, shift, index)
@@ -689,6 +751,8 @@ class NarrativeRoute < ApplicationRecord
     return true if [s_lat, s_lng, e_lat, e_lng].any?(&:nil?)
     # Null island (within 1° of 0,0)
     return true if (s_lat.to_f.abs < 1.0 && s_lng.to_f.abs < 1.0) || (e_lat.to_f.abs < 1.0 && e_lng.to_f.abs < 1.0)
+    # Ocean coordinates
+    return true if ocean_point?(s_lat, s_lng) || ocean_point?(e_lat, e_lng)
     # Too close (within 2°) = spike/needle
     return true if (s_lat.to_f - e_lat.to_f).abs < 2.0 && (s_lng.to_f - e_lng.to_f).abs < 2.0
 

@@ -24,12 +24,15 @@ class SourceClassifierService
     [
       "western_mainstream",
       ["reuters", "afp", "ap news", "associated press", "bbc", "bbc news", "bbc world",
-       "france 24", "france24", "deutsche welle", "dw", "nhk", "nhk world",
-       "abc australia", "abc news australia", "bloomberg", "financial times",
-       "the economist", "wall street journal", "wsj"],
+       "france 24", "france24", "deutsche welle", "dw", "dw (english)", "nhk", "nhk world",
+       "abc australia", "abc news australia", "abc news (au)", "bloomberg", "financial times",
+       "the economist", "wall street journal", "wsj", "cbc news", "pbs",
+       "foreign policy", "fortune", "japan today", "the irish times",
+       "independent.ie", "financial post"],
       ["reuters", "afp", "bbc", "france 24", "france24", "deutsche welle",
        "associated press", "nhk", "bloomberg", "financial times", "economist",
-       "wall street journal"]
+       "wall street journal", "cbc news", "foreign policy", "japan today",
+       "irish times", "independent.ie", "financial post"]
     ],
     [
       "us_liberal",
@@ -37,10 +40,11 @@ class SourceClassifierService
        "washington post", "the washington post", "the guardian", "guardian us",
        "vox", "huffpost", "huffington post", "the atlantic", "politico",
        "the new yorker", "mother jones", "daily beast", "salon", "slate",
-       "the intercept", "propublica", "time magazine", "time"],
+       "the intercept", "propublica", "time magazine", "time",
+       "cbs news", "raw story"],
       ["cnn", "msnbc", "npr ", "new york times", "washington post",
        "the guardian", "huffpost", "huffington", "politico", "the atlantic",
-       "mother jones", "daily beast"]
+       "mother jones", "daily beast", "cbs news", "raw story"]
     ],
     [
       "us_conservative",
@@ -48,10 +52,12 @@ class SourceClassifierService
        "breitbart", "new york post", "nypost", "daily caller", "the daily caller",
        "newsmax", "the federalist", "washington times", "epoch times",
        "one america news", "oann", "national review", "the blaze", "blaze media",
-       "townhall", "american thinker", "western journal"],
+       "townhall", "american thinker", "western journal",
+       "dailymail.com", "daily mail", "freerepublic.com", "naturalnews.com"],
       ["fox news", "foxnews", "fox business", "breitbart", "daily wire",
        "new york post", "daily caller", "newsmax", "the federalist",
-       "washington times", "epoch times", "one america", "national review"]
+       "washington times", "epoch times", "one america", "national review",
+       "daily mail", "dailymail", "freerepublic", "naturalnews"]
     ],
     [
       "china_state",
@@ -79,12 +85,14 @@ class SourceClassifierService
        "indian express", "ndtv", "the wire india", "scroll.in",
        "africa news", "the east african", "business day", "citizen digital",
        "cna", "channel newsasia", "the star online", "new straits times",
-       "bangkok post", "vietnam news", "jakarta post", "philippine daily inquirer"],
+       "bangkok post", "vietnam news", "jakarta post", "philippine daily inquirer",
+       "protothema.gr", "ibtimes.com.au", "businessline"],
       ["al jazeera", "al-jazeera", "trt world", "anadolu", "press tv",
        "wion", "times of india", "the hindu", "daily maverick",
        "nation africa", "arab news", "middle east eye", "telesur",
        "dawn", "deccan herald", "ndtv", "channel newsasia", "bangkok post",
-       "jakarta post", "vietnam news"]
+       "jakarta post", "vietnam news", "protothema", "ibtimes.com.au",
+       "businessline"]
     ]
   ].freeze
 
@@ -133,7 +141,7 @@ class SourceClassifierService
   # Returns the display label for a slug
   def self.display_name(slug)
     {
-      "western_mainstream" => "Western Mainstream",
+      "western_mainstream" => "Wire / Mainstream",
       "us_liberal"         => "US Liberal",
       "us_conservative"    => "US Conservative",
       "china_state"        => "China State",

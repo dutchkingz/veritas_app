@@ -36,7 +36,8 @@ export function createArcColorCallback(state) {
 
       if (state.currentPerspective !== 'all') {
         const isActive = d.perspectiveSlug === state.currentPerspective
-        if (!isActive) return buildGradientStops(sourceColor, threatColor, 0.1)
+        const dimOpacity = d.perspectiveSlug === 'unclassified' ? 0.35 : 0.1
+        if (!isActive) return buildGradientStops(sourceColor, threatColor, dimOpacity)
       }
 
       return buildGradientStops(sourceColor, threatColor, alpha)
@@ -64,7 +65,7 @@ export function createArcColorCallback(state) {
       if (state.currentPerspective !== 'all') {
         const isActive = d.perspectiveSlug === state.currentPerspective
         if (!isActive) {
-          const dimAlpha = d.perspectiveSlug === 'unclassified' ? 0.2 : 0.08
+          const dimAlpha = d.perspectiveSlug === 'unclassified' ? 0.35 : 0.12
           return buildGradientStops(sourceColor, threatColor, dimAlpha)
         }
       }
@@ -98,7 +99,7 @@ function arcColorForPerspective(d, state) {
   }
   const isActive = d.perspectiveSlug === state.currentPerspective
   if (isActive) return hexToRgba(c, baseTierAlpha)
-  return hexToRgba(c, d.perspectiveSlug === 'unclassified' ? 0.18 : 0.05)
+  return hexToRgba(c, d.perspectiveSlug === 'unclassified' ? 0.35 : 0.12)
 }
 
 export function buildArcTooltip(d) {
@@ -221,7 +222,7 @@ export function createPointColorCallback(state) {
     const c = d.color || '#00f0ff'
     if (state.currentPerspective === 'all') return c
     if (d.perspectiveSlug === state.currentPerspective) return c
-    return hexToRgba(c, d.perspectiveSlug === 'unclassified' ? 0.28 : 0.10)
+    return hexToRgba(c, d.perspectiveSlug === 'unclassified' ? 0.35 : 0.15)
   }
 }
 
