@@ -83,15 +83,10 @@ class NarrativeRouteGeneratorService
                      .where(published_at: (article.published_at - 30.days)..(article.published_at + 7.days))
                      .nearest_neighbors(:embedding, article.embedding, distance: "cosine")
                      .limit(max_results)
-    
-    # Debug logging
-    @logger.debug "[NarrativeRouteGenerator] Article ##{article.id} '#{article.headline[0..50]}...' found #{similar.count} neighbors"
-    if similar.any?
-      distances = similar.map(&:neighbor_distance)
-      @logger.debug "[NarrativeRouteGenerator] Distances: #{distances.map { |d| d.round(3) }}"
-      @logger.debug "[NarrativeRouteGenerator] Within threshold #{SIMILARITY_THRESHOLD}? #{distances.any? { |d| d < max_distance }}"
-    end
-    
+                     .to_a
+
+    @logger.debug "[NarrativeRouteGenerator] Article ##{article.id} '#{article.headline[0..50]}...' found #{similar.size} neighbors"
+
     # Filter by threshold
     similar.select { |a| a.neighbor_distance < max_distance }
   end
