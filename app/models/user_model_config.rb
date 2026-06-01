@@ -3,7 +3,7 @@ class UserModelConfig < ApplicationRecord
 
   AVAILABLE_MODELS = {
     analyst:  [
-      "google/gemini-2.0-flash-001",
+      "google/gemini-2.5-flash",
       "openai/gpt-4o-mini",
       "anthropic/claude-3.5-haiku",
       "meta-llama/llama-3.3-70b-instruct",
@@ -11,7 +11,7 @@ class UserModelConfig < ApplicationRecord
     ],
     sentinel: [
       "openai/gpt-4o-mini",
-      "google/gemini-2.0-flash-001",
+      "google/gemini-2.5-flash",
       "anthropic/claude-3.5-haiku",
       "meta-llama/llama-3.3-70b-instruct",
       "custom"
@@ -19,20 +19,20 @@ class UserModelConfig < ApplicationRecord
     arbiter: [
       "anthropic/claude-3.5-haiku",
       "openai/gpt-4o-mini",
-      "google/gemini-2.0-flash-001",
+      "google/gemini-2.5-flash",
       "meta-llama/llama-3.3-70b-instruct",
       "custom"
     ],
     briefing: [
       "anthropic/claude-3.5-haiku",
       "openai/gpt-4o-mini",
-      "google/gemini-2.0-flash-001",
+      "google/gemini-2.5-flash",
       "custom"
     ],
     voice: [
       "anthropic/claude-3.5-haiku",
       "openai/gpt-4o-mini",
-      "google/gemini-2.0-flash-001",
+      "google/gemini-2.5-flash",
       "custom"
     ]
   }.freeze
