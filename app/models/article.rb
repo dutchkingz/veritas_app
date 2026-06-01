@@ -37,9 +37,9 @@ class Article < ApplicationRecord
         WHEN 'NEGLIGIBLE' THEN 1
         ELSE 3
       END DESC,
+      articles.fetched_at DESC,
       (SELECT COUNT(*) FROM narrative_arcs WHERE narrative_arcs.article_id = articles.id) DESC,
-      ai_analyses.trust_score ASC,
-      articles.published_at DESC
+      ai_analyses.trust_score ASC
     SQL
   }
 
