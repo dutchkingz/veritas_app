@@ -98,22 +98,6 @@ class PagesController < ApplicationController
     # articles. Prioritize by threat severity, narrative richness, then suspicion.
     # Exclude GDELT articles that still have placeholder headlines (not yet scraped).
     #
-    # NOTE: threat_level is a string (CRITICAL/HIGH/MODERATE/LOW/NEGLIGIBLE),
-    # NOT a number — alphabetical sort puts NEGLIGIBLE first! Use CASE WHEN.
-    threat_order = Arel.sql(<<~SQL.squish)
-      CASE ai_analyses.threat_level
-        WHEN 'CRITICAL'   THEN 5
-        WHEN 'HIGH'       THEN 4
-        WHEN 'MODERATE'   THEN 3
-        WHEN 'LOW'        THEN 2
-        WHEN 'NEGLIGIBLE' THEN 1
-        ELSE 3
-      END DESC,
-      (SELECT COUNT(*) FROM narrative_arcs WHERE narrative_arcs.article_id = articles.id) DESC,
-      ai_analyses.trust_score ASC,
-      articles.published_at DESC
-    SQL
-
     # Progressive time window: prefer recent articles, widen if too few
     hot_base = Article
       .includes(:country, :region, :ai_analysis, narrative_arcs: :narrative_routes)
@@ -122,13 +106,13 @@ class PagesController < ApplicationController
       .where.not("headline LIKE '%— GDELT'")
 
     # Hot articles: threat-ranked, all of them (capped at 200)
-    @hot_articles = hot_base.order(threat_order).limit(200)
+    @hot_articles = hot_base.threat_ordered.limit(200)
 
-    # All articles for "Recent" / "All" mode (newest first, capped at 200)
-    @recent_articles = hot_base.order(published_at: :desc).limit(200)
+    # All articles for "Recent" / "All" mode (newest ingested first, capped at 200)
+    @recent_articles = hot_base.order(fetched_at: :desc).limit(200)
 
-    # Fallback: all articles ordered by date (if not enough hot articles)
-    @articles = Article.includes(:country, :region).order(published_at: :desc).limit(50)
+    # Fallback: all articles ordered by ingestion time
+    @articles = Article.includes(:country, :region).order(fetched_at: :desc).limit(50)
     @signal_count        = Article.count
     @regions             = Region.order(:name)
     @perspective_filters = PerspectiveFilter.order(:name)
@@ -253,11 +237,7 @@ class PagesController < ApplicationController
         .where.not(ai_analyses: { threat_level: [nil, "NEGLIGIBLE", "LOW"] })
         .where.not(latitude: nil)
         .where.not(longitude: nil)
-        .order(Arel.sql(<<~SQL.squish))
-          CASE ai_analyses.threat_level
-            WHEN 'CRITICAL' THEN 5 WHEN 'HIGH' THEN 4 WHEN 'MODERATE' THEN 3 ELSE 1
-          END DESC, articles.published_at DESC
-        SQL
+        .threat_ordered
         .limit(25)
         .to_a
 
@@ -327,24 +307,11 @@ class PagesController < ApplicationController
 
     articles = case mode
     when "hot"
-      threat_order = Arel.sql(<<~SQL.squish)
-        CASE ai_analyses.threat_level
-          WHEN 'CRITICAL'   THEN 5
-          WHEN 'HIGH'       THEN 4
-          WHEN 'MODERATE'   THEN 3
-          WHEN 'LOW'        THEN 2
-          WHEN 'NEGLIGIBLE' THEN 1
-          ELSE 3
-        END DESC,
-        (SELECT COUNT(*) FROM narrative_arcs WHERE narrative_arcs.article_id = articles.id) DESC,
-        ai_analyses.trust_score ASC,
-        articles.published_at DESC
-      SQL
-      base.order(threat_order)
+      base.threat_ordered
     when "recent"
-      base.order(published_at: :desc)
+      base.order(fetched_at: :desc)
     when "all"
-      base.order(published_at: :desc)
+      base.order(fetched_at: :desc)
     end
 
     total = articles.count(:all)

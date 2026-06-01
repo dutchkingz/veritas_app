@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_03_154409) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_01_054419) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -31,6 +31,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_03_154409) do
     t.string "threat_level"
     t.float "trust_score"
     t.datetime "updated_at", null: false
+    t.index ["analysis_status"], name: "index_ai_analyses_on_analysis_status"
     t.index ["article_id"], name: "index_ai_analyses_on_article_id"
   end
 
@@ -61,6 +62,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_03_154409) do
     t.datetime "updated_at", null: false
     t.index ["country_id"], name: "index_articles_on_country_id"
     t.index ["data_source"], name: "index_articles_on_data_source"
+    t.index ["fetched_at"], name: "index_articles_on_fetched_at"
     t.index ["region_id"], name: "index_articles_on_region_id"
     t.index ["source_type"], name: "index_articles_on_source_type"
     t.index ["source_url"], name: "index_articles_on_source_url_unique", unique: true, where: "(source_url IS NOT NULL)"

@@ -26,6 +26,23 @@ class Article < ApplicationRecord
   # Scopes for Regional Intelligence Analysis
   # ----------------------------------------------------------
 
+  # Threat-ranked ordering (requires articles joined to ai_analyses)
+  scope :threat_ordered, -> {
+    order(Arel.sql(<<~SQL.squish))
+      CASE ai_analyses.threat_level
+        WHEN 'CRITICAL'   THEN 5
+        WHEN 'HIGH'       THEN 4
+        WHEN 'MODERATE'   THEN 3
+        WHEN 'LOW'        THEN 2
+        WHEN 'NEGLIGIBLE' THEN 1
+        ELSE 3
+      END DESC,
+      (SELECT COUNT(*) FROM narrative_arcs WHERE narrative_arcs.article_id = articles.id) DESC,
+      ai_analyses.trust_score ASC,
+      articles.published_at DESC
+    SQL
+  }
+
   # Articles published within the last 48 hours
   scope :recent_48h, -> { where("published_at >= ?", 48.hours.ago) }
 
