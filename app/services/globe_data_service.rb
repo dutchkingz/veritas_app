@@ -188,12 +188,26 @@ class GlobeDataService
   def build_globe_arcs(filtered_articles)
     filtered_ids = filtered_articles.map(&:id)
 
-    scope = NarrativeArc.includes(article: :ai_analysis).order(:id)
+    # First try arcs matching the visible articles
+    scope = NarrativeArc.includes(article: :ai_analysis).order(id: :desc)
     scope = scope.where(article_id: filtered_ids) if filtered_ids.any?
     scope = scope.joins(:article).where("articles.published_at <= ?", @to_time) if @to_time
 
     db_arcs = scope.limit(50).map { |arc| serialize_arc(arc).merge(isNarrative: true) }
-    db_arcs.reject { |arc| degenerate_arc?(arc) }.first(100)
+    valid_arcs = db_arcs.reject { |arc| degenerate_arc?(arc) }
+
+    # If too few arcs from visible articles, pull the most recent non-degenerate arcs
+    if valid_arcs.size < 10
+      fallback_scope = NarrativeArc.includes(article: :ai_analysis)
+                                   .where.not(origin_lat: nil, target_lat: nil)
+                                   .order(id: :desc)
+                                   .limit(50)
+      fallback_arcs = fallback_scope.map { |arc| serialize_arc(arc).merge(isNarrative: true) }
+      fallback_valid = fallback_arcs.reject { |arc| degenerate_arc?(arc) }
+      valid_arcs = (valid_arcs + fallback_valid).uniq { |a| a[:articleId] }
+    end
+
+    valid_arcs.first(100)
   end
 
   def serialize_arc(arc)
