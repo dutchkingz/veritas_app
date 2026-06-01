@@ -44,19 +44,15 @@ class FetchArticlesJob < ApplicationJob
       end
 
       url = attrs[:source_url]
-      article = if url.present?
-                  Article.find_or_create_by(source_url: url) { |a| a.assign_attributes(attrs) }
-                else
-                  Article.create!(attrs)
-                end
-
-      if article.previously_new_record?
-        AnalyzeArticleJob.perform_later(article.id)
-        created += 1
-      else
-        Rails.logger.info "[FetchArticlesJob] Duplicate skipped (find_or_create_by): #{url}"
+      if url.present? && Article.exists?(source_url: url)
+        Rails.logger.info "[FetchArticlesJob] Duplicate skipped: #{url}"
         skipped += 1
+        next
       end
+
+      article = Article.create!(attrs)
+      AnalyzeArticleJob.perform_later(article.id)
+      created += 1
     rescue ActiveRecord::RecordNotUnique
       Rails.logger.info "[FetchArticlesJob] Duplicate skipped (unique index): #{attrs[:source_url]}"
       skipped += 1
