@@ -5,32 +5,32 @@ class UserModelConfig < ApplicationRecord
     analyst:  [
       "google/gemini-2.5-flash",
       "openai/gpt-4o-mini",
-      "anthropic/claude-3.5-haiku",
+      "anthropic/claude-haiku-4-5-20251001",
       "meta-llama/llama-3.3-70b-instruct",
       "custom"
     ],
     sentinel: [
       "openai/gpt-4o-mini",
       "google/gemini-2.5-flash",
-      "anthropic/claude-3.5-haiku",
+      "anthropic/claude-haiku-4-5-20251001",
       "meta-llama/llama-3.3-70b-instruct",
       "custom"
     ],
     arbiter: [
-      "anthropic/claude-3.5-haiku",
+      "anthropic/claude-haiku-4-5-20251001",
       "openai/gpt-4o-mini",
       "google/gemini-2.5-flash",
       "meta-llama/llama-3.3-70b-instruct",
       "custom"
     ],
     briefing: [
-      "anthropic/claude-3.5-haiku",
+      "anthropic/claude-haiku-4-5-20251001",
       "openai/gpt-4o-mini",
       "google/gemini-2.5-flash",
       "custom"
     ],
     voice: [
-      "anthropic/claude-3.5-haiku",
+      "anthropic/claude-haiku-4-5-20251001",
       "openai/gpt-4o-mini",
       "google/gemini-2.5-flash",
       "custom"
@@ -68,9 +68,9 @@ class UserModelConfig < ApplicationRecord
     {
       analyst:  "google/gemini-2.0-flash-001",
       sentinel: "openai/gpt-4o-mini",
-      arbiter:  "anthropic/claude-3.5-haiku",
-      briefing: "anthropic/claude-3.5-haiku",
-      voice:    "anthropic/claude-3.5-haiku"
+      arbiter:  "anthropic/claude-haiku-4-5-20251001",
+      briefing: "anthropic/claude-haiku-4-5-20251001",
+      voice:    "anthropic/claude-haiku-4-5-20251001"
     }[role.to_sym]
   end
 

@@ -11,9 +11,9 @@ class OpenRouterClient
   DEFAULT_MODELS = {
     analyst:           "google/gemini-2.5-flash",
     sentinel:          "openai/gpt-4o-mini",
-    arbiter:           "anthropic/claude-3.5-haiku",
-    briefing:          "anthropic/claude-3.5-haiku",
-    voice:             "anthropic/claude-3.5-haiku",
+    arbiter:           "anthropic/claude-haiku-4-5-20251001",
+    briefing:          "anthropic/claude-haiku-4-5-20251001",
+    voice:             "anthropic/claude-haiku-4-5-20251001",
     entity_extractor:  "google/gemini-2.5-flash",
     relevance_filter:  "google/gemini-2.5-flash"
   }.freeze
