@@ -98,21 +98,19 @@ class PagesController < ApplicationController
     # articles. Prioritize by threat severity, narrative richness, then suspicion.
     # Exclude GDELT articles that still have placeholder headlines (not yet scraped).
     #
-    # Progressive time window: prefer recent articles, widen if too few
+    # Limits kept low to avoid query explosion over remote DB (Neon).
     hot_base = Article
       .includes(:country, :region, :ai_analysis, narrative_arcs: :narrative_routes)
       .joins(:ai_analysis)
       .where.not(ai_analyses: { threat_level: nil })
       .where.not("headline LIKE '%— GDELT'")
 
-    # Hot articles: threat-ranked, all of them (capped at 200)
-    @hot_articles = hot_base.threat_ordered.limit(200)
+    # Hot articles: threat-ranked (capped at 50)
+    @hot_articles = hot_base.threat_ordered.limit(50)
 
-    # All articles for "Recent" / "All" mode (newest ingested first, capped at 200)
-    @recent_articles = hot_base.order(fetched_at: :desc).limit(200)
+    # All articles for "Recent" / "All" mode (newest ingested first, capped at 50)
+    @recent_articles = hot_base.order(fetched_at: :desc).limit(50)
 
-    # Fallback: all articles ordered by ingestion time
-    @articles = Article.includes(:country, :region).order(fetched_at: :desc).limit(50)
     @signal_count        = Article.count
     @regions             = Region.order(:name)
     @perspective_filters = PerspectiveFilter.order(:name)
@@ -120,12 +118,13 @@ class PagesController < ApplicationController
     @timeline_max        = Article.maximum(:published_at)&.to_i || Time.now.to_i
 
     # Latest completed IntelligenceReport per region — keyed by region_id.
-    # Used to show verdict badge + dossier link for all users in the sidebar.
+    # Single query using DISTINCT ON instead of loading all reports into Ruby.
     @latest_reports = IntelligenceReport
       .where(status: "completed")
-      .order(created_at: :desc)
-      .group_by(&:region_id)
-      .transform_values(&:first)
+      .where(id: IntelligenceReport.select("DISTINCT ON (region_id) id")
+                                   .where(status: "completed")
+                                   .order(:region_id, created_at: :desc))
+      .index_by(&:region_id)
 
     @veritas_mode = VeritasMode.current
     @api_calls_remaining = VeritasMode.api_calls_remaining
