@@ -13,6 +13,12 @@
     </span>
   </div>
 
+  <% if notice %>
+    <div style="background: #22c55e11; border: 1px solid #22c55e44; border-radius: 4px; padding: 8px 12px; margin-bottom: 16px; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #22c55e;">
+      <%= notice %>
+    </div>
+  <% end %>
+
   <%# --- Row 1: Donut Gauges --- %>
   <div class="d-flex justify-content-center gap-4 mb-4">
     <%= render partial: "admin/dashboard/donut_gauge", locals: {
@@ -185,6 +191,10 @@
             <span>Sources active</span>
             <span><%= ingestion[:sources].join(", ") %></span>
           </div>
+        </div>
+        <div style="margin-top: 12px; text-align: center;">
+          <%= button_to "FETCH ARTICLES NOW", admin_dashboard_fetch_articles_path, method: :post,
+              style: "font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; background: transparent; border: 1px solid #00f0ff; color: #00f0ff; padding: 6px 16px; border-radius: 4px; cursor: pointer;" %>
         </div>
       </div>
     </div>

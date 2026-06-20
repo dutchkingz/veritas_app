@@ -71,6 +71,7 @@ Rails.application.routes.draw do
   # -------------------------------------------------------
   namespace :admin do
     get "dashboard", to: "dashboard#show"
+    post "dashboard/fetch_articles", to: "dashboard#fetch_articles"
 
     resources :users do
       member do

@@ -5,6 +5,11 @@ class Admin::DashboardController < ApplicationController
     @health = SystemHealthService.new.call
   end
 
+  def fetch_articles
+    FetchArticlesJob.perform_later
+    redirect_to admin_dashboard_path, notice: "Article fetch job enqueued."
+  end
+
   private
 
   def ensure_admin!
