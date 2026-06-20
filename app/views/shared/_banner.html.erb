@@ -157,6 +157,7 @@
         </button>
         <% if current_user.admin? %>
           <%= link_to "ADMIN PANEL", admin_users_path, class: "btn btn-outline-warning btn-sm veritas-btn-outline me-2" %>
+          <%= link_to "COMMAND CENTER", admin_dashboard_path, class: "btn btn-outline-info btn-sm veritas-btn-outline me-2", style: "font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; border-color: #00f0ff; color: #00f0ff;" %>
         <% end %>
         <%= link_to "SAVED ARTICLES", saved_articles_path, class: "btn btn-outline-info btn-sm veritas-btn-outline me-2", style: "font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;" %>
         <% wl_count = current_user.saved_articles.count rescue 0 %>
