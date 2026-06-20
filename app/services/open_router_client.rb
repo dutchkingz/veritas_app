@@ -38,23 +38,30 @@ class OpenRouterClient
     model      = resolve_model(agent_role)
     max_tokens = MAX_TOKENS.fetch(agent_role.to_sym, 700)
 
-    response = request_chat(
-      model: model,
-      system_prompt: system_prompt,
-      user_prompt: user_prompt,
-      expect_json: expect_json,
-      max_tokens: max_tokens
-    )
+    begin
+      response = request_chat(
+        model: model,
+        system_prompt: system_prompt,
+        user_prompt: user_prompt,
+        expect_json: expect_json,
+        max_tokens: max_tokens
+      )
 
-    data = JSON.parse(response.body)
-    content = data.dig("choices", 0, "message", "content")
+      data = JSON.parse(response.body)
+      log_api_usage(model: model, agent_role: agent_role, response: response, data: data)
 
-    if expect_json
-      # Strip markdown code fences if the model wraps JSON in ```json blocks
-      cleaned = content.gsub(/\A```json\s*/i, '').gsub(/```\s*\z/, '').strip
-      JSON.parse(cleaned)
-    else
-      content
+      content = data.dig("choices", 0, "message", "content")
+
+      if expect_json
+        # Strip markdown code fences if the model wraps JSON in ```json blocks
+        cleaned = content.gsub(/\A```json\s*/i, '').gsub(/```\s*\z/, '').strip
+        JSON.parse(cleaned)
+      else
+        content
+      end
+    rescue => e
+      log_api_usage_error(model: model, agent_role: agent_role, error: e)
+      raise
     end
   end
 
@@ -148,5 +155,36 @@ class OpenRouterClient
     end
 
     raise "OpenRouter API error (#{response.code}): #{response.body}"
+  end
+
+  def log_api_usage(model:, agent_role:, response:, data:)
+    ApiUsageLog.create!(
+      model: model,
+      agent_role: agent_role.to_s,
+      input_tokens: data.dig("usage", "prompt_tokens"),
+      output_tokens: data.dig("usage", "completion_tokens"),
+      estimated_cost: data.dig("usage", "total_cost"),
+      status: "success",
+      error_message: nil,
+      http_status: response.code.to_i
+    )
+  rescue => e
+    Rails.logger.warn "[ApiUsageLog] Failed to log API usage: #{e.message}"
+  end
+
+  def log_api_usage_error(model:, agent_role:, error:)
+    http_status = error.message[/\((\d+)\)/, 1]&.to_i
+    ApiUsageLog.create!(
+      model: model,
+      agent_role: agent_role.to_s,
+      input_tokens: nil,
+      output_tokens: nil,
+      estimated_cost: nil,
+      status: "error",
+      error_message: error.message.truncate(500),
+      http_status: http_status
+    )
+  rescue => e
+    Rails.logger.warn "[ApiUsageLog] Failed to log API error: #{e.message}"
   end
 end
