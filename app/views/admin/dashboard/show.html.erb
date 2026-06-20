@@ -1,4 +1,192 @@
-<div>
-  <h1>Command Center</h1>
-  <p>Dashboard loading...</p>
+<% content_for :title, "VERITAS — System Command Center" %>
+
+<div class="veritas-container py-4 px-4" style="background-color: #0a0e1a; min-height: 100vh; color: #f8fafc; font-family: 'Space Grotesk', sans-serif;"
+     data-controller="auto-refresh">
+
+  <%# --- Header --- %>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 style="font-family: 'JetBrains Mono', monospace; font-size: 1rem; letter-spacing: 0.2em; color: #00f0ff; text-transform: uppercase;">
+      <span class="me-2">&#x26A8;</span> System Command Center
+    </h1>
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: #475569;">
+      Auto-refresh: 60s &bull; <%= Time.current.strftime("%Y-%m-%d %H:%M:%S UTC") %>
+    </span>
+  </div>
+
+  <%# --- Row 1: Donut Gauges --- %>
+  <div class="d-flex justify-content-center gap-4 mb-4">
+    <%= render partial: "admin/dashboard/donut_gauge", locals: {
+      label: "DB STORAGE",
+      percentage: @health[:gauges][:db_storage][:percentage],
+      subtitle: "#{number_to_human_size(@health[:gauges][:db_storage][:used_bytes])} / 500 MB"
+    } %>
+    <%= render partial: "admin/dashboard/donut_gauge", locals: {
+      label: "API SPEND",
+      percentage: [(@health[:kpis][:api_spend_month] / 5.0 * 100), 100].min.round(1),
+      subtitle: "$#{'%.2f' % @health[:kpis][:api_spend_month]} / $5.00"
+    } %>
+    <%= render partial: "admin/dashboard/donut_gauge", locals: {
+      label: "DATA TRANSFER",
+      percentage: 0,
+      subtitle: "Estimated (check Neon)"
+    } %>
+  </div>
+
+  <%# --- Row 2: KPI Cards --- %>
+  <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px;">
+    <%# API Spend Today %>
+    <div style="background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 14px; text-align: center;">
+      <div style="font-size: 0.6rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; font-family: 'JetBrains Mono', monospace;">API Spend Today</div>
+      <div style="font-size: 1.4rem; font-weight: bold; color: #00f0ff; margin: 6px 0; font-family: 'JetBrains Mono', monospace;">$<%= "%.4f" % @health[:kpis][:api_spend_today] %></div>
+      <div style="font-size: 0.6rem; color: #64748b; font-family: 'JetBrains Mono', monospace;">$<%= "%.2f" % @health[:kpis][:api_spend_month] %> this month</div>
+    </div>
+
+    <%# Job Success Rate %>
+    <% job_color = @health[:kpis][:job_success_rate] >= 80 ? "#22c55e" : @health[:kpis][:job_success_rate] >= 50 ? "#f59e0b" : "#ef4444" %>
+    <div style="background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 14px; text-align: center;">
+      <div style="font-size: 0.6rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; font-family: 'JetBrains Mono', monospace;">Job Success</div>
+      <div style="font-size: 1.4rem; font-weight: bold; color: <%= job_color %>; margin: 6px 0; font-family: 'JetBrains Mono', monospace;"><%= @health[:kpis][:job_success_rate] %>%</div>
+      <div style="font-size: 0.6rem; color: #64748b; font-family: 'JetBrains Mono', monospace;"><%= @health[:kpis][:job_succeeded] %>/<%= @health[:kpis][:job_total] %> succeeded</div>
+    </div>
+
+    <%# DB Size %>
+    <% db_color = @health[:kpis][:db_percentage] > 80 ? "#ef4444" : @health[:kpis][:db_percentage] > 60 ? "#f59e0b" : "#22c55e" %>
+    <div style="background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 14px; text-align: center;">
+      <div style="font-size: 0.6rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; font-family: 'JetBrains Mono', monospace;">DB Size</div>
+      <div style="font-size: 1.4rem; font-weight: bold; color: <%= db_color %>; margin: 6px 0; font-family: 'JetBrains Mono', monospace;"><%= number_to_human_size(@health[:kpis][:db_size_bytes]) %></div>
+      <div style="font-size: 0.6rem; color: #64748b; font-family: 'JetBrains Mono', monospace;"><%= @health[:kpis][:db_percentage] %>% of 500 MB</div>
+    </div>
+
+    <%# Articles Today %>
+    <div style="background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 14px; text-align: center;">
+      <div style="font-size: 0.6rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; font-family: 'JetBrains Mono', monospace;">Articles Today</div>
+      <div style="font-size: 1.4rem; font-weight: bold; color: #22c55e; margin: 6px 0; font-family: 'JetBrains Mono', monospace;"><%= @health[:kpis][:articles_today] %></div>
+      <div style="font-size: 0.6rem; color: #64748b; font-family: 'JetBrains Mono', monospace;"><%= @health[:kpis][:articles_analyzed] %> analyzed, <%= @health[:kpis][:articles_pending] %> pending</div>
+    </div>
+
+    <%# Queue Depth %>
+    <div style="background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 14px; text-align: center;">
+      <div style="font-size: 0.6rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; font-family: 'JetBrains Mono', monospace;">Queue Depth</div>
+      <div style="font-size: 1.4rem; font-weight: bold; color: #00f0ff; margin: 6px 0; font-family: 'JetBrains Mono', monospace;"><%= SolidQueue::Job.where(finished_at: nil).count %></div>
+      <div style="font-size: 0.6rem; color: #64748b; font-family: 'JetBrains Mono', monospace;">jobs queued</div>
+    </div>
+  </div>
+
+  <%# --- Row 3: Two-Column Detail Area --- %>
+  <div style="display: grid; grid-template-columns: 3fr 2fr; gap: 16px;">
+
+    <%# --- Left Column: Alerts + Errors --- %>
+    <div>
+      <%# Active Alerts %>
+      <% worst_level = @health[:alerts].map { |a| a[:level] }.min_by { |l| { red: 0, amber: 1, green: 2 }[l] } %>
+      <% border_color = { red: "#ef4444", amber: "#f59e0b", green: "#22c55e" }[worst_level] %>
+      <div style="background: #1e293b; border: 1px solid <%= border_color %>66; border-radius: 6px; padding: 16px; margin-bottom: 16px;">
+        <div style="font-size: 0.7rem; color: <%= border_color %>; font-weight: bold; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; font-family: 'JetBrains Mono', monospace;">
+          &#9888; Active Alerts
+        </div>
+        <% @health[:alerts].each do |alert| %>
+          <% color = { red: "#ef4444", amber: "#f59e0b", green: "#22c55e" }[alert[:level]] %>
+          <div style="font-size: 0.7rem; color: <%= color %>; margin-bottom: 8px; padding: 8px; background: <%= color %>11; border-radius: 4px; font-family: 'JetBrains Mono', monospace;">
+            &#x25CF; <%= alert[:message] %>
+          </div>
+        <% end %>
+      </div>
+
+      <%# Recent Errors %>
+      <div style="background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 16px;">
+        <div style="font-size: 0.7rem; color: #00f0ff; font-weight: bold; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; font-family: 'JetBrains Mono', monospace;">
+          Recent Errors
+        </div>
+        <% if @health[:recent_errors].any? %>
+          <% @health[:recent_errors].each do |error| %>
+            <div style="padding: 6px 0; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;">
+              <span style="color: #ef4444; white-space: nowrap;"><%= error[:source] %>: <%= error[:label] %></span>
+              <span style="color: #64748b; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><%= error[:http_status] ? "#{error[:http_status]} — " : "" %><%= error[:message] %></span>
+              <span style="color: #475569; white-space: nowrap;"><%= time_ago_in_words(error[:timestamp]) %> ago</span>
+            </div>
+          <% end %>
+        <% else %>
+          <div style="font-size: 0.7rem; color: #22c55e; font-family: 'JetBrains Mono', monospace;">No recent errors</div>
+        <% end %>
+      </div>
+    </div>
+
+    <%# --- Right Column: API + DB + Ingestion --- %>
+    <div>
+      <%# API Usage by Model %>
+      <div style="background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 16px; margin-bottom: 16px;">
+        <div style="font-size: 0.7rem; color: #00f0ff; font-weight: bold; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; font-family: 'JetBrains Mono', monospace;">
+          API Usage by Model
+        </div>
+        <% if @health[:api_breakdown].any? %>
+          <% @health[:api_breakdown].each do |row| %>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0; font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: #94a3b8;">
+              <span><%= row[:model] %></span>
+              <span><%= row[:call_count] %> calls</span>
+              <span style="color: #00f0ff;">$<%= "%.4f" % row[:total_cost] %></span>
+            </div>
+          <% end %>
+        <% else %>
+          <div style="font-size: 0.65rem; color: #475569; font-family: 'JetBrains Mono', monospace;">No API calls today</div>
+        <% end %>
+      </div>
+
+      <%# Database Stats %>
+      <div style="background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 16px; margin-bottom: 16px;">
+        <div style="font-size: 0.7rem; color: #00f0ff; font-weight: bold; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; font-family: 'JetBrains Mono', monospace;">
+          Database
+        </div>
+        <% @health[:db_stats][:tables].first(5).each do |table| %>
+          <div style="display: flex; justify-content: space-between; padding: 4px 0; font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: #94a3b8;">
+            <span><%= table[:name] %></span>
+            <span><%= number_with_delimiter(table[:row_count]) %> rows</span>
+            <span><%= table[:size_pretty] %></span>
+          </div>
+        <% end %>
+        <%# Capacity bar %>
+        <div style="margin-top: 10px;">
+          <div style="height: 6px; background: #0f172a; border-radius: 3px; overflow: hidden;">
+            <div style="width: <%= @health[:gauges][:db_storage][:percentage] %>%; height: 100%; background: linear-gradient(90deg, #00f0ff, #f59e0b); border-radius: 3px;"></div>
+          </div>
+          <div style="font-size: 0.6rem; color: #64748b; margin-top: 4px; font-family: 'JetBrains Mono', monospace;">
+            <%= @health[:db_stats][:total_size_pretty] %> / 500 MB (<%= @health[:gauges][:db_storage][:percentage] %>%)
+          </div>
+        </div>
+      </div>
+
+      <%# Ingestion Pipeline %>
+      <div style="background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 16px;">
+        <div style="font-size: 0.7rem; color: #00f0ff; font-weight: bold; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; font-family: 'JetBrains Mono', monospace;">
+          Ingestion Pipeline
+        </div>
+        <% ingestion = @health[:ingestion] %>
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: #94a3b8;">
+          <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+            <span>Last fetch</span>
+            <% if ingestion[:last_fetch] %>
+              <span style="color: <%= ingestion[:last_fetch] > 2.hours.ago ? '#22c55e' : '#f59e0b' %>;"><%= time_ago_in_words(ingestion[:last_fetch]) %> ago</span>
+            <% else %>
+              <span style="color: #ef4444;">Never</span>
+            <% end %>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+            <span>Fetched today</span>
+            <span><%= ingestion[:articles_today] %> articles</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+            <span>Analyzed</span>
+            <span style="color: #22c55e;"><%= ingestion[:articles_analyzed] %></span>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+            <span>Pending analysis</span>
+            <span style="color: <%= ingestion[:articles_pending] > 0 ? '#f59e0b' : '#22c55e' %>;"><%= ingestion[:articles_pending] %></span>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+            <span>Sources active</span>
+            <span><%= ingestion[:sources].join(", ") %></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>

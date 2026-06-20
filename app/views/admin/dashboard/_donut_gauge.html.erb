@@ -1,0 +1,24 @@
+<%
+  color = if percentage > 80
+    "#ef4444"
+  elsif percentage > 60
+    "#f59e0b"
+  else
+    "#22c55e"
+  end
+  dash = [percentage, 100].min
+  gap = 100 - dash
+%>
+<div style="text-align: center;">
+  <div style="position: relative; width: 100px; height: 100px; margin: 0 auto;">
+    <svg viewBox="0 0 36 36" style="transform: rotate(-90deg);">
+      <circle cx="18" cy="18" r="14" fill="none" stroke="#1e293b" stroke-width="3"/>
+      <circle cx="18" cy="18" r="14" fill="none" stroke="<%= color %>" stroke-width="3" stroke-dasharray="<%= dash %> <%= gap %>" stroke-linecap="round"/>
+    </svg>
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: <%= color %>; font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: bold;">
+      <%= percentage.round(0) %>%
+    </div>
+  </div>
+  <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: #94a3b8; margin-top: 6px; text-transform: uppercase; letter-spacing: 1px;"><%= label %></div>
+  <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.55rem; color: #64748b;"><%= subtitle %></div>
+</div>
