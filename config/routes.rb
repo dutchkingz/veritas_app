@@ -70,6 +70,8 @@ Rails.application.routes.draw do
   # Admin namespace (protected routes)
   # -------------------------------------------------------
   namespace :admin do
+    get "dashboard", to: "dashboard#show"
+
     resources :users do
       member do
         patch :toggle_admin
