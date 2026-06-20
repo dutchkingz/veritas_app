@@ -71,6 +71,10 @@ production:
     queue: default
     schedule: every 2 hours at minute 30
 
+  prune_api_usage_logs:
+    command: "ApiUsageLog.where('created_at < ?', 30.days.ago).delete_all"
+    schedule: every day at 3am
+
 development:
   periodic_reassessment:
     class: GenerateIntelligenceBriefJob
@@ -124,3 +128,7 @@ development:
     class: FetchGdeltEventsJob
     queue: default
     schedule: every 2 hours at minute 30
+
+  prune_api_usage_logs:
+    command: "ApiUsageLog.where('created_at < ?', 30.days.ago).delete_all"
+    schedule: every day at 3am
