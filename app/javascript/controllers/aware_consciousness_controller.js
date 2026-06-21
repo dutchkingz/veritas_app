@@ -186,18 +186,24 @@ export default class extends Controller {
     synth.cancel()
 
     const utterance = new SpeechSynthesisUtterance(this._ttsText)
-    utterance.rate = 0.92
-    utterance.pitch = 0.85
+    utterance.rate = 0.82
+    utterance.pitch = 0.6
     utterance.volume = 1.0
 
-    // Prefer a deeper, neural English voice
+    // HAL 9000 voice: prefer calm, deep male voices — flat and deliberate
     const voices = synth.getVoices()
-    const preferred = voices.find(v =>
-      /en-US|en-GB/i.test(v.lang) && /google|microsoft|neural|natural|daniel|samantha/i.test(v.name)
-    ) || voices.find(v => /en/i.test(v.lang))
+    const enVoices = voices.filter(v => /en/i.test(v.lang))
+
+    // Ranked preference: Ralph first, then other calm male voices
+    const preferred =
+      enVoices.find(v => /\bRalph\b/i.test(v.name)) ||
+      enVoices.find(v => /\bFred\b/i.test(v.name)) ||
+      enVoices.find(v => /\bDaniel\b/i.test(v.name)) ||
+      enVoices.find(v => /\bAlbert\b/i.test(v.name)) ||
+      enVoices[0]
     if (preferred) {
       utterance.voice = preferred
-      console.log("[VERITAS Voice] Using:", preferred.name)
+      console.log("[VERITAS Voice] HAL mode — using:", preferred.name)
     }
 
     utterance.onstart = () => this._showAudioBtn("playing")
