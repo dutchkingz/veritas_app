@@ -53,6 +53,3 @@ vendor/bundle
 # ChatTTS local server
 tts_service/.venv/
 tts_service/__pycache__/
-
-# My API Key for openrouter.ai
-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
