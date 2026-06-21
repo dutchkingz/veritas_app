@@ -17,6 +17,7 @@ export default class extends Controller {
     if (this.pulseInterval) clearInterval(this.pulseInterval)
     if (this.typewriterTimer) clearTimeout(this.typewriterTimer)
     if (this._audio) { this._audio.pause(); this._audio = null }
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel()
   }
 
   // ── IntersectionObserver: counters & bars animate on scroll ──
@@ -135,31 +136,87 @@ export default class extends Controller {
   async startNarrationAudio() {
     try {
       const resp = await fetch("/api/aware_narration")
-      if (!resp.ok) return
+      if (resp.ok) {
+        const blob = await resp.blob()
+        const url = URL.createObjectURL(blob)
+        this._audio = new Audio(url)
+        this._audio.volume = 0.7
 
-      const blob = await resp.blob()
-      const url = URL.createObjectURL(blob)
-      this._audio = new Audio(url)
-      this._audio.volume = 0.7
+        try {
+          await this._audio.play()
+          this._showAudioBtn("playing")
+        } catch (_) {
+          this._showAudioBtn("paused")
+        }
 
-      // Try autoplay — browsers may block this
-      try {
-        await this._audio.play()
-        this._showAudioBtn("playing")
-      } catch (_) {
-        // Autoplay blocked — show play button
-        this._showAudioBtn("paused")
+        this._audio.addEventListener("ended", () => this._showAudioBtn("ended"))
+        return
       }
-
-      this._audio.addEventListener("ended", () => this._showAudioBtn("ended"))
     } catch (e) {
-      // ElevenLabs unavailable — silent fallback, no button shown
+      // ElevenLabs unavailable — fall through to browser TTS
     }
+
+    // Fallback: use browser Web Speech API for narration
+    this._initBrowserTTS()
+  }
+
+  _initBrowserTTS() {
+    if (!("speechSynthesis" in window)) return
+    if (!this.hasNarrationTarget) return
+
+    const text = this.narrationTarget.dataset.narrationText || ""
+    if (!text) return
+
+    this._useBrowserTTS = true
+    this._ttsText = text
+
+    // Show play button — browsers require user gesture for speechSynthesis
+    this._showAudioBtn("paused")
+  }
+
+  _playBrowserTTS() {
+    const synth = window.speechSynthesis
+    synth.cancel()
+
+    const utterance = new SpeechSynthesisUtterance(this._ttsText)
+    utterance.rate = 0.92
+    utterance.pitch = 0.85
+    utterance.volume = 1.0
+
+    // Prefer a deeper, neural English voice
+    const voices = synth.getVoices()
+    const preferred = voices.find(v =>
+      /en-US|en-GB/i.test(v.lang) && /google|microsoft|neural|natural|daniel|samantha/i.test(v.name)
+    ) || voices.find(v => /en/i.test(v.lang))
+    if (preferred) utterance.voice = preferred
+
+    utterance.onstart = () => this._showAudioBtn("playing")
+    utterance.onend = () => this._showAudioBtn("ended")
+    utterance.onerror = () => this._showAudioBtn("paused")
+
+    this._browserUtterance = utterance
+    synth.speak(utterance)
   }
 
   // ── Audio play/pause toggle (clicked from the button) ──
 
   toggleAudio() {
+    // Browser TTS path
+    if (this._useBrowserTTS) {
+      const synth = window.speechSynthesis
+      if (synth.speaking && !synth.paused) {
+        synth.pause()
+        this._showAudioBtn("paused")
+      } else if (synth.paused) {
+        synth.resume()
+        this._showAudioBtn("playing")
+      } else {
+        this._playBrowserTTS()
+      }
+      return
+    }
+
+    // ElevenLabs audio path
     if (!this._audio) return
     if (this._audio.paused) {
       this._audio.play()
