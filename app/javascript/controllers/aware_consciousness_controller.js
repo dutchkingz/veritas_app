@@ -170,14 +170,14 @@ export default class extends Controller {
     this._useBrowserTTS = true
     this._ttsText = text
 
-    // Voices load asynchronously in most browsers — wait for them
+    // Voices load asynchronously in most browsers — wait for them, then autoplay
     const voices = window.speechSynthesis.getVoices()
     if (voices.length === 0) {
       window.speechSynthesis.addEventListener("voiceschanged", () => {
-        this._showAudioBtn("paused")
+        this._playBrowserTTS()
       }, { once: true })
     } else {
-      this._showAudioBtn("paused")
+      this._playBrowserTTS()
     }
   }
 
