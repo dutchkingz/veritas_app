@@ -192,9 +192,11 @@
             <span><%= ingestion[:sources].join(", ") %></span>
           </div>
         </div>
-        <div style="margin-top: 12px; text-align: center;">
+        <div style="margin-top: 12px; display: flex; gap: 8px; justify-content: center;">
           <%= button_to "FETCH ARTICLES NOW", admin_dashboard_fetch_articles_path, method: :post,
               style: "font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; background: transparent; border: 1px solid #00f0ff; color: #00f0ff; padding: 6px 16px; border-radius: 4px; cursor: pointer;" %>
+          <%= button_to "RUN AWARE ASSESSMENT", admin_dashboard_generate_brief_path, method: :post,
+              style: "font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; background: transparent; border: 1px solid #f59e0b; color: #f59e0b; padding: 6px 16px; border-radius: 4px; cursor: pointer;" %>
         </div>
       </div>
     </div>

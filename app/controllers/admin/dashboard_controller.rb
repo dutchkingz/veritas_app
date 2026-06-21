@@ -10,6 +10,11 @@ class Admin::DashboardController < ApplicationController
     redirect_to admin_dashboard_path, notice: "Article fetch job enqueued."
   end
 
+  def generate_brief
+    GenerateIntelligenceBriefJob.perform_later("periodic")
+    redirect_to admin_dashboard_path, notice: "AWARE intelligence reassessment enqueued."
+  end
+
   private
 
   def ensure_admin!
