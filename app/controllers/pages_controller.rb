@@ -77,17 +77,23 @@ class PagesController < ApplicationController
     }
   end
 
-  # GET /api/aware_narration — ElevenLabs TTS audio of the VERITAS self-narration
+  # GET /api/aware_narration — TTS audio of the VERITAS self-narration
   def aware_narration
     narration_text = build_aware_narration
     cache_key = "aware_narration/#{Digest::MD5.hexdigest(narration_text)}"
 
-    audio = Rails.cache.fetch(cache_key, expires_in: 1.hour) do
-      ElevenLabsService.new(text: narration_text).call
+    audio_data = Rails.cache.fetch(cache_key, expires_in: 1.hour) do
+      local_audio = LocalTtsService.new(text: narration_text).call
+      if local_audio
+        { bytes: local_audio, type: "audio/wav" }
+      else
+        eleven_audio = ElevenLabsService.new(text: narration_text).call
+        eleven_audio ? { bytes: eleven_audio, type: "audio/mpeg" } : nil
+      end
     end
 
-    if audio
-      send_data audio, type: "audio/mpeg", disposition: "inline"
+    if audio_data
+      send_data audio_data[:bytes], type: audio_data[:type], disposition: "inline"
     else
       head :service_unavailable
     end
