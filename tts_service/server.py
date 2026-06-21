@@ -41,6 +41,7 @@ def generate_speech(req: TTSRequest):
         # Use a fixed speaker seed for consistent voice across restarts
         torch.manual_seed(42)
         spk = tts.sample_random_speaker()
+        params.spk_emb = spk
 
         wavs = tts.infer(
             [req.text],
