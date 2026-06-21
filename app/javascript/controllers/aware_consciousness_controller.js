@@ -170,8 +170,15 @@ export default class extends Controller {
     this._useBrowserTTS = true
     this._ttsText = text
 
-    // Show play button — browsers require user gesture for speechSynthesis
-    this._showAudioBtn("paused")
+    // Voices load asynchronously in most browsers — wait for them
+    const voices = window.speechSynthesis.getVoices()
+    if (voices.length === 0) {
+      window.speechSynthesis.addEventListener("voiceschanged", () => {
+        this._showAudioBtn("paused")
+      }, { once: true })
+    } else {
+      this._showAudioBtn("paused")
+    }
   }
 
   _playBrowserTTS() {
@@ -188,11 +195,17 @@ export default class extends Controller {
     const preferred = voices.find(v =>
       /en-US|en-GB/i.test(v.lang) && /google|microsoft|neural|natural|daniel|samantha/i.test(v.name)
     ) || voices.find(v => /en/i.test(v.lang))
-    if (preferred) utterance.voice = preferred
+    if (preferred) {
+      utterance.voice = preferred
+      console.log("[VERITAS Voice] Using:", preferred.name)
+    }
 
     utterance.onstart = () => this._showAudioBtn("playing")
     utterance.onend = () => this._showAudioBtn("ended")
-    utterance.onerror = () => this._showAudioBtn("paused")
+    utterance.onerror = (e) => {
+      console.error("[VERITAS Voice] TTS error:", e)
+      this._showAudioBtn("paused")
+    }
 
     this._browserUtterance = utterance
     synth.speak(utterance)
@@ -241,7 +254,7 @@ export default class extends Controller {
     } else {
       btn.innerHTML = '<span class="aware-audio-icon">&#9654;</span> REPLAY'
       btn.title = "Replay narration"
-      this._audio.currentTime = 0
+      if (this._audio) this._audio.currentTime = 0
     }
   }
 }
