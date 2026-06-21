@@ -9,16 +9,26 @@ from pydantic import BaseModel
 
 app = FastAPI(title="VERITAS TTS — HAL 9000")
 
-# ── Model (loaded once at startup) ──────────────────────────
+# ── Model + speaker (loaded once at startup) ────────────────
 tts = None
+spk_emb = None
 
 @app.on_event("startup")
 def load_model():
-    global tts
-    print("[HAL] Loading ChatTTS model...")
-    tts = ChatTTS.Chat()
-    tts.load(compile=False)  # compile=True needs triton, skip on macOS
-    print("[HAL] Model loaded. Ready.")
+    global tts, spk_emb
+    try:
+        print("[HAL] Loading ChatTTS model...")
+        tts = ChatTTS.Chat()
+        tts.load(compile=False)  # compile=True needs triton, skip on macOS
+
+        # Pre-compute speaker embedding with fixed seed for consistent HAL voice
+        torch.manual_seed(42)
+        spk_emb = tts.sample_random_speaker()
+        print("[HAL] Model loaded. Ready.")
+    except Exception as e:
+        print(f"[HAL] FATAL: Failed to load model: {e}")
+        tts = None
+        spk_emb = None
 
 # ── Request schema ──────────────────────────────────────────
 class TTSRequest(BaseModel):
@@ -29,6 +39,8 @@ class TTSRequest(BaseModel):
 def generate_speech(req: TTSRequest):
     if not req.text or not req.text.strip():
         raise HTTPException(status_code=400, detail="text is required")
+    if tts is None:
+        raise HTTPException(status_code=503, detail="Model not loaded")
 
     try:
         # HAL 9000 voice params: flat, monotone, deliberate
@@ -37,11 +49,7 @@ def generate_speech(req: TTSRequest):
             top_P=0.5,
             top_K=10,
         )
-
-        # Use a fixed speaker seed for consistent voice across restarts
-        torch.manual_seed(42)
-        spk = tts.sample_random_speaker()
-        params.spk_emb = spk
+        params.spk_emb = spk_emb
 
         wavs = tts.infer(
             [req.text],
