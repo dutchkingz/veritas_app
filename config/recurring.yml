@@ -1,123 +1,74 @@
-# examples:
-#   periodic_cleanup:
-#     class: CleanSoftDeletedRecordsJob
-#     queue: background
-#     args: [ 1000, { batch_size: 500 } ]
-#     schedule: every hour
-#   periodic_cleanup_with_command:
-#     command: "SoftDeletedRecord.due.delete_all"
-#     priority: 2
-#     schedule: at 5am every day
+# Recurring jobs — frequencies reduced to conserve Neon DB quota.
+# Jobs that require OpenRouter (AI analysis) are commented out until key is restored.
 
 production:
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
-    schedule: every hour at minute 12
-
-  periodic_reassessment:
-    class: GenerateIntelligenceBriefJob
-    queue: intelligence
-    args: ["periodic"]
-    schedule: every 3 hours
+    schedule: every day at 2am
 
   fetch_articles:
     class: FetchArticlesJob
     queue: default
-    schedule: every 30 minutes
+    schedule: every 2 hours
 
-  generate_narrative_routes:
-    class: GenerateNarrativeRoutesJob
-    queue: default
-    args: [{ limit: 50 }]
-    schedule: every hour at minute 15
+  # --- DISABLED: require working OpenRouter API key ---
+  # periodic_reassessment:
+  #   class: GenerateIntelligenceBriefJob
+  #   queue: intelligence
+  #   args: ["periodic"]
+  #   schedule: every 3 hours
 
-  regional_analysis_refresh:
-    class: ScheduleRegionalAnalysisJob
-    queue: default
-    schedule: every 6 hours at minute 30
+  # generate_narrative_routes:
+  #   class: GenerateNarrativeRoutesJob
+  #   queue: default
+  #   args: [{ limit: 50 }]
+  #   schedule: every hour at minute 15
 
-  cluster_narrative_signatures:
-    class: NarrativeSignatureClusterJob
-    queue: intelligence
-    schedule: every 4 hours at minute 45
+  # regional_analysis_refresh:
+  #   class: ScheduleRegionalAnalysisJob
+  #   queue: default
+  #   schedule: every 6 hours at minute 30
 
-  detect_contradictions:
-    class: DetectContradictionsJob
-    queue: intelligence
-    schedule: every 6 hours
+  # cluster_narrative_signatures:
+  #   class: NarrativeSignatureClusterJob
+  #   queue: intelligence
+  #   schedule: every 4 hours at minute 45
 
-  generate_daily_brief:
-    class: GenerateIntelligenceBriefJob
-    queue: intelligence
-    args: ["daily"]
-    schedule: every day at 6am
+  # detect_contradictions:
+  #   class: DetectContradictionsJob
+  #   queue: intelligence
+  #   schedule: every 6 hours
 
-  capture_embedding_snapshot:
-    class: CaptureEmbeddingSnapshotJob
-    queue: intelligence
-    schedule: every 12 hours
+  # generate_daily_brief:
+  #   class: GenerateIntelligenceBriefJob
+  #   queue: intelligence
+  #   args: ["daily"]
+  #   schedule: every day at 6am
+
+  # capture_embedding_snapshot:
+  #   class: CaptureEmbeddingSnapshotJob
+  #   queue: intelligence
+  #   schedule: every 12 hours
 
   fetch_gdelt_articles:
     class: FetchGdeltArticlesJob
     queue: default
-    schedule: every hour
+    schedule: every 2 hours
 
-  # GDELT Events job runs every 2 hours (offset by 30 min from GKG job).
-  # The Events table scans are larger (~500 MB - 1.5 GB per call) so we run
-  # less frequently than GKG to stay comfortably within the 1 TB/month free tier.
-  # Monthly estimate: ~1 GB × 12 calls/day × 30 days = ~360 GB/month from events alone.
   fetch_gdelt_events:
     class: FetchGdeltEventsJob
     queue: default
-    schedule: every 2 hours at minute 30
+    schedule: every 4 hours at minute 30
 
   prune_api_usage_logs:
     command: "ApiUsageLog.where('created_at < ?', 30.days.ago).delete_all"
     schedule: every day at 3am
 
 development:
-  periodic_reassessment:
-    class: GenerateIntelligenceBriefJob
-    queue: intelligence
-    args: ["periodic"]
-    schedule: every 3 hours
-
   fetch_articles:
     class: FetchArticlesJob
     queue: default
     schedule: every 30 minutes
-
-  generate_narrative_routes:
-    class: GenerateNarrativeRoutesJob
-    queue: default
-    args: [{ limit: 50 }]
-    schedule: every hour at minute 15
-
-  regional_analysis_refresh:
-    class: ScheduleRegionalAnalysisJob
-    queue: default
-    schedule: every 6 hours at minute 30
-
-  cluster_narrative_signatures:
-    class: NarrativeSignatureClusterJob
-    queue: intelligence
-    schedule: every 4 hours at minute 45
-
-  detect_contradictions:
-    class: DetectContradictionsJob
-    queue: intelligence
-    schedule: every 6 hours
-
-  generate_daily_brief:
-    class: GenerateIntelligenceBriefJob
-    queue: intelligence
-    args: ["daily"]
-    schedule: every day at 6am
-
-  capture_embedding_snapshot:
-    class: CaptureEmbeddingSnapshotJob
-    queue: intelligence
-    schedule: every 12 hours
 
   fetch_gdelt_articles:
     class: FetchGdeltArticlesJob
