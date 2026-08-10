@@ -81,7 +81,7 @@ end
 
 gem "ruby-readability", "~> 0.7.3"
 
-gem "resend", "~> 0.17"
+gem "resend", "~> 1.3"
 
 gem "neighbor", "~> 0.6.0"
 
