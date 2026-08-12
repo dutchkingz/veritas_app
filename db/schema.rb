@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_20_223719) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_12_004928) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -57,7 +57,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_20_223719) do
     t.bigint "country_id"
     t.datetime "created_at", null: false
     t.string "data_source", default: "newsapi", null: false
-    t.vector "embedding", limit: 1536
+    t.vector "embedding", limit: 768
     t.datetime "fetched_at"
     t.string "geo_method", default: "unresolved"
     t.string "headline"
@@ -320,7 +320,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_20_223719) do
   create_table "narrative_signatures", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.float "avg_trust_score", default: 0.0
-    t.vector "centroid", limit: 1536
+    t.vector "centroid", limit: 768
     t.jsonb "country_distribution", default: {}
     t.datetime "created_at", null: false
     t.string "dominant_threat_level"

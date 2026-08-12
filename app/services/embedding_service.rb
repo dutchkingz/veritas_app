@@ -46,9 +46,10 @@ class EmbeddingService
     begin
       vector = @client.embed(text_to_embed)
 
-      if vector.is_a?(Array) && vector.length == 1536
+      expected_dims = OpenRouterClient.embedding_dimensions
+      if vector.is_a?(Array) && vector.length == expected_dims
         article.update!(embedding: vector)
-        Rails.logger.info "[SEMANTIC INTEL] ✅ Vector (1536 dims) saved for Article ##{article.id}"
+        Rails.logger.info "[SEMANTIC INTEL] ✅ Vector (#{expected_dims} dims) saved for Article ##{article.id}"
         true
       else
         # Do NOT cache this — a nil/short vector is a transient API failure

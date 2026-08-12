@@ -5,17 +5,23 @@ class OpenRouterClient
   # Raised on HTTP 429 — caller can retry_on this with exponential backoff.
   class RateLimitError < StandardError; end
 
-  API_URL = "https://openrouter.ai/api/v1/chat/completions".freeze
+  # ── OpenRouter config ──────────────────────────────────────────
+  OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions".freeze
   CREDIT_LIMIT_ERROR_PATTERN = /requires more credits|fewer max_tokens|can only afford/i.freeze
 
+  # ── Google Gemini config ───────────────────────────────────────
+  GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta".freeze
+  GEMINI_EMBED_MODEL = "gemini-embedding-001".freeze
+  GEMINI_EMBED_DIMENSIONS = 768
+
   DEFAULT_MODELS = {
-    analyst:           "google/gemini-2.5-flash",
-    sentinel:          "openai/gpt-4o-mini",
-    arbiter:           "google/gemini-2.5-flash",
-    briefing:          "google/gemini-2.5-flash",
-    voice:             "google/gemini-2.5-flash",
-    entity_extractor:  "google/gemini-2.5-flash",
-    relevance_filter:  "google/gemini-2.5-flash"
+    analyst:           "gemini-3-flash-preview",
+    sentinel:          "gemini-3-flash-preview",
+    arbiter:           "gemini-3-flash-preview",
+    briefing:          "gemini-3-flash-preview",
+    voice:             "gemini-3-flash-preview",
+    entity_extractor:  "gemini-3-flash-preview",
+    relevance_filter:  "gemini-3-flash-preview"
   }.freeze
 
   MAX_TOKENS = {
@@ -29,8 +35,10 @@ class OpenRouterClient
   }.freeze
 
   def initialize(user: nil)
-    @api_key      = ENV.fetch('OPENROUTER_API_KEY')
-    @model_config = user&.model_config
+    @google_api_key    = ENV['GOOGLE_API_KEY']
+    @openrouter_key    = ENV['OPENROUTER_API_KEY']
+    @use_gemini        = @google_api_key.present?
+    @model_config      = user&.model_config
   end
 
   # Send a prompt to a specific agent model and return parsed JSON
@@ -39,25 +47,24 @@ class OpenRouterClient
     max_tokens = MAX_TOKENS.fetch(agent_role.to_sym, 700)
 
     begin
-      response = request_chat(
-        model: model,
-        system_prompt: system_prompt,
-        user_prompt: user_prompt,
-        expect_json: expect_json,
-        max_tokens: max_tokens
-      )
-
-      data = JSON.parse(response.body)
-      log_api_usage(model: model, agent_role: agent_role, response: response, data: data)
-
-      content = data.dig("choices", 0, "message", "content")
-
-      if expect_json
-        # Strip markdown code fences if the model wraps JSON in ```json blocks
-        cleaned = content.gsub(/\A```json\s*/i, '').gsub(/```\s*\z/, '').strip
-        JSON.parse(cleaned)
+      if @use_gemini
+        gemini_chat(
+          model: model,
+          system_prompt: system_prompt,
+          user_prompt: user_prompt,
+          expect_json: expect_json,
+          max_tokens: max_tokens,
+          agent_role: agent_role
+        )
       else
-        content
+        openrouter_chat(
+          model: model,
+          system_prompt: system_prompt,
+          user_prompt: user_prompt,
+          expect_json: expect_json,
+          max_tokens: max_tokens,
+          agent_role: agent_role
+        )
       end
     rescue => e
       log_api_usage_error(model: model, agent_role: agent_role, error: e)
@@ -65,21 +72,149 @@ class OpenRouterClient
     end
   end
 
-  # Generate a 1536-dimensional vector embedding for semantic search
+  # Generate a vector embedding for semantic search
   def embed(text)
+    if @use_gemini
+      gemini_embed(text)
+    else
+      openrouter_embed(text)
+    end
+  end
+
+  # Expose current embedding dimensions so callers can validate
+  def self.embedding_dimensions
+    ENV['GOOGLE_API_KEY'].present? ? GEMINI_EMBED_DIMENSIONS : 1536
+  end
+
+  private
+
+  # ── Google Gemini implementation ─────────────────────────────
+
+  def gemini_chat(model:, system_prompt:, user_prompt:, expect_json:, max_tokens:, agent_role:)
+    url = "#{GEMINI_BASE_URL}/models/#{model}:generateContent?key=#{@google_api_key}"
+    uri = URI(url)
+
+    generation_config = {
+      temperature: 0.3,
+      maxOutputTokens: max_tokens,
+      thinkingConfig: { thinkingBudget: 0 }
+    }
+    generation_config[:responseMimeType] = "application/json" if expect_json
+
+    body = {
+      systemInstruction: { parts: [{ text: system_prompt }] },
+      contents: [{ role: "user", parts: [{ text: user_prompt }] }],
+      generationConfig: generation_config
+    }
+
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true
+    http.read_timeout = 60
+
+    request = Net::HTTP::Post.new(uri)
+    request["Content-Type"] = "application/json"
+    request.body = body.to_json
+
+    response = http.request(request)
+
+    raise RateLimitError, "Gemini rate limit (429): #{response.body}" if response.code.to_i == 429
+
+    unless response.is_a?(Net::HTTPSuccess)
+      raise "Gemini API error (#{response.code}): #{response.body}"
+    end
+
+    data = JSON.parse(response.body)
+
+    # Log usage
+    usage = data["usageMetadata"] || {}
+    log_api_usage(
+      model: model,
+      agent_role: agent_role,
+      response: response,
+      data: {
+        "usage" => {
+          "prompt_tokens" => usage["promptTokenCount"],
+          "completion_tokens" => usage["candidatesTokenCount"],
+          "total_cost" => nil
+        }
+      }
+    )
+
+    content = data.dig("candidates", 0, "content", "parts", 0, "text")
+
+    if expect_json
+      cleaned = content.gsub(/\A```json\s*/i, '').gsub(/```\s*\z/, '').strip
+      JSON.parse(cleaned)
+    else
+      content
+    end
+  end
+
+  def gemini_embed(text)
+    url = "#{GEMINI_BASE_URL}/models/#{GEMINI_EMBED_MODEL}:embedContent?key=#{@google_api_key}"
+    uri = URI(url)
+
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true
+
+    request = Net::HTTP::Post.new(uri)
+    request["Content-Type"] = "application/json"
+    request.body = {
+      model: "models/#{GEMINI_EMBED_MODEL}",
+      content: { parts: [{ text: text }] },
+      outputDimensionality: GEMINI_EMBED_DIMENSIONS
+    }.to_json
+
+    response = http.request(request)
+
+    unless response.is_a?(Net::HTTPSuccess)
+      raise "Gemini Embedding API error (#{response.code}): #{response.body}"
+    end
+
+    data = JSON.parse(response.body)
+    data.dig("embedding", "values")
+  end
+
+  # ── OpenRouter implementation (fallback) ─────────────────────
+
+  def openrouter_chat(model:, system_prompt:, user_prompt:, expect_json:, max_tokens:, agent_role:)
+    # Prefix model names for OpenRouter format
+    or_model = model.include?("/") ? model : "google/#{model}"
+
+    response = openrouter_request_chat(
+      model: or_model,
+      system_prompt: system_prompt,
+      user_prompt: user_prompt,
+      expect_json: expect_json,
+      max_tokens: max_tokens
+    )
+
+    data = JSON.parse(response.body)
+    log_api_usage(model: or_model, agent_role: agent_role, response: response, data: data)
+
+    content = data.dig("choices", 0, "message", "content")
+
+    if expect_json
+      cleaned = content.gsub(/\A```json\s*/i, '').gsub(/```\s*\z/, '').strip
+      JSON.parse(cleaned)
+    else
+      content
+    end
+  end
+
+  def openrouter_embed(text)
     uri = URI("https://openrouter.ai/api/v1/embeddings")
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
 
     request = Net::HTTP::Post.new(uri)
-    request["Authorization"] = "Bearer #{@api_key}"
+    request["Authorization"] = "Bearer #{@openrouter_key}"
     request["Content-Type"]  = "application/json"
     request["HTTP-Referer"]  = "https://veritas-app-314a53c53525.herokuapp.com/"
     request["X-Title"]       = "VERITAS Intelligence Platform"
-    
-    # OpenRouter fully supports OpenAI's native embedding endpoint format
+
     request.body = {
-      model: "text-embedding-3-small", 
+      model: "text-embedding-3-small",
       input: text
     }.to_json
 
@@ -90,14 +225,14 @@ class OpenRouterClient
     end
 
     data = JSON.parse(response.body)
-    data.dig("data", 0, "embedding") # Returns the Array of 1536 floats
+    data.dig("data", 0, "embedding")
   end
 
-  private
+  # ── Shared helpers ───────────────────────────────────────────
 
   def resolve_model(agent_role)
     role = agent_role.to_sym
-    if @model_config
+    if @model_config && !@use_gemini
       configured = @model_config.model_for(role)
       return DEFAULT_MODELS.fetch(role, agent_role.to_s) if configured == "custom"
       return configured if configured.present?
@@ -105,15 +240,7 @@ class OpenRouterClient
     DEFAULT_MODELS.fetch(role, agent_role.to_s)
   end
 
-  def effective_api_key
-    @model_config&.effective_api_key || @api_key
-  end
-
-  def effective_api_url
-    @model_config&.effective_endpoint&.then { |ep| "#{ep.chomp('/')}/chat/completions" } || API_URL
-  end
-
-  def request_chat(model:, system_prompt:, user_prompt:, expect_json:, max_tokens:)
+  def openrouter_request_chat(model:, system_prompt:, user_prompt:, expect_json:, max_tokens:)
     body = {
       model: model,
       messages: [
@@ -125,13 +252,13 @@ class OpenRouterClient
     }
     body[:response_format] = { type: "json_object" } if expect_json
 
-    uri = URI(effective_api_url)
+    uri = URI(OPENROUTER_API_URL)
     http = Net::HTTP.new(uri.host, uri.port)
-    http.use_ssl = uri.scheme == "https"
+    http.use_ssl = true
     http.read_timeout = 60
 
     request = Net::HTTP::Post.new(uri)
-    request["Authorization"] = "Bearer #{effective_api_key}"
+    request["Authorization"] = "Bearer #{@openrouter_key}"
     request["Content-Type"]  = "application/json"
     request["HTTP-Referer"]  = "https://veritas-app-314a53c53525.herokuapp.com/"
     request["X-Title"]       = "VERITAS Intelligence Platform"
@@ -144,8 +271,8 @@ class OpenRouterClient
 
     if response.code.to_i == 402 && response.body.match?(CREDIT_LIMIT_ERROR_PATTERN) && max_tokens > 250
       reduced_max_tokens = [max_tokens - 200, 250].max
-      Rails.logger.warn "[OpenRouter] Retrying #{model} with lower max_tokens=#{reduced_max_tokens} after credit-limit response."
-      return request_chat(
+      Rails.logger.warn "[OpenRouter] Retrying #{model} with lower max_tokens=#{reduced_max_tokens}"
+      return openrouter_request_chat(
         model: model,
         system_prompt: system_prompt,
         user_prompt: user_prompt,
