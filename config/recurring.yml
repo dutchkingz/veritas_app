@@ -1,6 +1,4 @@
-# Recurring jobs — frequencies reduced to conserve Neon DB quota.
-# Jobs that require OpenRouter (AI analysis) are commented out until key is restored.
-
+# Recurring jobs — Google Gemini (paid tier, 30 req/min cap)
 production:
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
@@ -11,44 +9,43 @@ production:
     queue: default
     schedule: every 2 hours
 
-  # --- DISABLED: require working OpenRouter API key ---
-  # periodic_reassessment:
-  #   class: GenerateIntelligenceBriefJob
-  #   queue: intelligence
-  #   args: ["periodic"]
-  #   schedule: every 3 hours
+  periodic_reassessment:
+    class: GenerateIntelligenceBriefJob
+    queue: intelligence
+    args: ["periodic"]
+    schedule: every 3 hours
 
-  # generate_narrative_routes:
-  #   class: GenerateNarrativeRoutesJob
-  #   queue: default
-  #   args: [{ limit: 50 }]
-  #   schedule: every hour at minute 15
+  generate_narrative_routes:
+    class: GenerateNarrativeRoutesJob
+    queue: default
+    args: [{ limit: 50 }]
+    schedule: every 2 hours at minute 15
 
-  # regional_analysis_refresh:
-  #   class: ScheduleRegionalAnalysisJob
-  #   queue: default
-  #   schedule: every 6 hours at minute 30
+  regional_analysis_refresh:
+    class: ScheduleRegionalAnalysisJob
+    queue: default
+    schedule: every 6 hours at minute 30
 
-  # cluster_narrative_signatures:
-  #   class: NarrativeSignatureClusterJob
-  #   queue: intelligence
-  #   schedule: every 4 hours at minute 45
+  cluster_narrative_signatures:
+    class: NarrativeSignatureClusterJob
+    queue: intelligence
+    schedule: every 4 hours at minute 45
 
-  # detect_contradictions:
-  #   class: DetectContradictionsJob
-  #   queue: intelligence
-  #   schedule: every 6 hours
+  detect_contradictions:
+    class: DetectContradictionsJob
+    queue: intelligence
+    schedule: every 6 hours
 
-  # generate_daily_brief:
-  #   class: GenerateIntelligenceBriefJob
-  #   queue: intelligence
-  #   args: ["daily"]
-  #   schedule: every day at 6am
+  generate_daily_brief:
+    class: GenerateIntelligenceBriefJob
+    queue: intelligence
+    args: ["daily"]
+    schedule: every day at 6am
 
-  # capture_embedding_snapshot:
-  #   class: CaptureEmbeddingSnapshotJob
-  #   queue: intelligence
-  #   schedule: every 12 hours
+  capture_embedding_snapshot:
+    class: CaptureEmbeddingSnapshotJob
+    queue: intelligence
+    schedule: every 12 hours
 
   fetch_gdelt_articles:
     class: FetchGdeltArticlesJob

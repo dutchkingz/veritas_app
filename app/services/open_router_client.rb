@@ -14,6 +14,10 @@ class OpenRouterClient
   GEMINI_EMBED_MODEL = "gemini-embedding-001".freeze
   GEMINI_EMBED_DIMENSIONS = 768
 
+  # Gemini Flash pricing (per token) — used to estimate cost since Google doesn't return it
+  GEMINI_INPUT_COST_PER_TOKEN  = 0.10 / 1_000_000  # $0.10 per 1M input tokens
+  GEMINI_OUTPUT_COST_PER_TOKEN = 0.40 / 1_000_000  # $0.40 per 1M output tokens
+
   DEFAULT_MODELS = {
     analyst:           "gemini-3-flash-preview",
     sentinel:          "gemini-3-flash-preview",
@@ -125,17 +129,22 @@ class OpenRouterClient
 
     data = JSON.parse(response.body)
 
-    # Log usage
+    # Log usage with estimated cost
     usage = data["usageMetadata"] || {}
+    input_tokens = usage["promptTokenCount"].to_i
+    output_tokens = usage["candidatesTokenCount"].to_i
+    estimated_cost = (input_tokens * GEMINI_INPUT_COST_PER_TOKEN) +
+                     (output_tokens * GEMINI_OUTPUT_COST_PER_TOKEN)
+
     log_api_usage(
       model: model,
       agent_role: agent_role,
       response: response,
       data: {
         "usage" => {
-          "prompt_tokens" => usage["promptTokenCount"],
-          "completion_tokens" => usage["candidatesTokenCount"],
-          "total_cost" => nil
+          "prompt_tokens" => input_tokens,
+          "completion_tokens" => output_tokens,
+          "total_cost" => estimated_cost
         }
       }
     )

@@ -27,9 +27,7 @@ class SystemHealthService
         spent_today: ApiUsageLog.total_cost_today,
         spent_month: ApiUsageLog.where("created_at >= ?", Time.current.beginning_of_month).sum(:estimated_cost).to_f
       },
-      data_transfer: {
-        limit_gb: 5.0
-      }
+      db_connections: db_connection_stats
     }
   end
 
@@ -170,6 +168,13 @@ class SystemHealthService
     succeeded = total - failed
     rate = total > 0 ? (succeeded.to_f / total * 100).round(1) : 100.0
     { succeeded: succeeded, total: total, rate: rate }
+  end
+
+  def db_connection_stats
+    max_connections = ActiveRecord::Base.connection.select_value("SHOW max_connections").to_i
+    active = ActiveRecord::Base.connection.select_value("SELECT COUNT(*) FROM pg_stat_activity WHERE state IS NOT NULL").to_i
+    percentage = max_connections > 0 ? (active.to_f / max_connections * 100).round(1) : 0
+    { active: active, max: max_connections, percentage: percentage }
   end
 
   def active_sources

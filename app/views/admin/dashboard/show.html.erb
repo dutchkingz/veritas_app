@@ -32,9 +32,9 @@
       subtitle: "$#{'%.2f' % @health[:kpis][:api_spend_month]} / $5.00"
     } %>
     <%= render partial: "admin/dashboard/donut_gauge", locals: {
-      label: "DATA TRANSFER",
-      percentage: 0,
-      subtitle: "Estimated (check Neon)"
+      label: "DB CONNECTIONS",
+      percentage: @health[:gauges][:db_connections][:percentage],
+      subtitle: "#{@health[:gauges][:db_connections][:active]} / #{@health[:gauges][:db_connections][:max]} active"
     } %>
   </div>
 
