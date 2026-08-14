@@ -14,9 +14,9 @@ class OpenRouterClient
   GEMINI_EMBED_MODEL = "gemini-embedding-001".freeze
   GEMINI_EMBED_DIMENSIONS = 768
 
-  # Gemini Flash pricing (per token) — used to estimate cost since Google doesn't return it
-  GEMINI_INPUT_COST_PER_TOKEN  = 0.10 / 1_000_000  # $0.10 per 1M input tokens
-  GEMINI_OUTPUT_COST_PER_TOKEN = 0.40 / 1_000_000  # $0.40 per 1M output tokens
+  # Gemini 3 Flash Preview pricing (per token) — based on actual Google billing data
+  GEMINI_INPUT_COST_PER_TOKEN  = 0.60 / 1_000_000  # $0.60 per 1M input tokens
+  GEMINI_OUTPUT_COST_PER_TOKEN = 3.50 / 1_000_000  # $3.50 per 1M output tokens
 
   DEFAULT_MODELS = {
     analyst:           "gemini-3-flash-preview",

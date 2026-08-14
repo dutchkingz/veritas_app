@@ -1,4 +1,5 @@
 # Recurring jobs — Google Gemini (paid tier, 30 req/min cap)
+# Frequencies reduced to target ~$7-8/month in API spend
 production:
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
@@ -7,34 +8,34 @@ production:
   fetch_articles:
     class: FetchArticlesJob
     queue: default
-    schedule: every 2 hours
+    schedule: every 4 hours
 
   periodic_reassessment:
     class: GenerateIntelligenceBriefJob
     queue: intelligence
     args: ["periodic"]
-    schedule: every 3 hours
+    schedule: every 6 hours
 
   generate_narrative_routes:
     class: GenerateNarrativeRoutesJob
     queue: default
     args: [{ limit: 50 }]
-    schedule: every 2 hours at minute 15
+    schedule: every 4 hours at minute 15
 
   regional_analysis_refresh:
     class: ScheduleRegionalAnalysisJob
     queue: default
-    schedule: every 6 hours at minute 30
+    schedule: every 12 hours at minute 30
 
   cluster_narrative_signatures:
     class: NarrativeSignatureClusterJob
     queue: intelligence
-    schedule: every 4 hours at minute 45
+    schedule: every 8 hours at minute 45
 
   detect_contradictions:
     class: DetectContradictionsJob
     queue: intelligence
-    schedule: every 6 hours
+    schedule: every 12 hours
 
   generate_daily_brief:
     class: GenerateIntelligenceBriefJob
@@ -50,7 +51,7 @@ production:
   fetch_gdelt_articles:
     class: FetchGdeltArticlesJob
     queue: default
-    schedule: every 2 hours
+    schedule: every 4 hours
 
   fetch_gdelt_events:
     class: FetchGdeltEventsJob
