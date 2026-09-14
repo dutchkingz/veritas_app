@@ -14,6 +14,11 @@ class FetchGdeltEventsJob < ApplicationJob
       return
     end
 
+    if VeritasMode.source_disabled?("gdelt_events")
+      Rails.logger.info "[FetchGdeltEventsJob] GDELT Events source disabled — skipping."
+      return
+    end
+
     Rails.logger.info "[FetchGdeltEventsJob] Starting GDELT Events fetch..."
     GdeltEventIngestionService.new.fetch_and_process
   rescue GdeltBigQueryService::QueryError => e

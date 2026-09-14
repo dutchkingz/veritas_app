@@ -9,6 +9,11 @@ class FetchArticlesJob < ApplicationJob
       return
     end
 
+    if VeritasMode.source_disabled?("newsapi")
+      Rails.logger.info "[FetchArticlesJob] NewsAPI source disabled — skipping."
+      return
+    end
+
     service = NewsApiService.new
 
     if service.calls_remaining <= 0

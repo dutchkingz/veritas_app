@@ -14,6 +14,11 @@ class FetchGdeltArticlesJob < ApplicationJob
       return
     end
 
+    if VeritasMode.source_disabled?("gdelt_articles")
+      Rails.logger.info "[FetchGdeltArticlesJob] GDELT Articles source disabled — skipping."
+      return
+    end
+
     Rails.logger.info "[FetchGdeltArticlesJob] Starting GDELT fetch..."
     GdeltIngestionService.new.fetch_and_process
   rescue GdeltBigQueryService::QueryError => e
