@@ -9,7 +9,9 @@ class SystemHealthService
       recent_errors: build_recent_errors,
       api_breakdown: build_api_breakdown,
       db_stats: build_db_stats,
-      ingestion: build_ingestion_stats
+      ingestion: build_ingestion_stats,
+      source_toggles: VeritasMode.all_source_statuses,
+      failed_jobs_count: SolidQueue::FailedExecution.count
     }
   end
 
