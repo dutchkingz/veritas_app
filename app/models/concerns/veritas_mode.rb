@@ -53,5 +53,40 @@ module VeritasMode
     def api_limit_reached?
       api_calls_today >= 90
     end
+
+    # --- Per-source toggles ---
+    VALID_SOURCES = %w[newsapi gdelt_articles gdelt_events].freeze
+
+    def source_enabled?(source)
+      validate_source!(source)
+      Rails.cache.read("veritas_source:#{source}") != "disabled"
+    end
+
+    def source_disabled?(source)
+      !source_enabled?(source)
+    end
+
+    def toggle_source!(source)
+      validate_source!(source)
+      new_state = source_enabled?(source) ? "disabled" : "enabled"
+      Rails.cache.write("veritas_source:#{source}", new_state)
+      Rails.logger.info "[VeritasMode] Source #{source} → #{new_state.upcase}"
+      new_state
+    end
+
+    def source_status(source)
+      validate_source!(source)
+      source_enabled?(source) ? "enabled" : "disabled"
+    end
+
+    def all_source_statuses
+      VALID_SOURCES.index_with { |s| source_status(s) }
+    end
+
+    private
+
+    def validate_source!(source)
+      raise ArgumentError, "Unknown source: #{source}. Valid: #{VALID_SOURCES.join(', ')}" unless VALID_SOURCES.include?(source.to_s)
+    end
   end
 end
