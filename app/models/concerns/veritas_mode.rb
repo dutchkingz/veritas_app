@@ -1,6 +1,7 @@
 module VeritasMode
   CACHE_KEY = "veritas_mode".freeze
   VALID_MODES = %w[demo live].freeze
+  VALID_SOURCES = %w[newsapi gdelt_articles gdelt_events].freeze
 
   class << self
     def current
@@ -55,8 +56,6 @@ module VeritasMode
     end
 
     # --- Per-source toggles ---
-    VALID_SOURCES = %w[newsapi gdelt_articles gdelt_events].freeze
-
     def source_enabled?(source)
       validate_source!(source)
       Rails.cache.read("veritas_source:#{source}") != "disabled"
