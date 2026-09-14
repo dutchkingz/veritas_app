@@ -73,6 +73,8 @@ Rails.application.routes.draw do
     get "dashboard", to: "dashboard#show"
     post "dashboard/fetch_articles", to: "dashboard#fetch_articles"
     post "dashboard/generate_brief", to: "dashboard#generate_brief"
+    post "dashboard/toggle_source", to: "dashboard#toggle_source"
+    post "dashboard/cleanup_queue", to: "dashboard#cleanup_queue"
 
     resources :users do
       member do

@@ -15,6 +15,29 @@ class Admin::DashboardController < ApplicationController
     redirect_to admin_dashboard_path, notice: "AWARE intelligence reassessment enqueued."
   end
 
+  def toggle_source
+    source = params[:source].to_s
+    unless VeritasMode::VALID_SOURCES.include?(source)
+      redirect_to admin_dashboard_path, alert: "Unknown source: #{source}"
+      return
+    end
+
+    new_state = VeritasMode.toggle_source!(source)
+    label = source.tr("_", " ").upcase
+    redirect_to admin_dashboard_path, notice: "#{label} #{new_state}."
+  end
+
+  def cleanup_queue
+    failed = SolidQueue::FailedExecution.includes(:job)
+    count = failed.count
+
+    failed.find_each do |fe|
+      fe.job&.destroy
+    end
+
+    redirect_to admin_dashboard_path, notice: "Purged #{count} failed job#{'s' unless count == 1}."
+  end
+
   private
 
   def ensure_admin!
