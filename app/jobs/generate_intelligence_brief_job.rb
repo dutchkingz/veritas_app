@@ -2,6 +2,11 @@ class GenerateIntelligenceBriefJob < ApplicationJob
   queue_as :intelligence
 
   def perform(type = "daily")
+    if VeritasMode.demo?
+      Rails.logger.info "[GenerateIntelligenceBriefJob] Demo mode — skipping."
+      return
+    end
+
     case type
     when "daily"
       IntrospectionService.new.generate_daily_brief

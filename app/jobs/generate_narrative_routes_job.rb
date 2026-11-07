@@ -10,6 +10,11 @@ class GenerateNarrativeRoutesJob < ApplicationJob
   retry_on OpenRouterClient::RateLimitError, wait: :exponentially_longer, attempts: 5
   
   def perform(limit: 50)
+    if VeritasMode.demo?
+      Rails.logger.info "[GenerateNarrativeRoutesJob] Demo mode — skipping."
+      return
+    end
+
     Rails.logger.info "[JOB] GenerateNarrativeRoutesJob started (limit: #{limit})"
     
     service = NarrativeRouteGeneratorService.new

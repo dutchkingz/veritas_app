@@ -16,6 +16,11 @@ class ScheduleRegionalAnalysisJob < ApplicationJob
   REFRESH_INTERVAL_HOURS = 6
 
   def perform
+    if VeritasMode.demo?
+      Rails.logger.info "[ScheduleRegionalAnalysisJob] Demo mode — skipping."
+      return
+    end
+
     Region.find_each do |region|
       next if recent_report_exists?(region)
 

@@ -17,6 +17,11 @@ class RegionalAnalysisJob < ApplicationJob
   retry_on StandardError, wait: :polynomially_longer, attempts: 3
 
   def perform(report_id)
+    if VeritasMode.demo?
+      Rails.logger.info "[RegionalAnalysisJob] Demo mode — skipping."
+      return
+    end
+
     report = IntelligenceReport.find_by(id: report_id)
     return unless report
     

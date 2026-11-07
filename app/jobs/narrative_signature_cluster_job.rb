@@ -7,6 +7,11 @@ class NarrativeSignatureClusterJob < ApplicationJob
   LOOKBACK_DAYS    = 14
 
   def perform
+    if VeritasMode.demo?
+      Rails.logger.info "[NarrativeSignatureClusterJob] Demo mode — skipping."
+      return
+    end
+
     Rails.logger.info "[SIGNATURE CLUSTER] Starting signature creation from unmatched articles..."
 
     unmatched = load_unmatched_articles

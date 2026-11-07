@@ -2,6 +2,11 @@ class AnalyzeArticleJob < ApplicationJob
   queue_as :default
 
   def perform(article_id)
+    if VeritasMode.demo?
+      Rails.logger.info "[AnalyzeArticleJob] Demo mode — skipping."
+      return
+    end
+
     article = Article.find(article_id)
 
     # Skip if already analyzed
