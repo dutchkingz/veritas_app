@@ -9,7 +9,7 @@
       <span class="me-2">&#x26A8;</span> System Command Center
     </h1>
     <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: #475569;">
-      Auto-refresh: 60s &bull; <%= Time.current.strftime("%Y-%m-%d %H:%M:%S UTC") %>
+      VERITAS v<%= File.read(Rails.root.join("VERSION")).strip %> &bull; Auto-refresh: 60s &bull; <%= Time.current.strftime("%Y-%m-%d %H:%M:%S UTC") %>
     </span>
   </div>
 
